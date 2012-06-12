@@ -1,0 +1,32 @@
+Code layout:
+
+
+Launchable files :
+------------------
+
+* testshost.py:	launch the host tests.
+* testslbr.py:	launch the LBR tests.
+* testslr.py:	launch the LR tests.
+* console.py:	launch a console to test the tool.
+
+By default, the tests will run in simulated time against a rough implementation provided by this package (implem*.py)
+
+Internal use files:
+-------------------
+* commontestsetups.py:	Code of the commontestsetups used in tests
+* altstep.py:		Code of the altstep. Default case that are used in test when a timeout occurs, an unattended packet is excepted etc
+* common.py:		This file is in charge of including every needed file
+* config.py:		Performs the configuration of the tests (address of SUT..). Values are read from localconfig.py
+* implem.py:		Host implementation of 6lowpan and 6lowpan-nd. Used to valide the tests.
+* implemR.py:		Router implementation of 6lowpan and 6lowpan-nd. Used to valide the tests.
+* implembR.py:		Border Router implementation of 6lowpan and 6lowpan-nd. Used to valide the tests.
+* testsrouter.py	Border Router & Router common tests.
+
+Editable files:
+---------------
+
+* localconfig.py:	Contains the configuration used for tests.
+
+Viewable files:
+---------------
+* [dir] reports:	Contains logs of tests.
