@@ -9,7 +9,8 @@ Launchable files :
 * testslr.py:	launch the LR tests.
 * console.py:	launch a console to test the tool.
 
-By default, the tests will run in simulated time against a rough implementation provided by this package (implem*.py)
+By default, the tests will run in simulated time against a rough implementation provided by this package (implem*.py). Test results will be stored in the reports/ directory.
+
 
 Internal use files:
 -------------------
