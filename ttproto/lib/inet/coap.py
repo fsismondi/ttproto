@@ -194,6 +194,7 @@ class CoAPOptionLengthTag(InetLength):
 		ctx.remaining_slice = ctx.remaining_slice[:value]
 
 class CoAPOption (
+	#FIXME: option Delta 15 must never be used when oc != 15
 	metaclass = InetPacketClass, 
 	fields    = [
 		("Delta",	"dlt",	UInt4,		0),
