@@ -65,5 +65,5 @@ class UnionClass (type):
 		return isinstance (instance, self.__types)
 
 	def __subclasscheck__ (self, subclass):
-		return issubclass (subclass, self.__types)
+		return issubclass (subclass, self.__types) or self in subclass.__mro__
 
