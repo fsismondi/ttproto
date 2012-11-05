@@ -257,6 +257,27 @@ class CoAPOptionList (
 				current = None
 				t = CoAPOptionEnd
 			else:
+				if delta == 15:
+					# Jump option
+					jmp, bin_slice = CoAPOptionJump.decode_message (bin_slice)
+					values.append (jmp)
+
+					if first_byte == 0xf1:
+						# 1-byte Jump
+						current += 15
+					elif first_byte == 0xf2:
+						# 2-byte Jump
+						current += (jmp["val"] + 2) * 8
+					elif first_byte == 0xf3:
+						# 3-byte Jump
+						current += (jmp["val"] + 258) * 8
+					else:
+						raise Exception ("Unrecognised Jump option: 0x%x" % first_byte)
+
+					# processe the next option
+					first_byte = bin_slice[0]
+					delta = first_byte >> 4
+				
 				current += delta
 				t = CoAPOption.get_variant_type(current)
 			
