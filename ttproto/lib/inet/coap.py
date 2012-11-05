@@ -469,61 +469,86 @@ class CoAP (
 		values = list (self)
 
 		options = self["Options"]
+		option_count = None
 
 		# We will fill the deltas only if all deltas are unset
 		if options and all (opt["Delta"] == None for opt in options):
-
-			# TODO: we could optimise it to 15 when possible
-			#	(but we need do be sure that the final option
-			#	count (including the no-op separators) is lower
-			#	than 15)
-			max_delta = 14
 
 			# group the options by type
 			by_type = {}
 			for opt in options:
 				t = opt.get_variant_id()
-				try:
-					by_type[t].append(opt)
-				except KeyError:
-					by_type[t]=[opt]
+				lst = by_type.get (t)
+				if lst is None:
+					by_type[t] = [opt]
+				else:
+					lst.append (opt)
 
 			# fill the deltas and generate the option list
 			type_list = list (by_type)
 			type_list.sort()
 			current = 0
+			option_count = 0
 			opt_list = []
 			for t in type_list:
 				for opt in by_type[t]:
-					while True:
-						delta = t - current
-						if delta <= max_delta:
-							break
-						# delta is too big
-						# find the next noop option
-						noop = (current + 15) // 14 *14		
-						delta = noop - current
-						assert 0 <= delta <= max_delta
-						opt_list.append (CoAPOption.get_variant_type(noop) (delta, 0))
-						current = noop
+					delta = t - current
 
-					assert delta >= 0
+					assert 0 <= delta
+
+					if delta > 14:
+						# insert a Jump option
+
+						if delta <= 29: # 15 + 14
+							# 1-byte Jump Option
+							delta = 15
+							jump_value = Omit()
+
+						elif delta <= 2070: # (255+2)*8 + 14
+							# 2-byte Jump Option
+
+							# max delta -> (255+2) * 8
+							delta = 2056 if delta > 2056 else (delta//8*8)
+							
+							jump_value = UInt8 (delta // 8 - 2)
+						
+						elif delta <= 526358: # (65535+258)*8 + 14
+							# 3-byte Jump Option
+
+							# max delta -> (65535+258)*8
+							delta = 526344 if delta > 526344 else (delta//8*8)
+
+							jump_value = UInt16 (delta // 8 - 258)
+
+						else:
+							raise Exception("Delta is too big for generating a jump option: %d" % delta)
+						current += delta
+						opt_list.append (CoAPOptionJump (dlt=15, val=jump_value))
+
+
+						delta = t - current
+						
+					assert 0 <= delta <= 14
+
 					current = t
 
 					v = list(opt)
 					v[0] = delta
 					opt_list.append (type(opt)(*v))
 
+					option_count += 1
+
 			# append the end-of-options marker if needed
-			if len (opt_list) >= 15:
+			if option_count >= 15:
+				option_count = 15
 				opt_list.append (CoAPOptionEnd (dlt=15, len=0))
 
 			# replace the options field
 			values[self.get_field_id("Options")] = opt_list
 		
 		# fill the option count field if needed
-		if self["oc"] == None:
-			values[self.get_field_id ("oc")] = min (15, len (values[self.get_field_id("Options")]))
+		if (option_count is not None) and (self["oc"] is None):
+			values[self.get_field_id ("oc")] = option_count
 
 		# overwrite the current value
 		self = type(self) (*values)
