@@ -150,7 +150,6 @@ class _CoAPBlockUInt (IntValue):
 
 			buff += bytes ((c << 4,))
 
-			print ((self, (buff, 4)))
 			return self, (buff, 4)
 
 		@classmethod
