@@ -56,7 +56,7 @@ __all__ = [
 	'CoAPOptionBlock',
 	'CoAPOptionBlock1',
 	'CoAPOptionBlock2',
-	'CoAPOptionContentType',
+	'CoAPOptionContentFormat',
 	'CoAPOptionETag',
 	'CoAPOptionEmpty',
 	'CoAPOptionIfMatch',
@@ -68,10 +68,6 @@ __all__ = [
 	'CoAPOptionLocationPath',
 	'CoAPOptionLocationQuery',
 	'CoAPOptionMaxAge',
-	'CoAPOptionNoOp14',
-	'CoAPOptionNoOp28',
-	'CoAPOptionNoOp42',
-	'CoAPOptionNoOp56',
 	'CoAPOptionObserve',
 	'CoAPOptionProxyUri',
 	'CoAPOptionSize',
@@ -557,15 +553,12 @@ class CoAPOptionEmpty (
 	):
 	pass
 
-class _CoAPString (metaclass = SubtypeClass (Length (str, (0, 270)))):
-	pass
-
 class CoAPOptionString (
 	metaclass	= InetPacketClass,
 	variant_of	= CoAPOption,
 	prune		= -1,
 	fields = [
-		("Value",	"val",	_CoAPString),
+		("Value",	"val",	str),
 	]):
 	pass
 
@@ -583,6 +576,19 @@ class CoAPOptionBlock (
 		# bypass CoAPOption.__init__
 		return super (CoAPOption, self).__init__ (*k, **kw)
 
+class CoAPOptionFormat (
+	metaclass	= InetPacketClass,
+	variant_of	= CoAPOptionUInt,
+	descriptions = { "Value": {
+		0:	"text/plain; charset=utf-8",
+		40:	"application/link-format",
+		41:	"application/xml",
+		42:	"application/octet-stream",
+		47:	"application/exi",
+		50:	"application/json",
+	}}):
+	pass
+
 class CoAPOptionEnd (
 	metaclass	= InetPacketClass,
 	variant_of	= CoAPOptionEmpty,
@@ -595,35 +601,32 @@ for i, n, t in (
 		#TODO: add descriptions fro ContentType and Accept
 		#TODO: handle length restrictions
 
-		# draft-ietf-core-coap-09
-		# (ContentType & MaxAge are defined separately)
-		(3,	"ProxyUri",		"String"),
+		# draft-ietf-core-coap-12
+		# (MaxAge is defined separately)
+
+		(1,	"IfMatch",		""),
+		(3,	"UriHost",		"String"),
 		(4,	"ETag",			""),
-		(5,	"UriHost",		"String"),
-		(6,	"LocationPath",		"String"),
+		(5,	"IfNoneMatch",		"Empty"),
 		(7,	"UriPort",		"UInt"),
-		(8,	"LocationQuery",	"String"),
-		(9,	"UriPath",		"String"),
-		(11,	"Token",		""),
-		(12,	"Accept",		"UInt"),
-		(13,	"IfMatch",		""),
-		(14,	"NoOp14",		"Empty"),
+		(8,	"LocationPath",		"String"),
+		(11,	"UriPath",		"String"),
+		(12,	"ContentFormat",	"Format"),
 		(15,	"UriQuery",		"String"),
-		(21,	"IfNoneMatch",		"Empty"),
-		(28,	"NoOp28",		"Empty"),
-		(42,	"NoOp42",		"Empty"),
-		(56,	"NoOp56",		"Empty"),
-
+		(16,	"Accept",		"Format"),
+		(19,	"Token",		""),
+		(20,	"LocationQuery",	"String"),
+		(35,	"ProxyUri",		"String"),
 		
-		# draft-ietf-core-block-08
+		# draft-ietf-core-block-10
 
-		(19,	"Block1",		"Block"),
-		(17,	"Block2",		"Block"),
-		(18,	"Size",			"UInt"),
+		(27,	"Block1",		"Block"),
+		(23,	"Block2",		"Block"),
+		(28,	"Size",			"UInt"),
 
-		# draft-ietf-core-observe-05
+		# draft-ietf-core-observe-07
 
-		(10,	"Observe",		"UInt"),
+		(6,	"Observe",		"UInt"),
 	):
 	exec(
 """
@@ -639,29 +642,11 @@ class CoAPOption%s (
 class CoAPOptionMaxAge (
 	metaclass	= InetPacketClass,
 	variant_of	= CoAPOption,
-	id		= 2,
+	id		= 14,
 	prune		= -1,
 	fields = [
 		("Value",	"val",	_CoAPUInt,	60),	# default value
 	]):
-	pass
-
-class CoAPOptionContentType (
-	metaclass	= InetPacketClass,
-	variant_of	= CoAPOption,
-	id		= 1,
-	prune		= -1,
-	fields = [
-		("Value",	"val",	_CoAPUInt,	60),	# default value
-	],
-	descriptions = { "Value": {
-		0:	"text/plain; charset=utf-8",
-		40:	"application/link-format",
-		41:	"application/xml",
-		42:	"application/octet-stream",
-		47:	"application/exi",
-		50:	"application/json",
-	}}):
 	pass
 
 ##Aliases
