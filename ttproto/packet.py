@@ -1205,10 +1205,19 @@ class PacketValue (Value):
 				for v in self.get_datas (i):
 					v._display (indent, output)
 			else:
+				datas = []
+				for d in self.get_datas (i):
+					s = str (d)
+					if isinstance (d, Value):
+						desc = self.get_description_for_value (i, d)
+						if desc:
+							s = "%s (%s)" % (s, desc)
+					datas.append (s)
+
 				print("%s%s%s" % (
 					hdr,
 					" " * (0 if len (hdr) >= 28 else 28-len(hdr)),
-					" & ".join([str(d) for d in self.get_datas(i)]),
+					" & ".join(datas),
 				), file = output)
 			i+=1
 	
