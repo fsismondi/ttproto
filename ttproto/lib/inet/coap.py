@@ -35,13 +35,14 @@
 #  
 
 from	ttproto.data		import *
-from	ttproto.typecheck		import *
+from	ttproto.typecheck	import *
 from	ttproto.subtype		import SubtypeClass
+from	ttproto.union		import UnionClass
 from	ttproto.lib.inet.meta	import *
-from	ttproto.lib.inet.basics 	import *
+from	ttproto.lib.inet.basics	import *
 from	ttproto			import exceptions
-from	ttproto.templates		import Range, Length
-from	ttproto.primitive		import IntValue
+from	ttproto.templates	import Range, Length
+from	ttproto.primitive	import IntValue
 
 import	ttproto.lib.inet.udp
 
@@ -60,6 +61,7 @@ __all__ = [
 	'CoAPOptionEmpty',
 	'CoAPOptionIfMatch',
 	'CoAPOptionIfNoneMatch',
+	'CoAPOptionJump',
 	'CoAPOptionLength',
 	'CoAPOptionLengthTag',
 	'CoAPOptionList',
@@ -207,6 +209,36 @@ class CoAPOption (
 			kw["val"] = k[0]
 			k = ()
 		super().__init__ (*k, **kw)
+
+class _CoAPJumpValue (
+	metaclass	= UnionClass,
+	types		= (Omit, UInt8, UInt16)
+):
+	__map = {0: Omit, 1: UInt8, 2: UInt16}
+
+	@classmethod
+	def _decode_message (cls, bin_slice, count = None):
+		try:
+			# infer the value type from the size of the slice
+			type_ = cls.__map[len (bin_slice)]
+		except KeyError:
+			raise Exception ("Unknown Jump option format: 0xf%x" % len (bin_slice))
+
+		return type_.decode_message (bin_slice)
+			
+
+
+class CoAPOptionJump (
+	metaclass	= InetPacketClass,
+	variant_of	= CoAPOption,
+	prune		= 1,
+	fields = [
+		("Length",	"len",	UInt4,	InetLength()),
+		("Value",	"val",	_CoAPJumpValue),
+	]):
+	pass
+
+
 
 class CoAPOptionList (
 	metaclass = InetOrderedListClass,
