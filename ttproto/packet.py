@@ -540,6 +540,14 @@ class PacketValue (Value):
 
 
 	### class methods
+	
+	class __DescriptionProxy:
+		@typecheck
+		def __init__ (self, func: callable):
+			self.func = func
+
+		def __getitem__ (self, value):
+			return self.func (value)
 
 	@classmethod
 	def metaclass_func (cls, name, bases, classdict,
@@ -630,21 +638,41 @@ class PacketValue (Value):
 				
 				See help(ttproto.lib.inet.meta.InetVariant) for an example.
 
-		- descriptions	This argument may contain a dictionnary of dictionnaries providing
-		  (optional)	textual descriptions in a per-field and per-value basis. This is purely
-		  		for comfort (when analysing test reports).
+		- descriptions	This argument may contain a dictionnary of objects providing textual
+		  (optional)	descriptions in a per-field and per-value basis. This attribute	has no
+				effects in the tests, its purpose is only to help understanding log
+				reports.
 
-				Each entry contains a dictionnary <value> -> <description>
+				The object providing the description can be:
+				 - a dictionnary (or any object providing __getitem__) mapping values
+				   to textual descriptions
+				 - a function (or any object providing __call) accepting a value as
+				   parameter and returning a textual description (or None if the
+				   function is unable to provide a description)
 
-				For ICMPv6 we can set a description dict for the type field:
+				For example, for ICMPv6 we can set a description to the 'Type' field:
+
+				  - as a dictionnary:
+
 					descriptions = {
 					"Type": {
 						1:	"Destination Unreachable",
 						2:	"Packet Too Big",
-						 ...
-						135:	"Neighbor Solicitation",
-						...
 					}}
+
+				  - as a function:
+
+				  	def icmpv6_type_description (value):
+						if value == 1:
+							return "Destination Unreachable"
+						elif value == 2:
+							return "Packet Too Big"
+						else:
+							return None
+				  	...
+
+					descriptions = { "Type": icmpv6_type_description }
+
 
 				NOTE: when defining an inherited class (using “variant_of”) it
 				if possible do overwrite the description dict for a field
@@ -709,7 +737,10 @@ class PacketValue (Value):
 		for field_name, desc_map in descriptions.items():
 			i = result.get_field_id (field_name)
 			# check that it provides the [] operator
-			assert hasattr (desc_map, "__getitem__")
+			if not hasattr (desc_map, "__getitem__"):
+				assert hasattr (desc_map, "__call__") # description map must provide __getitem__ or __call__
+				desc_map = cls.__DescriptionProxy (desc_map)
+
 			# check that the dict contains only strings
 			if hasattr(desc_map, "values"):
 				for txt in desc_map.values():
