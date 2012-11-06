@@ -128,7 +128,6 @@ class CoAPOptionLength (metaclass = SubtypeClass (Range (int, 0, 271))):
 					
 			raise Exception ("Malformed CoAP option length (>1034)")
 
-#TODO: restrict allowed values
 class _CoAPUInt (IntValue):
 		
 		@typecheck
@@ -154,7 +153,6 @@ class _CoAPUInt (IntValue):
 
 			return cls(result), bin_slice[len (bin_slice):]
 
-#TODO: restrict allowed values
 class _CoAPBlockUInt (IntValue):
 		
 		@typecheck
@@ -212,7 +210,6 @@ class CoAPOptionLengthTag(InetLength):
 		ctx.remaining_slice = ctx.remaining_slice[:value]
 
 class CoAPOption (
-	#FIXME: option Delta 15 must never be used when oc != 15
 	metaclass = InetPacketClass, 
 	fields    = [
 		("Delta",	"dlt",	UInt4,		0),
@@ -302,7 +299,9 @@ class CoAPOptionList (
 				current += delta
 				t = CoAPOption.get_variant_type(current)
 			
+			# decode the option according to its type
 			v, bin_slice = t.decode_message (bin_slice)
+
 			values.append (v)
 
 		try:		
@@ -663,36 +662,50 @@ class CoAPOptionEnd (
 
 ##
 
-for i, n, t in (
-		#TODO: add descriptions fro ContentType and Accept
-		#TODO: handle length restrictions
+@classmethod
+def _coap_option_decode_message (cls, bin_slice):
 
+	# call the parent decoder
+	v, bin_slice = cls.__bases__[0]._decode_message (bin_slice)
+	v.__class__  = cls  # bless the object (to match our type)
+
+	# ensure that the length of the option is valid
+	lmin, lmax = cls._min_max_length
+	if not (lmin <= v["len"] <= lmax):
+		raise Exception ("Option %s has invalid length %d (should be in [%d..%d])" % (cls.__name__, v["len"], lmin, lmax))
+
+	return v, bin_slice
+
+
+for i, n, t, l in (
 		# draft-ietf-core-coap-12
 		# (MaxAge is defined separately)
 
-		(1,	"IfMatch",		""),
-		(3,	"UriHost",		"String"),
-		(4,	"ETag",			""),
-		(5,	"IfNoneMatch",		"Empty"),
-		(7,	"UriPort",		"UInt"),
-		(8,	"LocationPath",		"String"),
-		(11,	"UriPath",		"String"),
-		(12,	"ContentFormat",	"Format"),
-		(15,	"UriQuery",		"String"),
-		(16,	"Accept",		"Format"),
-		(19,	"Token",		""),
-		(20,	"LocationQuery",	"String"),
-		(35,	"ProxyUri",		"String"),
+		#No	Name			ParentClass	Min/Max length
+		(1,	"IfMatch",		"",		(0, 8)),
+		(3,	"UriHost",		"String",	(1, 255)),
+		(4,	"ETag",			"",		(1, 8)),
+		(5,	"IfNoneMatch",		"Empty",	(0, 0)),
+		(7,	"UriPort",		"UInt",		(0, 2)),
+		(8,	"LocationPath",		"String",	(0, 255)),
+		(11,	"UriPath",		"String",	(0, 255)),
+		(12,	"ContentFormat",	"Format",	(0, 2)),
+		(14,	"MaxAge",		"UInt",		(0, 4)),
+		(15,	"UriQuery",		"String",	(1, 255)),
+		(16,	"Accept",		"Format",	(0, 2)),
+		(19,	"Token",		"",		(1, 8)),
+		(20,	"LocationQuery",	"String",	(0, 255)),
+		(35,	"ProxyUri",		"String",	(1, 1034)),
 		
 		# draft-ietf-core-block-10
 
-		(27,	"Block1",		"Block"),
-		(23,	"Block2",		"Block"),
-		(28,	"Size",			"UInt"),
+		(27,	"Block1",		"Block",	(0, 3)),
+		(23,	"Block2",		"Block",	(0, 3)),
+		(28,	"Size",			"UInt",		(0, 4)),
 
 		# draft-ietf-core-observe-07
 
-		(6,	"Observe",		"UInt"),
+		(6,	"Observe",		"UInt",		(0, 2)),
 	):
 	exec(
 """
@@ -701,19 +714,10 @@ class CoAPOption%s (
 	variant_of	= CoAPOption%s,
 	id		= %d,
 	):
-	pass
-""" % (n, t, i))
+	_min_max_length = %r
+	_decode_message = _coap_option_decode_message
+""" % (n, t, i, l))
 
-
-class CoAPOptionMaxAge (
-	metaclass	= InetPacketClass,
-	variant_of	= CoAPOption,
-	id		= 14,
-	prune		= -1,
-	fields = [
-		("Value",	"val",	_CoAPUInt,	60),	# default value
-	]):
-	pass
 
 ##Aliases
 #ICMPv6NSol = ICMPv6NeighborSolicitation
