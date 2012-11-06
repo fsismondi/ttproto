@@ -2054,12 +2054,18 @@ class Message:
 		pfx = " " * indent
 		print ("%sEncoded as:" % pfx, file = output)
 		b = self.__bin
+		if isinstance (b, bytes):
+			remainder = None
+		else:
+			remainder = b[1]
+			b = b[0]
 		for i in range (0, len (b), 16):
 			print ("%s    %s  %s" % (
 					pfx,
 					" ".join (format (c, "02x") for c in b[i:i+8]),
 					" ".join (format (c, "02x") for c in b[i+8:i+16])))
-
+		if remainder:
+			print ("%s(last byte truncated at bit %d)" % (pfx, remainder))
 
 class MessageDescription:
 	"""A class for describing a message
