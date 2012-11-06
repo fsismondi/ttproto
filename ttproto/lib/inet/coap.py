@@ -447,6 +447,7 @@ class CoAP (
 			3:	"RST",
 		},
 		"Code": _CoAPCodeDescription(),
+		"OptionCount": (lambda oc: "15 or more options" if oc == 15 else None),
 	}):
 
 	@typecheck
@@ -635,24 +636,29 @@ class CoAPOptionBlock (
 		("Number",		"num",	_CoAPBlockUInt,	0),
 		("M",			"m",	bool,		False),
 		("SizeExponent",	"szx",	UInt3,		0),
-	]):
+	],
+	descriptions	= {
+		"szx": lambda szx: ("%d bytes" % (2**(szx+4))),
+		"m": {
+			0:	"last block",
+			1:	"more blocks",
+		},
+	}):
 
 	def __init__ (self, *k, **kw):	
 		# bypass CoAPOption.__init__
 		return super (CoAPOption, self).__init__ (*k, **kw)
-
-class CoAPOptionFormat (
-	metaclass	= InetPacketClass,
-	variant_of	= CoAPOptionUInt,
-	descriptions = { "Value": {
-		0:	"text/plain; charset=utf-8",
-		40:	"application/link-format",
-		41:	"application/xml",
-		42:	"application/octet-stream",
-		47:	"application/exi",
-		50:	"application/json",
-	}}):
-	pass
+	
+	def get_description_for_value (self, field, value):
+		field = self.get_field_id (field)
+		if field == 2: # 'Number' option
+			szx = self["szx"]
+			if value is None or szx is None:
+				return None
+			else:
+				return "offset %d bytes" % (value * (2**(szx+4)))
+		else:
+			return super().get_description_for_value (field, value)
 
 class CoAPOptionEnd (
 	metaclass	= InetPacketClass,
@@ -661,6 +667,35 @@ class CoAPOptionEnd (
 	pass
 
 ##
+
+_content_format_description = {
+	0:	"text/plain; charset=utf-8",
+	40:	"application/link-format",
+	41:	"application/xml",
+	42:	"application/octet-stream",
+	47:	"application/exi",
+	50:	"application/json",
+}
+
+def _max_age_description (v):
+
+	if v == 0:
+		return "no caching"
+
+	result = []
+	for div, name in (
+		(60, "second"),
+		(60, "minute"),
+		(24, "hour"),
+		(365, "day"),
+		(99999999, "year"),
+	):
+		nb = v %  div
+		v  = v // div
+		if nb:
+			result.append ("%d %s%s" % (nb, name, "s" if nb>1 else ""))
+
+	return ", ".join (reversed (result))
 
 @classmethod
 def _coap_option_decode_message (cls, bin_slice):
@@ -676,36 +711,35 @@ def _coap_option_decode_message (cls, bin_slice):
 
 	return v, bin_slice
 
-
-for i, n, t, l in (
+for i, n, t, l, d in (
 		# draft-ietf-core-coap-12
 		# (MaxAge is defined separately)
 
-		#No	Name			ParentClass	Min/Max length
-		(1,	"IfMatch",		"",		(0, 8)),
-		(3,	"UriHost",		"String",	(1, 255)),
-		(4,	"ETag",			"",		(1, 8)),
-		(5,	"IfNoneMatch",		"Empty",	(0, 0)),
-		(7,	"UriPort",		"UInt",		(0, 2)),
-		(8,	"LocationPath",		"String",	(0, 255)),
-		(11,	"UriPath",		"String",	(0, 255)),
-		(12,	"ContentFormat",	"Format",	(0, 2)),
-		(14,	"MaxAge",		"UInt",		(0, 4)),
-		(15,	"UriQuery",		"String",	(1, 255)),
-		(16,	"Accept",		"Format",	(0, 2)),
-		(19,	"Token",		"",		(1, 8)),
-		(20,	"LocationQuery",	"String",	(0, 255)),
-		(35,	"ProxyUri",		"String",	(1, 1034)),
+		#No	Name			ParentClass	Min/Max length	description
+		(1,	"IfMatch",		"",		(0, 8),		None),
+		(3,	"UriHost",		"String",	(1, 255),	None),
+		(4,	"ETag",			"",		(1, 8),		None),
+		(5,	"IfNoneMatch",		"Empty",	(0, 0),		None),
+		(7,	"UriPort",		"UInt",		(0, 2),		None),
+		(8,	"LocationPath",		"String",	(0, 255),	None),
+		(11,	"UriPath",		"String",	(0, 255),	None),
+		(12,	"ContentFormat",	"UInt",		(0, 2),		_content_format_description),
+		(14,	"MaxAge",		"UInt",		(0, 4),		_max_age_description),
+		(15,	"UriQuery",		"String",	(1, 255),	None),
+		(16,	"Accept",		"UInt",		(0, 2),		_content_format_description),
+		(19,	"Token",		"",		(1, 8),		None),
+		(20,	"LocationQuery",	"String",	(0, 255),	None),
+		(35,	"ProxyUri",		"String",	(1, 1034),	None),
 		
 		# draft-ietf-core-block-10
 
-		(27,	"Block1",		"Block",	(0, 3)),
-		(23,	"Block2",		"Block",	(0, 3)),
-		(28,	"Size",			"UInt",		(0, 4)),
+		(27,	"Block1",		"Block",	(0, 3),		None),
+		(23,	"Block2",		"Block",	(0, 3),		None),
+		(28,	"Size",			"UInt",		(0, 4),		None),
 
 		# draft-ietf-core-observe-07
 
-		(6,	"Observe",		"UInt",		(0, 2)),
+		(6,	"Observe",		"UInt",		(0, 2),		None),
 	):
 	exec(
 """
@@ -713,6 +747,7 @@ class CoAPOption%s (
 	metaclass	= InetPacketClass,
 	variant_of	= CoAPOption%s,
 	id		= %d,
+	descriptions	= {} if d is None else {"Value": d},
 	):
 	_min_max_length = %r
 	_decode_message = _coap_option_decode_message
