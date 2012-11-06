@@ -31,7 +31,12 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 #
-#  CoAP message format (based on draft-ietf-core-coap-09)
+
+#
+# CoAP message format based on:
+#	- draft-ietf-core-coap-12
+#	- draft-ietf-core-block-10
+#	- draft-ietf-core-observe-07
 #  
 
 from	ttproto.data		import *
