@@ -87,25 +87,41 @@ class CoAPOptionLength (metaclass = SubtypeClass (Range (int, 0, 271))):
 
 			if self < 15:
 				return self, (bytes ((self << 4,)), 4)
-			else:
-				v = self - 15
-				return self, (bytes ((0xf0 | (v>>4), (v&0xf)<<4,)), 4)
+
+			if self > 1034:
+				raise Exception ("CoAP option length is too big (>1034)")
+
+			v = self - 15
+
+			nb = v // 255
+			v  = v %  255
+			return self, BinarySlice (bytes ((0x0f,) + (0xff,) * nb + (v,)), left_bits = 4).as_binary()
 
 		@classmethod
 		@typecheck
 		def decode_message (cls, bin_slice: BinarySlice) -> is_flatvalue_binslice:
 			
 			# decode the first 4 bits
-			v = bin_slice[0] >> 4
+			acc = bin_slice[0] >> 4
 			bin_slice = bin_slice.shift_bits (4)
 
-			if v < 15:
+			if acc < 15:
 				# 4 bits
-				return cls (v), bin_slice
-			else:
-				# 12 bits
-				v = bin_slice[0] + 15
-				return cls (v), bin_slice[1:]
+				return cls (acc), bin_slice
+
+			
+			while acc <= 780:
+				# more bytes
+				v = bin_slice[0]
+				bin_slice = bin_slice[1:]
+
+				acc += v
+
+				if v != 255:
+					# end of length-field
+					return cls (acc), bin_slice
+					
+			raise Exception ("Malformed CoAP option length (>1034)")
 
 #TODO: restrict allowed values
 class _CoAPUInt (IntValue):
