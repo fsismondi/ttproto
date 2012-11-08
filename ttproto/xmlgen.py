@@ -52,6 +52,9 @@ class XMLGeneratorControl:
 	def write (self, txt):
 		self.__gen._XMLGenerator__file.write (saxutils.escape (txt))
 
+	def raw_write (self, txt):
+		self.__gen._XMLGenerator__file.write (txt)
+
 class XMLGenerator:
 	@typecheck
 	def __init__ (self, root:	str,
