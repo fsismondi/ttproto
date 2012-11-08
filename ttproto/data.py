@@ -1600,23 +1600,47 @@ class Mismatch:
 		self.value = value
 		self.pattern = pattern
 
-	def describe_value (self) -> str:
+	def describe_value (self, describe_func = None) -> str:
 		"""Return a textual description of the input value
+
+		It may be reimplemented
 		
-		It may be reimplemented"""
-		return str (self.value)
+		Describe_func is an optional callable object that takes
+		a value of self's type and return a textual description
+		for this value.
+		"""
+		txt = describe_func (self.value) if describe_func else None
+
+		if txt is None:
+			return str (self.value)
+		else:
+			return "%s (%s)" % (self.value, txt)
 	
-	def describe_expected (self) -> str:
+	def describe_expected (self, describe_func = None) -> str:
 		"""Return a textual description of the expected pattern
 		
-		It may be reimplemented"""
-		return str (self.pattern)
+		It may be reimplemented
+		
+		Describe_func is an optional callable object that takes
+		a value of self's type and return a textual description
+		for this value.
+		"""
+		txt = describe_func (self.pattern) if (describe_func and is_value (self.pattern)) else None
 
-	def describe_full (self) -> str:
+		if txt is None:
+			return str (self.pattern)
+		else:
+			return "%s (%s)" % (self.pattern, txt)
+
+	def describe_full (self, describe_func = None) -> str:
 		"""Return a string describing the mismatch
 
 		The default implementation returns the name of the type of self
 		and the result of describe_expected() and describe_value()
+		
+		Describe_func is an optional callable object that takes
+		a value of self's type and return a textual description
+		for this value.
 		"""
 		return "%s: expected %s, got %s" % (type(self).__name__, self.describe_expected(), self.describe_value())
 	
@@ -1710,7 +1734,7 @@ class DifferenceList (list):
 			while True:
 				if mismatch.value is value: # how about the case value==None ?
 					path.append (path_elem)
-					callback (path, mismatch)
+					callback (path, mismatch, describe)
 					path.pop()
 
 					break # next mismatch
@@ -1730,7 +1754,7 @@ class DifferenceList (list):
 						break
 
 					try:
-						path_elem, value = next (walker)
+						path_elem, value, describe = next (walker)
 						break
 					except StopIteration:
 						path.pop()

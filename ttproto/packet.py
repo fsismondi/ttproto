@@ -31,7 +31,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import copy
+import copy, functools
 
 from	ttproto.typecheck	import *
 from	ttproto.data	import *
@@ -1363,7 +1363,9 @@ PacketClass = PacketValue.metaclass_func
 
 @typecheck
 def _diff_list_handler (pkt: PacketValue):
+	i=0
 	for field, value in zip (pkt.fields(), pkt):
-		yield field.alias, value
+		yield field.alias, value, functools.partial (pkt.get_description_for_value, i)
+		i+=1
 
 DifferenceList.set_handler (PacketValue, _diff_list_handler)

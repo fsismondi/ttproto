@@ -323,7 +323,7 @@ def UnorderedListClass (name, bases, classdict, content_type):
 def _diff_list_handler (lst: ListValue):
 	i=0
 	for value in lst:
-		yield str (i), value
+		yield str (i), value, None
 		i+=1
 
 DifferenceList.set_handler (ListValue, _diff_list_handler)
