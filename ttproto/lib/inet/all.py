@@ -41,3 +41,4 @@ from ttproto.lib.inet.sixlowpan_nd	import *
 from ttproto.lib.inet.sixlowpan_hc	import *
 from ttproto.lib.inet.sixlowpan_port import *
 from ttproto.lib.inet.coap		import *
+from ttproto.lib.inet.coap_link_format	import *
