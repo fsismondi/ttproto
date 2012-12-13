@@ -81,6 +81,8 @@ __all__ = [
 	'CoAPOptionUriPath',
 	'CoAPOptionUriPort',
 	'CoAPOptionUriQuery',
+	'CoAPCode',
+	'CoAPType',
 ]
 
 class _CoAPOptionHdrInt (metaclass = SubtypeClass (Range (int, 0, 65804))):

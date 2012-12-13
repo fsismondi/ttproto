@@ -1750,7 +1750,7 @@ class DifferenceList (list):
 						break
 				while True:
 					if walker is None:
-						callback (["(unknown)"], mismatch)
+						callback (["(unknown)"], mismatch, None)
 						break
 
 					try:

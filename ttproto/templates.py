@@ -219,8 +219,16 @@ class All (Template):
 			",".join (repr (t) for t in self.__templates),
 		)
 	
-	def _template_match (self, value):
-		return all (t.match (value) for t in self.__templates)
+	# here we override _match since we need to match all templates
+	#
+	# FIXME: may have side effects in the HTML log module (we may have
+	# multiple mismatch for the same value)
+	def _match (self, value, mismatch_list):
+		result = True
+		for t in self.__templates:
+			if not t.match (value, mismatch_list):
+				result = False
+		return result
 
 class Any (Template):
 	@typecheck

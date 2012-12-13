@@ -582,11 +582,7 @@ class HTMLLogger (logger.Logger):
 				else:
 					data_span += 1
 
-				if type (value).__str__ == bytes.__str__:
-					# TODO: find a better way to wrap any content in HTML tables
-					txt = "+ ".join (str (value[i:i+64]) for i in range (0, len(value), 64))
-				else:
-					txt = str (value)
+				txt = str (value)
 
 				if description != None:
 					txt = "%s (%s)" % (txt, description)
