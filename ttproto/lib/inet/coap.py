@@ -34,7 +34,7 @@
 
 #
 # CoAP message format based on:
-#	- draft-ietf-core-coap-12
+#	- draft-ietf-core-coap-13
 #	- draft-ietf-core-block-10
 #	- draft-ietf-core-observe-07
 #  
@@ -43,6 +43,7 @@ from	ttproto.data		import *
 from	ttproto.typecheck	import *
 from	ttproto.subtype		import SubtypeClass
 from	ttproto.union		import UnionClass
+from	ttproto.packet		import PacketValue
 from	ttproto.lib.inet.meta	import *
 from	ttproto.lib.inet.basics	import *
 from	ttproto			import exceptions
@@ -66,18 +67,15 @@ __all__ = [
 	'CoAPOptionEmpty',
 	'CoAPOptionIfMatch',
 	'CoAPOptionIfNoneMatch',
-	'CoAPOptionJump',
-	'CoAPOptionLength',
-	'CoAPOptionLengthTag',
 	'CoAPOptionList',
 	'CoAPOptionLocationPath',
 	'CoAPOptionLocationQuery',
 	'CoAPOptionMaxAge',
 	'CoAPOptionObserve',
 	'CoAPOptionProxyUri',
+	'CoAPOptionProxyScheme',
 	'CoAPOptionSize',
 	'CoAPOptionString',
-	'CoAPOptionToken',
 	'CoAPOptionUInt',
 	'CoAPOptionUriHost',
 	'CoAPOptionUriPath',
@@ -85,48 +83,8 @@ __all__ = [
 	'CoAPOptionUriQuery',
 ]
 
-class CoAPOptionLength (metaclass = SubtypeClass (Range (int, 0, 271))):
-		
-		@typecheck
-		def _build_message (self) -> is_flatvalue_binary:
-
-			if self < 15:
-				return self, (bytes ((self << 4,)), 4)
-
-			if self > 1034:
-				raise Exception ("CoAP option length is too big (>1034)")
-
-			v = self - 15
-
-			nb = v // 255
-			v  = v %  255
-			return self, BinarySlice (bytes ((0x0f,) + (0xff,) * nb + (v,)), left_bits = 4).as_binary()
-
-		@classmethod
-		@typecheck
-		def decode_message (cls, bin_slice: BinarySlice) -> is_flatvalue_binslice:
-			
-			# decode the first 4 bits
-			acc = bin_slice[0] >> 4
-			bin_slice = bin_slice.shift_bits (4)
-
-			if acc < 15:
-				# 4 bits
-				return cls (acc), bin_slice
-
-			
-			while acc <= 780:
-				# more bytes
-				v = bin_slice[0]
-				bin_slice = bin_slice[1:]
-
-				acc += v
-
-				if v != 255:
-					# end of length-field
-					return cls (acc), bin_slice
-					
-			raise Exception ("Malformed CoAP option length (>1034)")
+class _CoAPOptionHdrInt (metaclass = SubtypeClass (Range (int, 0, 65804))):
+	pass
 
 class _CoAPUInt (IntValue):
 		
@@ -182,38 +140,51 @@ class _CoAPBlockUInt (IntValue):
 
 			return cls (num), bin_slice.shift_bits (len (bin_slice)*8 - 4)
 
+
 """
      0   1   2   3   4   5   6   7
-   +---+---+---+---+---+---+---+---+
-   | Option Delta  |    Length     | for 0..14
-   +---+---+---+---+---+---+---+---+
-   |   Option Value ...
-   +---+---+---+---+---+---+---+---+
-                                               for 15..270:
-   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-   | Option Delta  | 1   1   1   1 |          Length - 15          |
-   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-   |   Option Value ...
-   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   +---------------+---------------+
+   |               |               |
+   |  Option Delta | Option Length |   1 byte
+   |               |               |
+   +---------------+---------------+
+   \                               \
+   /         Option Delta          /   0-2 bytes
+   \          (extended)           \
+   +-------------------------------+
+   \                               \
+   /         Option Length         /   0-2 bytes
+   \          (extended)           \
+   +-------------------------------+
+   \                               \
+   /                               /
+   \                               \
+   /         Option Value          /   0 or more bytes
+   \                               \
+   /                               /
+   \                               \
+   +-------------------------------+
+
+   Option Delta:
+   Option Length:  4-bit unsigned integer.  A value between 0 and 12
+      indicates the length of the Option Value, in bytes.  Three values
+      are reserved for special constructs:
+
+      13:  An 8-bit unsigned integer precedes the Option Value and
+         indicates the Option Length minus 13.
+
+      14:  A 16-bit unsigned integer in network byte order precedes the
+         Option Value and indicates the Option Length minus 269.
+
+      15:  Reserved for future use.  If the field is set to this value,
+         it MUST be processed as a message format error.
 """
-
-class CoAPOptionLengthTag(InetLength):
-	def compute (self, seq, values_bins):
-		return super().compute(seq, values_bins) - 1 # remove the delta & length fields
-
-	def post_decode (self, ctx, value):
-		end_slice = ctx.remaining_slice[value:]
-		def cleaner():
-			ctx.remaining_slice = end_slice
-		ctx.push_cleaner(cleaner)
-			
-		ctx.remaining_slice = ctx.remaining_slice[:value]
 
 class CoAPOption (
 	metaclass = InetPacketClass, 
 	fields    = [
-		("Delta",	"dlt",	UInt4,		0),
-		("Length",	"len",	CoAPOptionLength, CoAPOptionLengthTag()),
+		("Delta",	"dlt",	_CoAPOptionHdrInt,	0),
+		("Length",	"len",	_CoAPOptionHdrInt,	0),
 		("Value",	"val",	bytes,		b""),
 	]):
 
@@ -222,35 +193,93 @@ class CoAPOption (
 			kw["val"] = k[0]
 			k = ()
 		super().__init__ (*k, **kw)
+	
 
-class _CoAPJumpValue (
-	metaclass	= UnionClass,
-	types		= (Omit, UInt8, UInt16)
-):
-	__map = {0: Omit, 1: UInt8, 2: UInt16}
+	def _build_message (self):
+		length = self["len"]
+
+		# prepare the fields and values
+		fields = list (self.fields())
+		values = self._fill_default_values()
+
+		# assemble the body of the option
+		values[2:], bins = zip(*(f.tag.build_message (v) for v,f in zip(values[2:], fields[2:])))
+		body_bin = concatenate (bins)
+
+		if not isinstance (body_bin, bytes):
+			raise Exception ("Option value length is not a multiple of 8 bits")
+
+		# compute the option length if unset
+		if length is None:
+			values[1] = len (body_bin)
+
+		# encode the delta & length
+		def encode_int (v):
+			if v >= 0:
+				if v <= 12:
+					return v, b""
+				elif v <= 268:
+					v -= 13
+					return 13, bytes((v,))
+				elif v <= 65804:
+					v -= 269
+					return 14, bytes(((v // 256), (v % 256)))
+
+			raise Exception ("Invalid option length/delta: %d" % v)
+	
+		d, ext_d = encode_int (values[0])
+		l, ext_l = encode_int (values[1])
+
+		dl = bytes ((d*16 + l,))
+		
+		return type(self) (*values), b"".join ((dl, ext_d, ext_l, body_bin))
 
 	@classmethod
-	def _decode_message (cls, bin_slice, count = None):
+	def _decode_message (cls, bin_slice, previous_type = None):
+
+		# decode the delta & length
+		d = bin_slice[0] >> 4
+		l = bin_slice[0] &  0xf
+		bin_slice = bin_slice[1:]
+
+		def decode_int (v):
+			nonlocal bin_slice
+			if v == 13:
+				v = 13 + bin_slice[0]
+				bin_slice = bin_slice[1:]
+			elif v == 14:
+				v = 269 + bin_slice[0]*256 + bin_slice[1]
+				bin_slice = bin_slice[2:]
+			return v
+
+		delta  = decode_int (d)
+		length = decode_int (l)
+
+		if previous_type is not None:
+			option_type = previous_type + delta
+
+			cls = cls.get_variant_type (option_type)
+
+		# decode the other fields
+		remaining_slice = bin_slice[length:]
+		bin_slice       = bin_slice[:length]
+
+		values = [delta, length]
+		fields = list(cls.fields())[2:]
 		try:
-			# infer the value type from the size of the slice
-			type_ = cls.__map[len (bin_slice)]
-		except KeyError:
-			raise Exception ("Unknown Jump option format: 0xf%x" % len (bin_slice))
+			for field in fields:
+				v, bin_slice = field.tag.decode_message (field.type, bin_slice)
+				values.append (v)
 
-		return type_.decode_message (bin_slice)
-			
+			if bin_slice:
+				raise Exception ("CoAP Option not fully decoded: %d bytes left in the buffer" % len(bin_slice))
+		except Exception as e:
+			exceptions.push_location (e, cls, field.name)
+			raise
 
-
-class CoAPOptionJump (
-	metaclass	= InetPacketClass,
-	variant_of	= CoAPOption,
-	prune		= 1,
-	fields = [
-		("Length",	"len",	UInt4,	InetLength()),
-		("Value",	"val",	_CoAPJumpValue),
-	]):
-	pass
-
+		# create the packet
+		return cls (*values), remaining_slice
+	
 
 
 class CoAPOptionList (
@@ -263,66 +292,58 @@ class CoAPOptionList (
 		values = []
 		current = 0
 
-		def decode_field():
-			nonlocal bin_slice, current
-
-			# get the delta and compute the option type
-			first_byte = bin_slice[0]
-			delta = first_byte >> 4
-
-			if first_byte == 0xf0 and count == 15:
-				# End-of-options marker
-				current = None
-				t = CoAPOptionEnd
-			else:
-				if delta == 15:
-					# Jump option
-					jmp, bin_slice = CoAPOptionJump.decode_message (bin_slice)
-					values.append (jmp)
-
-					if first_byte == 0xf1:
-						# 1-byte Jump
-						current += 15
-					elif first_byte == 0xf2:
-						# 2-byte Jump
-						current += (jmp["val"] + 2) * 8
-					elif first_byte == 0xf3:
-						# 3-byte Jump
-						current += (jmp["val"] + 258) * 8
-					else:
-						raise Exception ("Unrecognised Jump option: 0x%x" % first_byte)
-
-					# processe the next option
-					first_byte = bin_slice[0]
-					delta = first_byte >> 4
-				
-				current += delta
-				t = CoAPOption.get_variant_type(current)
-			
-			# decode the option according to its type
-			v, bin_slice = t.decode_message (bin_slice)
-
-			values.append (v)
-
 		try:		
-			if count == None:
-				# decode until the end of the slice
-				while bin_slice:
-					decode_field()
-			elif count == 15:
-				# decode until the end-of-options marker
-				while current != None:
-					decode_field()
-			else:
-				# decode exactly 'count' entries
-				for i in range (count):
-					decode_field()
+			while bin_slice and bin_slice[0] != 0xff:
+				opt, bin_slice = CoAPOption._decode_message (bin_slice, current)
+
+				current += opt["Delta"]
+				values.append (opt)
 			
 		except Exception as e:
 			exceptions.push_location (e, cls, str(len(values)))
 			raise
 
 		return cls (values), bin_slice
+
+
+
+	def _build_message (self):
+
+		assert self.is_flat()
+		
+		# If option deltas are unset, then we fill them and reorder the options if necessary
+		#
+		if all (opt["Delta"] is None for opt in self):
+
+			# group the options by type
+			by_type = {}
+			for opt in self:
+				t = opt.get_variant_id()
+				lst = by_type.get (t)
+				if lst is None:
+					by_type[t] = [opt]
+				else:
+					lst.append (opt)
+
+			# fill the deltas and generate the option list
+			type_list = list (by_type)
+			type_list.sort()
+			current = 0
+			values = []
+			for t in type_list:
+				for opt in by_type[t]:
+					delta   = t - current
+					current = t
+
+					v = list(opt)
+					v[0] = delta
+					values.append (type(opt)(*v))
+
+			# overwrite the current value
+			self = type(self) (values)
+
+		# call InetList._build_message()
+		return super()._build_message()
 
 class _CoAPCodeDescription:
 	__known_codes = {
@@ -414,15 +435,34 @@ class CoAPCode (UInt8):
 
 		return super().__new__(cls, value)
 
+class _CoAPPayloadTag (PacketValue.Tag):
+	def build_message (self, value, ctx = None):
+		v, b = value.build_message()
+		if b:
+			# prepend the payload marker
+			b = concatenate ((b"\xff", b))
+		return v, b
+
+	def decode_message (self, type_, bin_slice, ctx = None):
+		if bin_slice and bin_slice[0] == 0xff:
+			# payload present
+			# -> skip the marker
+			return type_.decode_message (bin_slice[1:])
+		else:
+			return b"", bin_slice
+
+
 """
      0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver| T |  OC   |      Code     |          Message ID           |
+   |Ver| T |  TKL  |      Code     |          Message ID           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Token (if any, TKL bytes) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |   Options (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |   Payload (if any) ...
+   |1 1 1 1 1 1 1 1|    Payload (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 """
 class CoAP (
@@ -430,11 +470,12 @@ class CoAP (
 	fields    = [
 		("Version", 		"ver",		UInt2,		1),
 		("Type",		"type",		CoAPType,	0),
-		("OptionCount",		"oc",		UInt4,  	InetCount("opt")),
+		("TokenLength",		"tkl",		UInt4,		InetLength("Token")),
 		("Code", 		"code", 	CoAPCode,	0),
 		("MessageID", 		"mid",	 	Hex (UInt16),	0),
+		("Token",		"tok",		bytes,		b""),
 		("Options", 		"opt",	 	CoAPOptionList,	()),
-		("Payload", 		"pl",	 	Value,		b""),
+		("Payload", 		"pl",	 	Value,		_CoAPPayloadTag (b"")),
 	],
 	descriptions = {
 		"Version": {
@@ -447,7 +488,6 @@ class CoAP (
 			3:	"RST",
 		},
 		"Code": _CoAPCodeDescription(),
-		"OptionCount": (lambda oc: "15 or more options" if oc == 15 else None),
 	}):
 
 	@typecheck
@@ -496,106 +536,6 @@ class CoAP (
 			self.get_uri (self["code"] >= 32) if self["code"] else "",
 		)
 		return True
-
-	def _build_message (self):
-		# Building CoAP messages
-		#
-		# Before calling InetPacket._build_message(), we must first
-		# fill the delta fields in the options (and possibly adding
-		# interleaving some new options)
-
-		assert self.is_flat()
-		
-		# generate a new packet
-		values = list (self)
-
-		options = self["Options"]
-		option_count = None
-
-		# We will fill the deltas only if all deltas are unset
-		if options and all (opt["Delta"] == None for opt in options):
-
-			# group the options by type
-			by_type = {}
-			for opt in options:
-				t = opt.get_variant_id()
-				lst = by_type.get (t)
-				if lst is None:
-					by_type[t] = [opt]
-				else:
-					lst.append (opt)
-
-			# fill the deltas and generate the option list
-			type_list = list (by_type)
-			type_list.sort()
-			current = 0
-			option_count = 0
-			opt_list = []
-			for t in type_list:
-				for opt in by_type[t]:
-					delta = t - current
-
-					assert 0 <= delta
-
-					if delta > 14:
-						# insert a Jump option
-
-						if delta <= 29: # 15 + 14
-							# 1-byte Jump Option
-							delta = 15
-							jump_value = Omit()
-
-						elif delta <= 2070: # (255+2)*8 + 14
-							# 2-byte Jump Option
-
-							# max delta -> (255+2) * 8
-							delta = 2056 if delta > 2056 else (delta//8*8)
-							
-							jump_value = UInt8 (delta // 8 - 2)
-						
-						elif delta <= 526358: # (65535+258)*8 + 14
-							# 3-byte Jump Option
-
-							# max delta -> (65535+258)*8
-							delta = 526344 if delta > 526344 else (delta//8*8)
-
-							jump_value = UInt16 (delta // 8 - 258)
-
-						else:
-							raise Exception("Delta is too big for generating a jump option: %d" % delta)
-						current += delta
-						opt_list.append (CoAPOptionJump (dlt=15, val=jump_value))
-
-
-						delta = t - current
-						
-					assert 0 <= delta <= 14
-
-					current = t
-
-					v = list(opt)
-					v[0] = delta
-					opt_list.append (type(opt)(*v))
-
-					option_count += 1
-
-			# append the end-of-options marker if needed
-			if option_count >= 15:
-				option_count = 15
-				opt_list.append (CoAPOptionEnd (dlt=15, len=0))
-
-			# replace the options field
-			values[self.get_field_id("Options")] = opt_list
-		
-		# fill the option count field if needed
-		if (option_count is not None) and (self["oc"] is None):
-			values[self.get_field_id ("oc")] = option_count
-
-		# overwrite the current value
-		self = type(self) (*values)
-
-		# call InetPacket._build_message()
-		return super()._build_message()
 
 #############################
 # CoAP Options
@@ -712,7 +652,7 @@ def _coap_option_decode_message (cls, bin_slice):
 	return v, bin_slice
 
 for i, n, t, l, d in (
-		# draft-ietf-core-coap-12
+		# draft-ietf-core-coap-13
 		# (MaxAge is defined separately)
 
 		#No	Name			ParentClass	Min/Max length	description
@@ -725,11 +665,11 @@ for i, n, t, l, d in (
 		(11,	"UriPath",		"String",	(0, 255),	None),
 		(12,	"ContentFormat",	"UInt",		(0, 2),		_content_format_description),
 		(14,	"MaxAge",		"UInt",		(0, 4),		_max_age_description),
-		(15,	"UriQuery",		"String",	(1, 255),	None),
+		(15,	"UriQuery",		"String",	(0, 255),	None),
 		(16,	"Accept",		"UInt",		(0, 2),		_content_format_description),
-		(19,	"Token",		"",		(1, 8),		None),
 		(20,	"LocationQuery",	"String",	(0, 255),	None),
 		(35,	"ProxyUri",		"String",	(1, 1034),	None),
+		(39,	"ProxyScheme",		"String",	(1, 255),	None),
 		
 		# draft-ietf-core-block-10
 
