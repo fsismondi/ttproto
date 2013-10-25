@@ -34,7 +34,7 @@
 
 #
 # CoAP message format based on:
-#	- draft-ietf-core-coap-13
+#	- draft-ietf-core-coap-18
 #	- draft-ietf-core-block-10
 #	- draft-ietf-core-observe-07
 #  
@@ -75,6 +75,7 @@ __all__ = [
 	'CoAPOptionProxyUri',
 	'CoAPOptionProxyScheme',
 	'CoAPOptionSize',
+	'CoAPOptionSize1',
 	'CoAPOptionString',
 	'CoAPOptionUInt',
 	'CoAPOptionUriHost',
@@ -654,7 +655,7 @@ def _coap_option_decode_message (cls, bin_slice):
 	return v, bin_slice
 
 for i, n, t, l, d in (
-		# draft-ietf-core-coap-13
+		# draft-ietf-core-coap-18
 		# (MaxAge is defined separately)
 
 		#No	Name			ParentClass	Min/Max length	description
@@ -668,10 +669,11 @@ for i, n, t, l, d in (
 		(12,	"ContentFormat",	"UInt",		(0, 2),		_content_format_description),
 		(14,	"MaxAge",		"UInt",		(0, 4),		_max_age_description),
 		(15,	"UriQuery",		"String",	(0, 255),	None),
-		(16,	"Accept",		"UInt",		(0, 2),		_content_format_description),
+		(17,	"Accept",		"UInt",		(0, 2),		_content_format_description),
 		(20,	"LocationQuery",	"String",	(0, 255),	None),
 		(35,	"ProxyUri",		"String",	(1, 1034),	None),
 		(39,	"ProxyScheme",		"String",	(1, 255),	None),
+		(60,	"Size1",		"UInt",		(0, 4),		None),
 		
 		# draft-ietf-core-block-10
 
