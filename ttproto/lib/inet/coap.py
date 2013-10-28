@@ -35,7 +35,7 @@
 #
 # CoAP message format based on:
 #	- draft-ietf-core-coap-18
-#	- draft-ietf-core-block-10
+#	- draft-ietf-core-block-11
 #	- draft-ietf-core-observe-07
 #  
 
@@ -114,35 +114,6 @@ class _CoAPUInt (IntValue):
 
 			return cls(result), bin_slice[len (bin_slice):]
 
-class _CoAPBlockUInt (IntValue):
-		
-		@typecheck
-		def _build_message (self) -> is_flatvalue_binary:
-
-			a = self & 0xff000
-			b = self & 0x00ff0
-			c = self & 0x0000f
-
-			buff = bytes ((a >> 12,)) if a else b""
-
-			if a or b:
-				buff += bytes ((b >> 4,))
-
-			buff += bytes ((c << 4,))
-
-			return self, (buff, 4)
-
-		@classmethod
-		@typecheck
-		def _decode_message (cls, bin_slice: BinarySlice) -> is_flatvalue_binslice:
-			num = 0
-			for c in bin_slice:
-				num = num << 8 | c
-
-			num = num >> 4
-
-			return cls (num), bin_slice.shift_bits (len (bin_slice)*8 - 4)
-
 
 """
      0   1   2   3   4   5   6   7
@@ -197,6 +168,26 @@ class CoAPOption (
 			k = ()
 		super().__init__ (*k, **kw)
 	
+	def _encode_delta_length (self, delta, length):
+		def encode_int (v):
+			if v >= 0:
+				if v <= 12:
+					return v, b""
+				elif v <= 268:
+					v -= 13
+					return 13, bytes((v,))
+				elif v <= 65804:
+					v -= 269
+					return 14, bytes(((v // 256), (v % 256)))
+
+			raise Exception ("Invalid option length/delta: %d" % v)
+	
+		d, ext_d = encode_int (delta)
+		l, ext_l = encode_int (length)
+
+		dl = bytes ((d*16 + l,))
+
+		return dl + ext_d + ext_l
 
 	def _build_message (self):
 		length = self["len"]
@@ -217,25 +208,22 @@ class CoAPOption (
 			values[1] = len (body_bin)
 
 		# encode the delta & length
-		def encode_int (v):
-			if v >= 0:
-				if v <= 12:
-					return v, b""
-				elif v <= 268:
-					v -= 13
-					return 13, bytes((v,))
-				elif v <= 65804:
-					v -= 269
-					return 14, bytes(((v // 256), (v % 256)))
-
-			raise Exception ("Invalid option length/delta: %d" % v)
-	
-		d, ext_d = encode_int (values[0])
-		l, ext_l = encode_int (values[1])
-
-		dl = bytes ((d*16 + l,))
+		dl_bin = self._encode_delta_length(values[0], values[1])
 		
-		return type(self) (*values), b"".join ((dl, ext_d, ext_l, body_bin))
+		return type(self) (*values), (dl_bin+body_bin)
+
+	@classmethod
+	def _decode_body (cls, values, bin_slice):
+		fields = list(cls.fields())[2:]
+		try:
+			for field in fields:
+				v, bin_slice = field.tag.decode_message (field.type, bin_slice)
+				values.append (v)
+
+			return bin_slice
+		except Exception as e:
+			exceptions.push_location (e, cls, field.name)
+			raise
 
 	@classmethod
 	def _decode_message (cls, bin_slice, previous_type = None):
@@ -268,21 +256,13 @@ class CoAPOption (
 		bin_slice       = bin_slice[:length]
 
 		values = [delta, length]
-		fields = list(cls.fields())[2:]
-		try:
-			for field in fields:
-				v, bin_slice = field.tag.decode_message (field.type, bin_slice)
-				values.append (v)
 
-			if bin_slice:
-				raise Exception ("CoAP Option not fully decoded: %d bytes left in the buffer" % len(bin_slice))
-		except Exception as e:
-			exceptions.push_location (e, cls, field.name)
-			raise
+		bin_slice = cls._decode_body(values, bin_slice)
+		if bin_slice:
+			raise Exception ("CoAP Option not fully decoded: %d bytes left in the buffer" % len(bin_slice))
 
 		# create the packet
 		return cls (*values), remaining_slice
-	
 
 
 class CoAPOptionList (
@@ -382,7 +362,7 @@ class _CoAPCodeDescription:
 			164:	"5.04 Gateway Timeout",
 			165:	"5.05 Proxying Not Supported",
 
-			# draft-ietf-core-block-08
+			# draft-ietf-core-block-11
 			136:	"4.08 Request Entity Incomplete",
 		}
 	__responses_groups = (
@@ -576,7 +556,7 @@ class CoAPOptionBlock (
 	variant_of	= CoAPOption,
 	prune		= -1,
 	fields = [
-		("Number",		"num",	_CoAPBlockUInt,	0),
+		("Number",		"num",	int,		0),
 		("M",			"m",	bool,		False),
 		("SizeExponent",	"szx",	UInt3,		0),
 	],
@@ -602,6 +582,42 @@ class CoAPOptionBlock (
 				return "offset %d bytes" % (value * (2**(szx+4)))
 		else:
 			return super().get_description_for_value (field, value)
+	
+	@typecheck
+	def _build_message (self) -> is_flatvalue_binary:
+
+		values = self._fill_default_values()
+
+		v = _CoAPUInt(
+			# block number
+			((values[2] & 0xfffff) << 4)
+
+			# m bit
+			| ((values[3] & 1) << 3)
+
+			# size exponent
+			| (values[4] & 7)
+		)
+
+		v_bin = v.build_message()[1]
+		
+		if self["len"] is None:
+			values[1] = len(v_bin)
+
+		# encode the delta & length
+		dl_bin = self._encode_delta_length(values[0], values[1])
+
+		return type(self) (*values), (dl_bin + v_bin)
+
+	@classmethod
+	def _decode_body (cls, values, bin_slice):
+		v, bin_slice = _CoAPUInt.decode_message(bin_slice)
+
+		values.append ((v & ~0xf) >> 4)	# num
+		values.append ((v & 8) >> 3)	# m
+		values.append (v & 7)		# szx
+		
+		return bin_slice
 
 class CoAPOptionEnd (
 	metaclass	= InetPacketClass,
@@ -675,7 +691,7 @@ for i, n, t, l, d in (
 		(39,	"ProxyScheme",		"String",	(1, 255),	None),
 		(60,	"Size1",		"UInt",		(0, 4),		None),
 		
-		# draft-ietf-core-block-10
+		# draft-ietf-core-block-11
 
 		(27,	"Block1",		"Block",	(0, 3),		None),
 		(23,	"Block2",		"Block",	(0, 3),		None),
