@@ -36,7 +36,7 @@
 # CoAP message format based on:
 #	- draft-ietf-core-coap-18
 #	- draft-ietf-core-block-14
-#	- draft-ietf-core-observe-07
+#	- draft-ietf-core-observe-11
 #  
 
 from	ttproto.data		import *
@@ -698,9 +698,9 @@ for i, n, t, l, d in (
 		(23,	"Block2",		"Block",	(0, 3),		None),
 		(28,	"Size2",		"UInt",		(0, 4),		None),
 
-		# draft-ietf-core-observe-07
+		# draft-ietf-core-observe-11
 
-		(6,	"Observe",		"UInt",		(0, 2),		None),
+		(6,	"Observe",		"UInt",		(0, 3),		None),
 	):
 	exec(
 """
