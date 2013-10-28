@@ -35,7 +35,7 @@
 #
 # CoAP message format based on:
 #	- draft-ietf-core-coap-18
-#	- draft-ietf-core-block-12
+#	- draft-ietf-core-block-14
 #	- draft-ietf-core-observe-07
 #  
 
@@ -362,7 +362,8 @@ class _CoAPCodeDescription:
 			164:	"5.04 Gateway Timeout",
 			165:	"5.05 Proxying Not Supported",
 
-			# draft-ietf-core-block-12
+			# draft-ietf-core-block-14
+			95:	"2.31 Continue",
 			136:	"4.08 Request Entity Incomplete",
 		}
 	__responses_groups = (
@@ -691,7 +692,7 @@ for i, n, t, l, d in (
 		(39,	"ProxyScheme",		"String",	(1, 255),	None),
 		(60,	"Size1",		"UInt",		(0, 4),		None),
 		
-		# draft-ietf-core-block-12
+		# draft-ietf-core-block-14
 
 		(27,	"Block1",		"Block",	(0, 3),		None),
 		(23,	"Block2",		"Block",	(0, 3),		None),
