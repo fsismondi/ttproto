@@ -40,7 +40,7 @@ from	ttproto.lib.inet.meta	import *
 from	ttproto.lib.inet.basics	import *
 from	ttproto.lib.ports		import socat
 from	ttproto.lib.ethernet	import ethernet_type_bidict
-from	ttproto.lib.inet.ipv6	import IPv6
+
 
 __all__ = [
 	'LinuxCookedCapture',
@@ -70,12 +70,39 @@ class LinuxCookedCapture (
 		return self.describe_payload (desc)
 
 
+#Null Loopback cooked L2 generated in BSD systems
+
+# check packet-null.c in wireshark for more info
+
+# BSD AF_ values (family type values):
+# BSD_AF_INET		2
+# BSD_AF_ISO		7
+# BSD_AF_APPLETALK	16
+# BSD_AF_IPX		23
+# BSD_AF_INET6_BSD	24	/* NetBSD, OpenBSD, BSD/OS */
+# BSD_AF_INET6_FREEBSD	28	/* FreeBSD, DragonFly BSD */
+# BSD_AF_INET6_DARWIN	30	/* OS X, iOS, anything else Darwin-based */
+
+encap_type_bidict = BidictValueType (0, UInt32)
+
 class NullLoopback (
 	metaclass = InetPacketClass, 
 	fields    = [
-		("Family",		"fam",	UInt32),
-		("Payload",		"pl",	IPv6),		# TODO: process the Family field (check packet-null.c in wireshark)
-	]):
+		("AddressFamily",	"AF",	UInt8 , InetType (encap_type_bidict, "Payload")),
+		("ProtocolFamily",	"PF",	UInt24),
+		("Payload",	"pl",	Value),			],
+	descriptions = {
+		"AddressFamily": {
+			2:	"BSD INET",
+			7:	"BSD ISO",
+			16:	"BSD APPLETALK",
+			23:	"BSD IPX",
+			24:	"BSD INET6 BSD",
+			28:	"BSD INET6 FREEBSD",
+			30:	"BSD INET6 DARWIN"
+		}
+	
+	}):
 	def describe (self, desc):
 		return self.describe_payload (desc)
 

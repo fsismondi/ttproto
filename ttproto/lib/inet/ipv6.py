@@ -35,6 +35,7 @@ from	ttproto.data		import Value, BidictValueType
 from	ttproto.lib.inet.meta	import *
 from	ttproto.lib.inet.basics 	import *
 from	ttproto.lib.inet.ip 	import *
+from	ttproto.lib.encap	import encap_type_bidict
 import	ttproto.lib.ethernet
 
 __all__ = [
@@ -76,6 +77,13 @@ class IPv6 (
 # tell the ethernet module that ether payload type 0x86dd should be mapped to the IPv6 class
 ttproto.lib.ethernet.ethernet_type_bidict.update({
 	0x86dd:	IPv6,
+})
+
+# tell the encap module that encap  payload type 24, 28 and 30 should be mapped to the IPv6 class
+ttproto.lib.encap.encap_type_bidict.update({
+        24: IPv6,
+	28: IPv6,
+	30: IPv6
 })
 
 # map ip next header 41 to the IPv6 class (IPv6 over IPv6)
