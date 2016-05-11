@@ -18,7 +18,14 @@ TS_COAP - Test Analysis Tool
 ----------------------------
 Test analysis tool for testing interoperability between 2 IUTs
 
-Invokes webserver to be run at 127.0.0.1:2080
-
+# run CoAP TAT as a webserver at [127.0.0.1:2080](127.0.0.1:2080)
+cd ttproto
 python3 -m ttproto.ts_coap
 
+# TODO how to use REST API for finterop
+
+TS_6LoWPAN_ND - Conformance Testing Tool
+----------------------------
+Conformance testing tool for testing 6LoWPAN ND
+
+# TODO write down steps for executing a tests
