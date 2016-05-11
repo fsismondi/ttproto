@@ -1,0 +1,25 @@
+/*************Implementations***********/
+
+implem.py : Just add implementation for configuration => (80% done)
+implemR.py : Just the beginning is written => (25% done) (+++)
+implembR : Just the beginning is written => (25% done) (++++)
+
+
+/****************Tests*****************/
+
+commontestsetups.py : 
+	- CommonTestSetup_1_3, CommonTestSetup_1_3b , CommonTestSetup_1_4, CommonTestSetup_1_4b have not been written (++++++)
+
+testshost.py : 
+	- test 1.1.5c : Must be implement Compression process (in implem.py)
+	- test 1.1.5d : Error in common.py.
+	- tests 1.1.6g , 1.1.9d, 1.1.9e, all 1.1.10 : Miss the implementation to configure the nut (in implem.py)
+	- tests 1.1.11 : Storing context : must implement an architecture for compression & decompression
+
+testslr.py & testslbr.py => Have not been checked
+
+
+/****************Legend*****************/
+
+(+++) : more "+" there is, higher priority it is.
+
