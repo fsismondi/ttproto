@@ -1,5 +1,6 @@
 import unittest
-from ttproto.utils.version import get_git_version
+from ttproto.utils.version_git import get_git_version
+
 
 class VersionTests(unittest.TestCase):
 

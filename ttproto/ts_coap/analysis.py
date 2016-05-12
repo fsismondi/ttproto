@@ -66,7 +66,7 @@ TOOL_VERSION = get_git_version()
 
 TEST_VERSION = "td-coap4_&_IRISA"
 
-# TODO define as abstract?
+# TODO abstract classes?
 TestCase = proto_specific.CoAPTestcase
 Tracker = proto_specific.CoAPTracker
 
@@ -255,6 +255,68 @@ def analyse_file (filename):
                 pair_results.append (tc_results)
 
     #   print (pair_results)
+
+
+def dissect_frames_json (filename):
+
+    import json
+    json_response=''
+
+    # read the frame
+    # TODO: filter uninteresting frames ? (to decrease the load)
+    with Data.disable_name_resolution():
+        frames = Frame.create_list (PcapReader (filename))
+        response={}
+        for f in frames:
+            response[f.id] = f.msg.summary()
+            print ("%5d %s" % (f.id, f.msg.summary()))
+        json_response = json.dumps(response, indent = 4)
+        # malformed frames
+        malformed = list (filter ((lambda f: f.exc), frames))
+
+        print ("\n%d malformed frames" % len (malformed))
+        for f in malformed:
+            print ("%5d %s" % (f.id, f.exc))
+
+    #     tracker = Tracker (frames)
+    #     conversations = tracker.conversations
+    #     ignored = tracker.ignored_frames
+    # #   sys.exit(1)
+    # #   conversations, ignored = extract_coap_conversations (frames)
+    #
+    #     print ("\n%d ignored frames" % len (ignored))
+    #     for f in ignored:
+    #         print ("%5d %s" % (f.id, f.msg.summary()))
+    #
+    #     print ("\n%d CoAP conversations" % len (conversations))
+    #     for t in conversations:
+    #         print ("    ---- Conversation %d    %s ----" % (t.id, t.tag))
+    #         for f in t:
+    #             print ("    %5d %s" % (f.id, f.msg.summary()))
+    #
+    #     conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
+
+    #     print ("\nTestcase results")
+    #     results_by_pair = {}
+    #     for pair, conversations in conversations_by_pair.items():
+    #         pair_results = []
+    # #       print (pair, conversations)
+    #         print ("---- Pair  %s -> %s ----" % pair)
+    #         for tc_type in testcases:
+    #             print (" --- Testcase %s ---" % tc_type.__name__)
+    #             tc_results = []
+    #             for tr in conversations:
+    #                 tc = tc_type (tr)
+    #                 if tc.verdict:
+    #                     print ("    -- Conversation %d -> %s --" % (tc.conversation.id, tc.verdict))
+    #                     for line in tc.text.split("\n"):
+    #                         print ("\t" + line)
+    #                     tc_results.append (tc)
+    #             pair_results.append (tc_results)
+
+    #   print (pair_results)
+    return json_response
+
 
 
 reg_frame = re.compile ("<Frame  *(\d+):")
@@ -593,4 +655,8 @@ if __name__ == "__main__":
     #print(dir())
     #print(globals())
     analyse_file (sys.argv[1])
+    a = dissect_frames_json(sys.argv[1])
+    print ("return values")
+    print (type(a))
+    print (a)
 
