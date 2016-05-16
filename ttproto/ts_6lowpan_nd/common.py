@@ -46,9 +46,9 @@ from	ttproto.core.snapshot		import *
 from	ttproto.core.lib.ports.socat	import *
 from	ttproto.core.exceptions		import TerminateTestcase
 
-from	config			import *
-from 	altsteps		import *
-from 	commontestsetups	import *
+from	.config			import *
+from 	.altsteps		import *
+from 	.commontestsetups	import *
 
 from ttproto.core.list			import *
 from ttproto.core.templates 		import *

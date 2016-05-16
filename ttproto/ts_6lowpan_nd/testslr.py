@@ -31,9 +31,9 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from common import *
-from testsrouter import *
-import implemR
+from .common import *
+from .testsrouter import *
+from . import implemR
 
 
 ################################################################################

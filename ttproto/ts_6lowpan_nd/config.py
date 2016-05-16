@@ -31,11 +31,12 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import local_config
-import implem
-import implembR
-import implemR
-from common import *
+from . import local_config
+from . import implem
+from . import implembR
+from . import implemR
+from .common import *
+
 from ttproto.core import clock
 
 class SUTActionEmulated (SUTAction):

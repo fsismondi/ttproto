@@ -33,13 +33,15 @@
 
 # FIXME: this is a very dirty script
 
-import local_config
-import implem
-import implembR
-import implemR
-from common import *
 from ttproto.core import clock, port
 from ttproto.core.typecheck import *
+
+from . import local_config
+from . import implem
+from . import implembR
+from . import implemR
+from .common import *
+
 import socket, threading
 import ttproto.core.lib.inet.all
 

@@ -32,7 +32,7 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 
-from common import *
+from .common import *
 
 @altstep
 def unexpected_packets (link):

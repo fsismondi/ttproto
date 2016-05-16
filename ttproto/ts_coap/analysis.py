@@ -268,7 +268,7 @@ def dissect_frames_json (filename):
         frames = Frame.create_list (PcapReader (filename))
         response={}
         for f in frames:
-            response[f.id] = f.msg.summary()
+            response[f.id] = [f.msg.summary() , f.msg.display()]
             print ("%5d %s" % (f.id, f.msg.summary()))
         json_response = json.dumps(response, indent = 4)
         # malformed frames
@@ -648,6 +648,291 @@ def analyse_file_rest_api(filename, orig_name, urifilter = False, exceptions = N
                     pair_results.append (tc_results)
 
         return results
+
+#
+# def analyse_file_json (filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):
+#     """
+#     TODO
+#     Args:
+#         filename:
+#         orig_name:
+#         urifilter:
+#         exceptions:
+#         regex:
+#         profile:
+#
+#     Returns:
+#
+#     """
+#     testcases, _ = get_testcases()
+#
+#     class json_verdict:
+#         def append
+#
+#
+#     with XHTML10Generator () as g:
+#
+#         def log_text (text):
+#             if not isinstance (text, str):
+#                 text = str (text)
+#             for line in text.split("\n"):
+#                 mo = reg_frame.match (line)
+#                 if mo:
+#                     g.a(href="#frame"+mo.group(1))(line + "\n")
+#                     continue
+#                 mo = reg_verdict.match (line)
+#                 if mo:
+#                     g.span (**{"class": mo.group(1)})(line)
+#                     g ("\n")
+#                 elif line.endswith ("Mismatch"):
+#                     g.span (**{"class": "mismatch"})(line)
+#                     g ("\n")
+#                 elif line.startswith ("Chaining to conversation "):
+#                     g ("\n")
+#                     g.span (**{"class": "chaining"})(line)
+#                     g ("\n")
+#                 else:
+#                     g (line)
+#                     g ("\n")
+#
+#         with g.head:
+#             g.title ("CoAP interoperability test results")
+#             g.meta (**{"http-equiv": "Content-Type", "content": "text/html; charset=utf-8"})
+#
+#             g.style ("""
+# a {color: inherit; text-decoration: inherit}
+# .pass {color: green;}
+# .inconc {color: #e87500;}
+# .fail {color: red;}
+# .error {color: red;}
+# .mismatch {color: #803000;}
+# .chaining {color: #808080; font-style: italic;}
+# .bgpass {background-color: #B0FFB0;}
+# .bginconc {background-color: #FFB080;}
+# .bgfail {background-color: #FF9090;}
+# .bgerror {background-color: #FF9090;}
+# .bgnone {background-color: #FFFFB0;}
+# td {padding-left:15px; padding-right:15px; padding-top:3px; padding-bottom:3px;}
+# th {padding-left:15px; padding-right:15px; padding-top:10px; padding-bottom:10px;}
+# table {border: 1px solid; border-spacing: 0px; }
+# """, type = "text/css")
+#
+#         g.h1 ("CoAP interoperability test results")
+#
+#         g.pre("""Tool version:   %s
+# File:           %s
+# Date:           %s
+# URI filter:     %s
+# Regex:      %r
+# """ % ( TOOL_VERSION,
+#     (orig_name if orig_name else "(unknown)"),
+#     time.strftime ("%a, %d %b %Y %T %z"),
+#     ("enabled" if urifilter else "disabled"),
+#     regex),
+#
+#     style = "line-height: 150%;")
+#
+#         my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
+#
+#         if regex is not None:
+#             try:
+#                 re_regex = re.compile (regex, re.I)
+#             except Exception as e:
+#                 g.b("Error: ")
+#                 g("regular expression %r is invalid (%s)" % (regex, e))
+#                 return
+#
+#             my_testcases = list (filter ((lambda t: re_regex.search(t.__name__)), my_testcases))
+#
+#             if not my_testcases:
+#                 g.b("Warning: ")
+#                 g("regular expression %r did not yield any testcase" % regex)
+#
+#
+#         force = len (my_testcases) == 1
+#
+#         g.h2 ("Summary")
+#         with g.table(id="summary", border=1): # FIXME: bug xmlgen
+#             pass
+#
+#         with Data.disable_name_resolution():
+#             frames = Frame.create_list (PcapReader (filename))
+#
+#             g.h2("File content (%d frames)" % len (frames))
+#             with g.pre:
+#                 for f in frames:
+#                     log_text (f)
+#
+#             # malformed frames
+#             malformed = list (filter ((lambda f: f.exc), frames))
+#
+#             g.h2("Malformed frames (%d)" % len (malformed))
+#             with g.pre:
+#                 for f in malformed:
+#                     log_text (f)
+#                     g(" %s\n" % f.exc)
+#
+#             tracker = Tracker (frames)
+#             conversations = tracker.conversations
+#             ignored = tracker.ignored_frames
+#         #   sys.exit(1)
+#         #   conversations, ignored = extract_coap_conversations (frames)
+#
+#             g.h2 ("Ignored frames (%d)" % len (ignored))
+#             with g.pre:
+#                 for f in ignored:
+#                     log_text (f)
+#
+#             g.h2 ("CoAP conversations (%d)" % len (conversations))
+#             for t in conversations:
+#                 g.h3 ("Conversation %d %s" % (t.id, t.tag))
+#                 with g.pre:
+#                     for f in t:
+#                         log_text (f)
+#
+#             conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
+#
+#             g.h2 ("Testcase results")
+#
+#             with g.script (type="text/javascript"):
+#                 g('''
+# var t=document.getElementById("summary");
+# var r;
+# var c;
+# var a;
+# ''')
+#             results_by_pair = {}
+#             for pair, conversations in conversations_by_pair.items():
+#                 pair_results = []
+#                 pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
+#                 g.h3 (pair_txt)
+#                 for tc_type in my_testcases:
+#                     tc_results = []
+#                     g.a(name="%x" % id(tc_results));
+#                     g.h4 ("Testcase %s  -  %s" % (tc_type.__name__, tc_type.get_objective()))
+#                     for tr in conversations:
+#                         tc = tc_type (tr, urifilter, force)
+#                         if tc.verdict:
+#                             with g.h5:
+#                                 g ("Conversation %d -> "% tc.conversation.id)
+#                                 g.span (tc.verdict, **{"class": tc.verdict})
+#                             with g.pre:
+#                                 log_text (tc.text)
+#
+#                             tc_results.append (tc)
+#
+#                             # remember the exception
+#                             if hasattr (tc, "exception") and exceptions is not None:
+#                                 exceptions.append (tc)
+#
+#                     pair_results.append (tc_results)
+#
+#                 with g.script (type="text/javascript"):
+#
+#                     g('''
+# r=t.insertRow(-1);
+# c=document.createElement ("th");
+# c.innerHTML=%s;
+# c.colSpan=4;
+# r.appendChild(c);
+# ''' % repr (pair_txt))
+#                     verdicts = None, "inconc", "pass", "fail", "error"
+#                     for title, func in (
+#                             ("ETSI interoperability test scenarios",(lambda x: "IRISA" not in x[0].__name__)),
+#                             ("IRISA interoperability test scenarios",(lambda x: "IRISA" in x[0].__name__))
+#                         ):
+#                         g('''
+# r=t.insertRow(-1);
+# c=document.createElement ("th");
+# c.innerHTML=%s;
+# c.colSpan=4;
+# r.appendChild(c);
+# ''' % repr(title))
+#                         for tc_type, tc_results in filter(func,zip(my_testcases,pair_results)):
+#                             v = 0
+#                             for tc in tc_results:
+#                                 new_v = verdicts.index (tc.verdict)
+#                                 if new_v > v:
+#                                     v = new_v
+#                             v_txt = verdicts[v]
+#                             if v_txt == None:
+#                                 v_txt = "none"
+# #TODO: factorise that w/ a function
+#                             g('''
+# r=t.insertRow(-1);
+#
+# a=document.createElement ("a")
+# a.href=("#%x")
+# a.innerHTML=%s
+# r.insertCell(-1).appendChild(a);
+#
+# a=document.createElement ("a")
+# a.href=("#%x")
+# a.innerHTML=%s
+# r.insertCell(-1).appendChild(a);
+#
+# a=document.createElement ("a")
+# a.href=("#%x")
+# a.innerHTML=%s
+# r.insertCell(-1).appendChild(a);
+#
+# a=document.createElement ("a")
+# a.href=("#%x")
+# a.innerHTML=%s
+# c=r.insertCell(-1)
+# c.appendChild(a);
+# c.className=%s;
+# ''' % (
+#                                 id (tc_results),
+#                                 repr (tc_type.__name__),
+#                                 id (tc_results),
+#                                 repr (tc_type.get_objective()),
+#                                 id (tc_results),
+#                                 repr ("%d occurence(s)" % len (tc_results)),
+#                                 id (tc_results),
+#                                 repr(v_txt),
+#                                 repr("bg" + v_txt),
+#                             ))
+#
+#
+#                     """
+#                     pair_results = []
+#                     g.h3("%s vs %s" % pair)
+#                     for tc_type in my_testcases:
+#                         g.h4 ("Testcase %s" % tc_type.__name__)
+#                         tc_results = []
+#                         for tr in conversations:
+#                             tc = tc_type (tr)
+#                             if tc.verdict:
+#                                 with g.h5:
+#                                     g ("Conversation %d -> "% tc.conversation.id)
+#                                     g.span (tc.verdict, **{"class": tc.verdict})
+#                                 with g.pre:
+#                                     log_text (tc.text)
+#
+#                                 tc_results.append (tc)
+#
+#                         pair_results.append (tc_results)
+#                 """
+#
+#             g.h2 ("Frames details")
+#
+#             for f in frames:
+#                 with g.pre:
+#                     g.a(name = "frame%d" % f.id)
+#                     g.b()("\n%s\n\n" % f)
+#
+#                     b = f.msg.get_binary()
+#                     for offset in range(0, len(b), 16):
+#                         values = ["%02x" % v for v in b[offset:offset+16]]
+#                         if len(values) > 8:
+#                             values.insert (8, " ")
+#
+#                         g("         %04x     %s\n" % (offset, " ".join(values)))
+#                 logger.display_value (g, f.msg.get_value())
+#                 g(" ")
+#                 g.br()
+#                 g.hr()
 
 if __name__ == "__main__":
 

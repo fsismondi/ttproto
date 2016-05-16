@@ -34,7 +34,7 @@
 import rlcompleter, readline
 readline.parse_and_bind('tab: complete')
 
-from common import *
+from .common import *
 from	ttproto.core.lib.all	import *
 import	atexit, os, sys
 

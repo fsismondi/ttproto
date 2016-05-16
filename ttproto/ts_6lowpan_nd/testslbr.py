@@ -31,8 +31,8 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from common import *
-import implem
+from .common import *
+from . import implem
 
 #FIXME First, all tests in testslbr.py must pass
 #from testsrouter import *
