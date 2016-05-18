@@ -31,7 +31,8 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import sys, time, re, itertools, socket, urllib.parse
+import sys, time, re, itertools, socket, urllib.parse, glob
+from os import chdir, path, getcwd
 
 from ttproto.core.lib.ports.pcap import PcapReader
 from ttproto.core.data import Data
@@ -53,6 +54,10 @@ from ttproto.core.xmlgen import XHTML10Generator
 from ttproto.core.html_logger import HTMLLogger
 from ttproto.utils.version_git import get_git_version
 
+
+
+
+
 #import the specifics for the protocol to be tested
 from . import proto_specific
 
@@ -63,8 +68,8 @@ from . import proto_specific
 
 
 TOOL_VERSION = get_git_version()
-
 TEST_VERSION = "td-coap4_&_IRISA"
+TESTCASES_SUBDIR = '/ttproto/ts_coap/testcases'
 
 # TODO abstract classes?
 TestCase = proto_specific.CoAPTestcase
@@ -152,19 +157,13 @@ class Frame:
 
 def get_testcases():
     """
-    Imports test cases classes from TESTCASES_DIR
+    Imports test cases classes from TESTCASES_DIR starting with TD
     Returns:
         tuple of lists:
-
         ( testcases , obsoletes )
     """
 
     # TODO take a list as a param and return corresponding testcases classes respecting the order.
-
-    TESTCASES_SUBDIR = '/ttproto/ts_coap/testcases'
-    from os import chdir, path, getcwd
-    import glob
-
     tc_plugins = {}
     testcases = []
     obsoletes = []
@@ -172,7 +171,7 @@ def get_testcases():
     prv_wd = getcwd()
 
     # find files named "TD*" in TESTCASES_DIR
-    chdir(prv_wd + TESTCASES_SUBDIR)
+    chdir( prv_wd + TESTCASES_SUBDIR )
     dir_list = glob.glob('td*.py')
     modname_test_list = [path.basename(f)[:-3] for f in dir_list if
                                                          path.isfile(f)]
@@ -257,70 +256,34 @@ def analyse_file (filename):
     #   print (pair_results)
 
 
-def dissect_frames_json (filename):
+def dissect_frames_json (filename, return_only_coap):
 
     import json
-    json_response=''
 
     # read the frame
     # TODO: filter uninteresting frames ? (to decrease the load)
     with Data.disable_name_resolution():
         frames = Frame.create_list (PcapReader (filename))
         response={}
-        for f in frames:
-            response[f.id] = [f.msg.summary() , f.msg.display()]
-            print ("%5d %s" % (f.id, f.msg.summary()))
+
+        if return_only_coap:
+            selected_frames = [f for f in frames if f.coap]
+        else:
+            selected_frames = frames
+
+        for f in selected_frames:
+                response[f.id] = [f.msg.summary() , f.msg.display()]
         json_response = json.dumps(response, indent = 4)
+
         # malformed frames
-        malformed = list (filter ((lambda f: f.exc), frames))
-
-        print ("\n%d malformed frames" % len (malformed))
-        for f in malformed:
-            print ("%5d %s" % (f.id, f.exc))
-
-    #     tracker = Tracker (frames)
-    #     conversations = tracker.conversations
-    #     ignored = tracker.ignored_frames
-    # #   sys.exit(1)
-    # #   conversations, ignored = extract_coap_conversations (frames)
-    #
-    #     print ("\n%d ignored frames" % len (ignored))
-    #     for f in ignored:
-    #         print ("%5d %s" % (f.id, f.msg.summary()))
-    #
-    #     print ("\n%d CoAP conversations" % len (conversations))
-    #     for t in conversations:
-    #         print ("    ---- Conversation %d    %s ----" % (t.id, t.tag))
-    #         for f in t:
-    #             print ("    %5d %s" % (f.id, f.msg.summary()))
-    #
-    #     conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
-
-    #     print ("\nTestcase results")
-    #     results_by_pair = {}
-    #     for pair, conversations in conversations_by_pair.items():
-    #         pair_results = []
-    # #       print (pair, conversations)
-    #         print ("---- Pair  %s -> %s ----" % pair)
-    #         for tc_type in testcases:
-    #             print (" --- Testcase %s ---" % tc_type.__name__)
-    #             tc_results = []
-    #             for tr in conversations:
-    #                 tc = tc_type (tr)
-    #                 if tc.verdict:
-    #                     print ("    -- Conversation %d -> %s --" % (tc.conversation.id, tc.verdict))
-    #                     for line in tc.text.split("\n"):
-    #                         print ("\t" + line)
-    #                     tc_results.append (tc)
-    #             pair_results.append (tc_results)
-
-    #   print (pair_results)
+        #malformed = list (filter ((lambda f: f.exc), frames))
     return json_response
-
 
 
 reg_frame = re.compile ("<Frame  *(\d+):")
 reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
+
+
 def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):
     """
     TODO
@@ -939,9 +902,10 @@ if __name__ == "__main__":
     #get_testcases()
     #print(dir())
     #print(globals())
-    analyse_file (sys.argv[1])
-    a = dissect_frames_json(sys.argv[1])
-    print ("return values")
+    #analyse_file (sys.argv[1])
+
+    a = dissect_frames_json(sys.argv[1], True)
+    print ("return values ")
     print (type(a))
     print (a)
 
