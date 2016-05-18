@@ -272,7 +272,7 @@ def dissect_frames_json (filename, return_only_coap):
             selected_frames = frames
 
         for f in selected_frames:
-                response[f.id] = [f.msg.summary() , f.msg.display()]
+                response[f.id] = [f.msg.summary()]
         json_response = json.dumps(response, indent = 4)
 
         # malformed frames
