@@ -345,7 +345,7 @@ class PacketValue(Value):
     class Field:
         """A class representing a field in PacketValue subclasses
 
-		A field has several attributes:
+        A field has several attributes:
 		 - name		the name of the field
 		 - alias	a shortened alias for the field
 		 - optional	boolean telling if the field is optional or not

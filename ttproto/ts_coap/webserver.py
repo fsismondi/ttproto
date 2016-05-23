@@ -89,7 +89,7 @@ def prepare_changelog():
 		CHANGELOG = [(("error when generating changelog (%s: %s)" % (type (e).__name__, e)), "", "", "")]
 
 
-prepare_changelog()
+#prepare_changelog()
 
 def html_changelog (g):
 

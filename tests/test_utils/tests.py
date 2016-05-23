@@ -2,7 +2,7 @@ import unittest
 from ttproto.utils.version_git import get_git_version
 
 
-class VersionTests(unittest.TestCase):
+class VersionTestCase(unittest.TestCase):
 
     def test_not_none(self):
         self.assertIsNotNone(get_git_version(), "git version shouldnt be none")

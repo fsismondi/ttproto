@@ -4,7 +4,7 @@ from os import getcwd
 import json
 
 
-class AnalysisTests(unittest.TestCase):
+class AnalysisTestCase(unittest.TestCase):
 
     def test_dissect_frames_json_return_two_elements_coap(self):
         a = dissect_frames_json( getcwd() + '/tests/test_dumps/two_coap_frames_get_NON.pcap',True)
