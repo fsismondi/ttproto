@@ -12,7 +12,7 @@
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
 		<!-- Latest compiled and minified CSS -->
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous" />
 
 		<style type="text/css">
 			.input-group {
@@ -35,7 +35,7 @@
 	</head>
 
 	<body>
-		<nav class="navbar navbar-default">
+		<div class="navbar navbar-default">
 			<div class="container-fluid">
 
 				<div class="navbar-header">
@@ -53,13 +53,13 @@
 					</ul>
 				</div>
 			</div>
-		</nav>
+		</div>
 
 		<div class="container">
 
 			<div class="row">
 
-				<form action="pcap-processing" method="POST" enctype="multipart/form-data">
+				<form action="pcap-processing" method="post" enctype="multipart/form-data">
 
 					<div class="col-sm-6">
 
@@ -69,7 +69,7 @@
 
 						<div class="input-group">
 							<span class="input-group-addon">Enter your pcap file</span>
-							<input type="file" class="form-control" name="pcap">
+							<input type="file" class="form-control" name="pcap" />
 						</div>
 
 					</div>
@@ -82,17 +82,17 @@
 
 						<div class="input-group" >
 							<span class="input-group-addon" >Frame number</span>
-							<input class="form-control" type="text" name="frame-number" placeholder="Enter a frame number if only one wanted" >
+							<input class="form-control" type="text" name="frame-number" placeholder="Enter a frame number if only one wanted" />
 						</div>
 
 						<div style="text-align: center;">
 
 							<div class="btn-group" data-toggle="buttons">
 								<label class="btn btn-info active">
-									<input type="radio" id="analyse-option" autocomplete="off" name="options" value="analyse" checked > Analyse
+									<input type="radio" id="analyse-option" autocomplete="off" name="options" value="analyse" checked /> Analyse
 								</label>
 								<label class="btn btn-info">
-									<input type="radio" id="dissect-option" autocomplete="off" name="options" value="dissect"> Dissect
+									<input type="radio" id="dissect-option" autocomplete="off" name="options" value="dissect" /> Dissect
 								</label>
 							</div>
 
@@ -101,7 +101,7 @@
 					</div>
 
 					<p style="text-align: center;">
-						<input type="submit" value="Execute" class="btn btn-success centered-block">
+						<input type="submit" value="Execute" class="btn btn-success centered-block" />
 					</p>
 
 				</form>

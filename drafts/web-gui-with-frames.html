@@ -12,7 +12,7 @@
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
 		<!-- Latest compiled and minified CSS -->
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous" />
 
 		<style type="text/css">
 			.input-group {
@@ -40,10 +40,6 @@
 				text-decoration: none;
 			}
 
-			.packet-content p {
-				margin-bottom: 0px;
-			}
-
 			.indent {
 				margin-left: 30px;
 			}
@@ -61,14 +57,14 @@
 			}
 
 			.packet-content .panel-heading {
-				/*border: 1px solid #ddd;*/
+				display: block;
 				background-color: #f5f5f5;
 			}
 		</style>
 	</head>
 
 	<body>
-		<nav class="navbar navbar-default">
+		<div class="navbar navbar-default">
 			<div class="container-fluid">
 
 				<div class="navbar-header">
@@ -86,13 +82,13 @@
 					</ul>
 				</div>
 			</div>
-		</nav>
+		</div>
 
 		<div class="container">
 
 			<div class="row">
 
-				<form action="pcap-processing" method="POST" enctype="multipart/form-data">
+				<form action="pcap-processing" method="post" enctype="multipart/form-data">
 
 					<div class="col-sm-6">
 
@@ -102,7 +98,7 @@
 
 						<div class="input-group">
 							<span class="input-group-addon">Enter your pcap file</span>
-							<input type="file" class="form-control" name="pcap">
+							<input type="file" class="form-control" name="pcap" />
 						</div>
 
 					</div>
@@ -115,17 +111,17 @@
 
 						<div class="input-group" >
 							<span class="input-group-addon" >Frame number</span>
-							<input class="form-control" type="text" name="frame-number" placeholder="Enter a frame number if only one wanted" >
+							<input class="form-control" type="text" name="frame-number" placeholder="Enter a frame number if only one wanted" />
 						</div>
 
 						<div style="text-align: center;">
 
 							<div class="btn-group" data-toggle="buttons">
 								<label class="btn btn-info active">
-									<input type="radio" id="analyse-option" autocomplete="off" name="options" value="analyse" checked > Analyse
+									<input type="radio" id="analyse-option" autocomplete="off" name="options" value="analyse" checked /> Analyse
 								</label>
 								<label class="btn btn-info">
-									<input type="radio" id="dissect-option" autocomplete="off" name="options" value="dissect"> Dissect
+									<input type="radio" id="dissect-option" autocomplete="off" name="options" value="dissect" /> Dissect
 								</label>
 							</div>
 
@@ -134,7 +130,7 @@
 					</div>
 
 					<p style="text-align: center; margin-top: 10px;">
-						<input type="submit" value="Execute" class="btn btn-success centered-block">
+						<input type="submit" value="Execute" class="btn btn-success centered-block" />
 					</p>
 
 				</form>
@@ -174,124 +170,124 @@
 
 								<div class="panel panel-default">
 									<a class="collapsed" role="button" data-toggle="collapse" href="#collapse1" aria-expanded="false" aria-controls="collapse1">
-										<div class="panel-heading" role="tab" id="frame1">
+										<span class="panel-heading" role="tab" id="frame1">
 											Ethernet
-										</div>
+										</span>
 									</a>
 
 									<div id="collapse1" class="panel-collapse collapse" role="tabpanel" aria-labelledby="frame1">
 										<div class="panel-body">
-											<p>
+											<div>
 												DestinationAddress: "18:1e:78:4e:03:10"
-											</p>
-											<p>
+											</div>
+											<div>
 												SourceAddress: "ac:bc:32:cd:f3:8b"
-											</p>
-											<p>
+											</div>
+											<div>
 												Type: "0x0800"
-											</p>
-											<p>
+											</div>
+											<div>
 												Trailer: "b''"
-											</p>
+											</div>
 										</div>
 									</div>
 								</div>
 
 								<div class="panel panel-default">
 									<a class="collapsed" role="button" data-toggle="collapse" href="#collapse2" aria-expanded="false" aria-controls="collapse2">
-										<div class="panel-heading" role="tab" id="frame2">
+										<span class="panel-heading" role="tab" id="frame2">
 												IPv4
-										</div>
+										</span>
 									</a>
 									
 									<div id="collapse2" class="panel-collapse collapse" role="tabpanel" aria-labelledby="frame2">
 										<div class="panel-body">
-											<p>Version: "4"</p>
-											<p>HeaderLength: "5"</p>
-											<p>TypeOfService: "0x00"</p>
-											<p>TotalLength: "41"</p>
-											<p>Identification: "0x5948"</p>
-											<p>Reserved: "0"</p>
-											<p>DontFragment: "0"</p>
-											<p>MoreFragments: "0"</p>
-											<p>FragmentOffset: "0"</p>
-											<p>TimeToLive: "64"</p>
-											<p>Protocol: "17"</p>
-											<p>HeaderChecksum: "0xceee"</p>
-											<p>SourceAddress: "192.168.1.17"</p>
-											<p>DestinationAddress: "129.132.15.80"</p>
-											<p>Options: "b''"</p>
+											<div>Version: "4"</div>
+											<div>HeaderLength: "5"</div>
+											<div>TypeOfService: "0x00"</div>
+											<div>TotalLength: "41"</div>
+											<div>Identification: "0x5948"</div>
+											<div>Reserved: "0"</div>
+											<div>DontFragment: "0"</div>
+											<div>MoreFragments: "0"</div>
+											<div>FragmentOffset: "0"</div>
+											<div>TimeToLive: "64"</div>
+											<div>Protocol: "17"</div>
+											<div>HeaderChecksum: "0xceee"</div>
+											<div>SourceAddress: "192.168.1.17"</div>
+											<div>DestinationAddress: "129.132.15.80"</div>
+											<div>Options: "b''"</div>
 										</div>
 									</div>
 								</div>
 
 								<div class="panel panel-default">
 									<a class="collapsed" role="button" data-toggle="collapse" href="#collapse3" aria-expanded="false" aria-controls="collapse3">
-										<div class="panel-heading" role="tab" id="frame3">
+										<span class="panel-heading" role="tab" id="frame3">
 											UDP
-										</div>
+										</span>
 									</a>
 
 									<div id="collapse3" class="panel-collapse collapse" role="tabpanel" aria-labelledby="frame3">
 										<div class="panel-body">
-											<p>SourcePort: "65236"</p>
-											<p>DestinationPort: "5683"</p>
-											<p>Length: "21"</p>
-											<p>Checksum: "0x16b8"</p>
+											<div>SourcePort: "65236"</div>
+											<div>DestinationPort: "5683"</div>
+											<div>Length: "21"</div>
+											<div>Checksum: "0x16b8"</div>
 										</div>
 									</div>
 								</div>
 
 								<div class="panel panel-default">
 									<a class="collapsed" role="button" data-toggle="collapse" href="#collapse4" aria-expanded="false" aria-controls="collapse4">
-										<div class="panel-heading" role="tab" id="frame4">
+										<span class="panel-heading" role="tab" id="frame4">
 											CoAP
-										</div>
+										</span>
 									</a>
 
 									<div id="collapse4" class="panel-collapse collapse" role="tabpanel" aria-labelledby="frame4">
 										<div class="panel-body">
-											<p>Version: "1"</p>
-											<p>Type: "1"</p>
-											<p>TokenLength: "2"</p>
-											<p>Code: "69"</p>
-											<p>MessageID: "0xa312"</p>
-											<p>Token: "b'b\\xda'"</p>
-											<p>Payload:
+											<div>Version: "1"</div>
+											<div>Type: "1"</div>
+											<div>TokenLength: "2"</div>
+											<div>Code: "69"</div>
+											<div>MessageID: "0xa312"</div>
+											<div>Token: "b'b\\xda'"</div>
+											<div>Payload:
 												<div class="indent">
-													<p>Type: 1 (NON)</p>
-													<p>Code: 1 (GET)</p>
-													<p>MID: 15345</p>
-													<p>Token: 62da</p>
+													<div>Type: 1 (NON)</div>
+													<div>Code: 1 (GET)</div>
+													<div>MID: 15345</div>
+													<div>Token: 62da</div>
 												</div>
-											</p>
-											<p>Options:
+											</div>
+											<div>Options:
 												<div class="indent">
-													<p>Option:
+													<div>Option:
 														<div class="indent">
-															<p>Delta: 12</p>
-															<p>Length: 0</p>
-															<p>Value: 0</p>
+															<div>Delta: 12</div>
+															<div>Length: 0</div>
+															<div>Value: 0</div>
 														</div>
-													</p>
-													<p>CoAPOptionMaxAge:
+													</div>
+													<div>CoAPOptionMaxAge:
 														<div class="indent">
-															<p>Delta: 2</p>
-															<p>Length: 1</p>
-															<p>Value: 30</p>
+															<div>Delta: 2</div>
+															<div>Length: 1</div>
+															<div>Value: 30</div>
 														</div>
-													</p>
-													<p>CoAPOptionBlock2:
+													</div>
+													<div>CoAPOptionBlock2:
 														<div class="indent">
-															<p>Delta: 9</p>
-															<p>Length: 1</p>
-															<p>Number: 0</p>
-															<p>M: 0</p>
-															<p>SizeExponent: 2</p>
+															<div>Delta: 9</div>
+															<div>Length: 1</div>
+															<div>Number: 0</div>
+															<div>M: 0</div>
+															<div>SizeExponent: 2</div>
 														</div>
-													</p>
+													</div>
 												</div>
-											</p>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -318,7 +314,7 @@
 				<div class="col-xs-6 col-md-4">
 					<div class="input-group" style="margin-top: 10px;">
 						<span class="input-group-addon" >Directly access to frame </span>
-						<input class="form-control" type="text" name="frame-number" placeholder="number" >
+						<input class="form-control" type="text" name="frame-number" placeholder="number" />
 						<a class="input-group-addon btn btn-info" type="submit" placeholder="number" >
 							<span class="glyphicon glyphicon-fast-forward"></span>
 						</a>
