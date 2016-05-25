@@ -42,7 +42,8 @@ import time
 import signal
 import select
 import subprocess
-from email import feedparser, message
+import email.feedparser
+import email.message
 from . import analysis
 from ttproto.utils import pure_pcapy
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
@@ -221,6 +222,26 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             self.wfile.write(fp.read())
             return
+
+        # ########################## ttproto API ########################### #
+
+        # GET handler for the get_testcase_implementation uri
+        if self.path == 'get_testcase_implementation':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html;charset=utf-8")
+            self.end_headers()
+
+            # Here we will prepare the Json file to send
+            json = {}
+
+            # Send the Json file
+            self.wfile.write(json)
+            return
+
+        # ######################## End of API part ######################### #
+
         if self.path != "/":
             self.send_error(404)
             return
