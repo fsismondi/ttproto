@@ -468,6 +468,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # Variable set to check if we managed to bind the post request
         request_binded = False
 
+        # The job counter
+        global job_id
+        job_id += 1
+
         # ########################## ttproto API ########################### #
 
         # POST handler for the testcase_analyse uri
@@ -494,9 +498,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Check the content type
             if headers[0] != 'multipart/form-data':
-                print(json.dumps(api_error(
+                api_error(
                     'POST format of \'multipart/form-data\' expected'
-                )))
+                )
                 return
 
             # Get post values
@@ -508,7 +512,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     'REQUEST_METHOD': 'POST',
                     'CONTENT_TYPE': self.headers['Content-Type']
                 })
-            print(form)
+            # print(form)
 
             # Check that we have the two values
             if any((
@@ -516,17 +520,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'pcap_file' not in form,
                 'testcase_id' not in form
             )):
-                json_results = api_error(
+                api_error(
                     'Expected \'testcase_id\' and \'pcap_file\' form fields'
                 )
+                return
 
             # Check the testcase_id value
             testcase_id = form.getvalue('testcase_id')
-            if any(
+            if any((
                 isinstance(testcase_id, list),
                 not testcase_id.isdigit()
-            ):
-                self.send_error(400)
+            )):
+                api_error(
+                    '\'testcase_id\' POST value should be an integer'
+                )
                 return
 
             # Get the value
@@ -534,10 +541,23 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
-            print(pcap_file)
+            if (pcap_file):
+
+                # Path to save the file
+                timestamp = time.strftime("%y%m%d_%H%M%S")
+                pcap_path = os.path.join(
+                    TMPDIR,
+                    "%s_%04d.dump" % (timestamp, job_id)
+                )
+
+                # Write the pcap file to a temporary destination
+                with open(pcap_path, 'wb') as f:
+                    f.write(pcap_file)
 
             # Here we will analyse the pcap file and get the results as json
-            results = {}
+            print(json.dumps({
+                "testcase_id": testcase_id
+            }))
             return
 
         # POST handler for the frames_dissect uri
@@ -553,15 +573,92 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header('Content-Type', 'text/html;charset=utf-8')
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
-
-            # Here we will analyse the pcap file and get the results as json
-            results = {}
 
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-            print("<h1>This is a test!</h1>")
+
+            # Parse headers
+            headers = cgi.parse_header(self.headers['Content-Type'])
+
+            # Check the content type
+            if headers[0] != 'multipart/form-data':
+                api_error(
+                    'POST format of \'multipart/form-data\' expected'
+                )
+                return
+
+            # Get post values
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                keep_blank_values=True,
+                environ={
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': self.headers['Content-Type']
+                })
+            # print(form)
+
+            # If we only have the pcap_file value
+            if len(form) == 1:
+                if 'pcap_file' not in form:
+                    api_error('Expected \'pcap_file\' form fields')
+                    return
+
+            # If we have the pcap_file and the protocol_selection values
+            elif len(form) == 2:
+
+                # Check the parameters passed
+                if any((
+                    'pcap_file' not in form,
+                    'protocol_selection' not in form
+                )):
+                    api_error(
+                        'Expected \'pcap_file\' and protocol_selection form fields'
+                    )
+                    return
+
+                # If good parameters
+                else:
+
+                    # Check the protocol_selection value
+                    protocol_selection = form.getvalue('protocol_selection')
+                    if any((
+                        isinstance(protocol_selection, list),
+                        not protocol_selection.isdigit()
+                    )):
+                        api_error(
+                            '\'protocol_selection\' POST value should be an integer'
+                        )
+                        return
+
+            # Wrong number of parameters
+            else:
+                api_error(
+                    'Incorrects parameters expected \'?frame_id=[integer]\''
+                )
+                return
+
+            # Get the pcap file
+            pcap_file = form.getvalue('pcap_file')
+            if (pcap_file):
+
+                # Path to save the file
+                timestamp = time.strftime("%y%m%d_%H%M%S")
+                pcap_path = os.path.join(
+                    TMPDIR,
+                    "%s_%04d.dump" % (timestamp, job_id)
+                )
+
+                # Write the pcap file to a temporary destination
+                with open(pcap_path, 'wb') as f:
+                    f.write(pcap_file)
+
+            # Here we will analyse the pcap file and get the results as json
+            print(json.dumps({
+                "protocol_selection": protocol_selection
+            }))
             return
 
         # ######################## End of API part ######################### #
@@ -570,9 +667,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Request binded
             request_binded = True
-
-            global job_id
-            job_id += 1
 
             if os.fork():
                 # close the socket right now(because the
