@@ -225,8 +225,46 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         # ########################## ttproto API ########################### #
 
+        # ##### Personnal remarks
+        #
+        # For the moment, using this webserver is right but for scaling maybe a
+        # strong web platform using a framework will be better. This one is
+        # sufficient for the moment.
+        #
+        # We check on the path for whole uri, maybe we should bind a version to
+        # a beginning like "/api/v1" and then bind the methods put behind it.
+        #
+        # ##### End of remarks
+
         # GET handler for the get_testcase_implementation uri
-        if self.path == 'get_testcase_implementation':
+        # It will allow developpers to get the implementation script of a TC
+        #
+        # /param testcase_id => The unique id of the test case
+        if self.path == '/api/v1/get_testcase_implementation':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html;charset=utf-8")
+            self.end_headers()
+
+            # Here we will prepare the Json file to send
+            json = {}
+
+            # Send the Json file
+            self.wfile.write(json)
+            return
+
+        # GET handler for the get_frame uri
+        # It will allow a user to get a single frame from the previous pcap
+        #
+        # /param frame_id => The id of the wanted frame
+        #
+        # /remark Maybe it will be better to give an id to testes, store them
+        #         into databases and then add another param representing the
+        #         id of the test.
+        #         More than that, it will allow users to retrieve a passed test
+        #         and share it.
+        if self.path == '/api/v1/get_frame':
 
             # Send the header
             self.send_response(200)
@@ -262,7 +300,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             g("%s" % analysis.TOOL_VERSION)
             with g.br():  # FIXME: bug generator
                 pass
-            with g.form(method="POST", action="submit", enctype="multipart/form-data"):
+            with g.form(method="POST", action="testcase_analyse", enctype="multipart/form-data"):
                 g("This tool(more details at ")
                 g.a("www.irisa.fr/tipi", href="http://www.irisa.fr/tipi/wiki/doku.php/passive_validation_tool_for_coap")
                 g(") allows executing CoAP interoperability test suites(see below Available Test Scenarios) on the provided traces of CoAP Client-Server interactions.")
@@ -353,117 +391,174 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             html_changelog(g)
 
     def do_POST(self):
-        if(self.path != "/submit"):
+
+        # Variable set to check if we managed to bind the post request
+        request_binded = False
+
+        # ########################## ttproto API ########################### #
+
+        # POST handler for the testcase_analyse uri
+        # It will allow users to analyse a pcap file corresponding to a TC
+        #
+        # \param pcap_file => The pcap file that we want to analyse
+        # \param testcase_id => The id of the corresponding test case
+        if self.path == '/api/v1/testcase_analyse':
+
+            # Request binded
+            request_binded = True
+
+            # Send the header
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html;charset=utf-8')
+            self.end_headers()
+
+            # Here we will analyse the pcap file and get the results as json
+            results = {}
+
+            # Send the Json file
+            self.wfile.write(results)
+            return
+
+        # POST handler for the frames_dissect uri
+        # It will allow users to analyse a pcap file corresponding to a TC
+        #
+        # \param pcap_file => The pcap file that we want to dissect
+        # \param protocol_selection => The protocol name (optional)
+        if self.path == '/api/v1/frames_dissect':
+
+            # Request binded
+            request_binded = True
+
+            # Send the header
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html;charset=utf-8')
+            self.end_headers()
+
+            # Here we will analyse the pcap file and get the results as json
+            results = {}
+
+            # Send the Json file
+            self.wfile.write(results)
+            return
+
+        # ######################## End of API part ######################### #
+
+        if (self.path == "/submit"):
+
+            # Request binded
+            request_binded = True
+
+            global job_id
+            job_id += 1
+
+            if os.fork():
+                # close the socket right now(because the
+                # requesthandler may do a shutdown(), which triggers a
+                # SIGCHLD in the child process)
+                self.connection.close()
+                return
+
+            parser = BytesFeedParser()
+            ct = self.headers.get("Content-Type")
+            if not ct.startswith("multipart/form-data;"):
+                self.send_error(400)
+                return
+
+            parser.feed(bytes("Content-Type: %s\r\n\r\n" % ct, "ascii"))
+            parser.feed(self.rfile.read(int(self.headers['Content-Length'])))
+            msg = parser.close()
+
+            # agree checkbox is selected
+            for part in msg.get_payload():
+                if isinstance(part, email.message.Message):
+                    disposition = part.get("content-disposition")
+                    if disposition and 'name="agree"' in disposition:
+                        agree = True
+                        break
+            else:
+                agree = False
+
+            # urifilter checkbox is selected
+            for part in msg.get_payload():
+                if isinstance(part, email.message.Message):
+                    disposition = part.get("content-disposition")
+                    if disposition and 'name="urifilter"' in disposition:
+                        urifilter = True
+                        break
+            else:
+                urifilter = False
+
+            # content of the regex box
+            for part in msg.get_payload():
+                if isinstance(part, email.message.Message):
+                    disposition = part.get("content-disposition")
+                    if disposition and 'name="regex"' in disposition:
+                        regex = part.get_payload()
+                        if not regex:
+                            regex = None
+                        break
+            else:
+                regex = None
+
+            # profile radio buttons
+            for part in msg.get_payload():
+                if isinstance(part, email.message.Message):
+                    disposition = part.get("content-disposition")
+                    if disposition and 'name="profile"' in disposition:
+                        profile = part.get_payload()
+                        break
+            else:
+                profile = "client"
+
+            # receive the pcap file
+            for part in msg.get_payload():
+                if isinstance(part, email.message.Message):
+                    disposition = part.get("content-disposition")
+                    if disposition and 'name="file"' in disposition:
+                        mo = re.search('filename="([^"]*)"', disposition)
+
+                        orig_filename = mo.group(1) if mo else None
+
+                        timestamp = time.strftime("%y%m%d_%H%M%S")
+
+                        pcap_file = os.path.join(
+                                (DATADIR if agree else TMPDIR),
+                                "%s_%04d.dump" % (timestamp, job_id)
+                        )
+                        self.log_message("uploading %s(urifilter=%r, regex=%r)", pcap_file, urifilter, regex)
+                        with open(pcap_file, "wb") as fd:
+                            # FIXME: using hidden API(._payload) because it seems that there is something broken with the encoding when getting the payload using .get_payload()
+                            fd.write(part._payload.encode("ascii", errors="surrogateescape"))
+
+                        break
+            else:
+                self.send_error(400)
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html;charset=utf-8")
+            self.end_headers()
+
+            out = UTF8Wrapper(self.wfile)
+
+            self.wfile.flush()
+
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            try:
+                exceptions = []
+                analysis.analyse_file_html(pcap_file, orig_filename, urifilter, exceptions, regex, profile)
+                for tc in exceptions:
+                    self.log_message("exception in %s", type(tc).__name__, append=tc.exception)
+            except pure_pcapy.PcapError:
+                print("Bad file format!")
+
+            shutdown()
+
+        # If we didn't manage to bind the request
+        if not request_binded:
             self.send_error(404)
             return
-
-        global job_id
-        job_id += 1
-
-        if os.fork():
-            # close the socket right now(because the
-            # requesthandler may do a shutdown(), which triggers a
-            # SIGCHLD in the child process)
-            self.connection.close()
-            return
-
-        parser = BytesFeedParser()
-        ct = self.headers.get("Content-Type")
-        if not ct.startswith("multipart/form-data;"):
-            self.send_error(400)
-            return
-
-        parser.feed(bytes("Content-Type: %s\r\n\r\n" % ct, "ascii"))
-        parser.feed(self.rfile.read(int(self.headers['Content-Length'])))
-        msg = parser.close()
-
-
-        # agree checkbox is selected
-        for part in msg.get_payload():
-            if isinstance(part, email.message.Message):
-                disposition = part.get("content-disposition")
-                if disposition and 'name="agree"' in disposition:
-                    agree = True
-                    break
-        else:
-            agree = False
-
-        # urifilter checkbox is selected
-        for part in msg.get_payload():
-            if isinstance(part, email.message.Message):
-                disposition = part.get("content-disposition")
-                if disposition and 'name="urifilter"' in disposition:
-                    urifilter = True
-                    break
-        else:
-            urifilter = False
-
-        # content of the regex box
-        for part in msg.get_payload():
-            if isinstance(part, email.message.Message):
-                disposition = part.get("content-disposition")
-                if disposition and 'name="regex"' in disposition:
-                    regex = part.get_payload()
-                    if not regex:
-                        regex = None
-                    break
-        else:
-            regex = None
-
-        # profile radio buttons
-        for part in msg.get_payload():
-            if isinstance(part, email.message.Message):
-                disposition = part.get("content-disposition")
-                if disposition and 'name="profile"' in disposition:
-                    profile = part.get_payload()
-                    break
-        else:
-            profile = "client"
-
-        # receive the pcap file
-        for part in msg.get_payload():
-            if isinstance(part, email.message.Message):
-                disposition = part.get("content-disposition")
-                if disposition and 'name="file"' in disposition:
-                    mo = re.search('filename="([^"]*)"', disposition)
-
-                    orig_filename = mo.group(1) if mo else None
-
-                    timestamp = time.strftime("%y%m%d_%H%M%S")
-
-                    pcap_file = os.path.join(
-                            (DATADIR if agree else TMPDIR),
-                            "%s_%04d.dump" % (timestamp, job_id)
-                    )
-                    self.log_message("uploading %s(urifilter=%r, regex=%r)", pcap_file, urifilter, regex)
-                    with open(pcap_file, "wb") as fd:
-                        # FIXME: using hidden API(._payload) because it seems that there is something broken with the encoding when getting the payload using .get_payload()
-                        fd.write(part._payload.encode("ascii", errors="surrogateescape"))
-
-                    break
-        else:
-            self.send_error(400)
-            return
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html;charset=utf-8")
-        self.end_headers()
-
-        out = UTF8Wrapper(self.wfile)
-
-        self.wfile.flush()
-
-        os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-
-        try:
-            exceptions = []
-            analysis.analyse_file_html(pcap_file, orig_filename, urifilter, exceptions, regex, profile)
-            for tc in exceptions:
-                self.log_message("exception in %s", type(tc).__name__, append=tc.exception)
-        except pure_pcapy.PcapError:
-            print("Bad file format!")
-
-        shutdown()
 
 job_id = 0
 
