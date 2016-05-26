@@ -42,9 +42,12 @@ import time
 import signal
 import select
 import subprocess
+import cgi
+import cgitb
 import email.feedparser
 import email.message
 from . import analysis
+from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 
@@ -170,7 +173,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
 
-        if self.path == "/coap-tool.sh":
+        # Get the url and parse it
+        url = urlparse(self.path)
+
+        if url.path == "/coap-tool.sh":
             fp = open("coap-tool.sh", "rb")
 
             if not fp:
@@ -183,7 +189,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             self.wfile.write(fp.read())
             return
-        if self.path == "/doc/ETSI-CoAP4-test-list.pdf":
+        elif url.path == "/doc/ETSI-CoAP4-test-list.pdf":
             fp = open("doc/ETSI-CoAP4-test-list.pdf", "rb")
 
             if not fp:
@@ -196,7 +202,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             self.wfile.write(fp.read())
             return
-        if self.path == "/doc/Additive-IRISA-CoAP-test-list.pdf":
+        elif url.path == "/doc/Additive-IRISA-CoAP-test-list.pdf":
             fp = open("doc/Additive-IRISA-CoAP-test-list.pdf", "rb")
 
             if not fp:
@@ -209,7 +215,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             self.wfile.write(fp.read())
             return
-        if self.path == "/doc/Additive-IRISA-CoAP-test-description.pdf":
+        elif url.path == "/doc/Additive-IRISA-CoAP-test-description.pdf":
             fp = open("doc/Additive-IRISA-CoAP-test-description.pdf", "rb")
 
             if not fp:
@@ -240,18 +246,45 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # It will allow developpers to get the implementation script of a TC
         #
         # /param testcase_id => The unique id of the test case
-        if self.path == '/api/v1/get_testcase_implementation':
+        #
+        elif url.path == '/api/v1/get_testcase_implementation':
 
             # Send the header
             self.send_response(200)
             self.send_header("Content-Type", "text/html;charset=utf-8")
             self.end_headers()
 
+            # Get the parameters
+            params = parse_qs(url.query)
+            if len(params) != 1 or 'testcase_id' not in params:
+                self.send_error(400)  # Bad request format
+                return
+
+            # Check the value of the testcase_id passed
+            if len(params['testcase_id']) != 1:
+                self.send_error(400)  # Bad request format
+                return
+
+            # Get the id of the test case then
+            testcase_id = params['testcase_id'][0]
+
+            # Check that the parameter is a string representing an integer
+            if not testcase_id.isdigit():
+                self.send_error(400)  # Bad request format
+                return
+
+            # Format the id before passing it to the process function
+            testcase_id = int(testcase_id)
+
             # Here we will prepare the Json file to send
             json = {}
 
-            # Send the Json file
-            self.wfile.write(json)
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Print the json result
+            print("The id of the tc is %s" % params)
+            print("The id of the tc is %d" % testcase_id)
             return
 
         # GET handler for the get_frame uri
@@ -264,23 +297,47 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #         id of the test.
         #         More than that, it will allow users to retrieve a passed test
         #         and share it.
-        if self.path == '/api/v1/get_frame':
+        #
+        elif url.path == '/api/v1/get_frame':
 
             # Send the header
             self.send_response(200)
             self.send_header("Content-Type", "text/html;charset=utf-8")
             self.end_headers()
 
+            # Get the parameters
+            params = parse_qs(url.query)
+            if len(params) != 1 or 'frame_id' not in params:
+                self.send_error(400)  # Bad request format
+                return
+
+            # Check the value of the frame_id passed
+            if len(params['frame_id']) != 1:
+                self.send_error(400)  # Bad request format
+                return
+
+            # Get the id of the test case then
+            frame_id = params['frame_id'][0]
+
+            # Check that the parameter is a string representing an integer
+            if not frame_id.isdigit():
+                self.send_error(400)  # Bad request format
+                return
+
+            # Format the id before passing it to the process function
+            frame_id = int(frame_id)
+
             # Here we will prepare the Json file to send
             json = {}
 
-            # Send the Json file
-            self.wfile.write(json)
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+            print("<h1>This is a test!</h1>")
             return
 
         # ######################## End of API part ######################### #
 
-        if self.path != "/":
+        elif url.path != "/":
             self.send_error(404)
             return
 
@@ -415,8 +472,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Here we will analyse the pcap file and get the results as json
             results = {}
 
-            # Send the Json file
-            self.wfile.write(results)
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+            print("<h1>This is a test!</h1>")
             return
 
         # POST handler for the frames_dissect uri
@@ -437,8 +495,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Here we will analyse the pcap file and get the results as json
             results = {}
 
-            # Send the Json file
-            self.wfile.write(results)
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+            print("<h1>This is a test!</h1>")
             return
 
         # ######################## End of API part ######################### #
@@ -581,6 +640,9 @@ for d in TMPDIR, DATADIR, LOGDIR:
 def reopen_log_file(signum, frame):
     global log_file
     log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
+
+    # ttproto API part
+    cgitb.enable(display=0, logdir=LOGDIR)
 
 # reopen_log_file(None, None)
 #
