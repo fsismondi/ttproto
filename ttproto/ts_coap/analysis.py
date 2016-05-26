@@ -31,7 +31,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import sys, time, re, itertools, socket, urllib.parse, glob, json
+import sys, time, re, itertools, socket, urllib.parse, glob, json, inspect
 from lib2to3.fixes.fix_print import parend_expr
 from os import chdir, path, getcwd
 
@@ -156,8 +156,33 @@ class Frame:
             break
 
 
-def get_testcases():
+def get_implemented_testcases(testcase_id = None):
     """
+    :return:
+    -List of descriptions of test cases
+    Each element of the list is composed of:
+        -tc_identifier
+        -tc_objective
+        -tc_sourcecode
+    """
+
+    testcases,_= import_testcases(testcase_id)
+    ret = []
+    for tc in testcases:
+        ret.append((tc.__name__ ,tc.get_objective(), inspect.getsource(tc)))
+
+    return ret
+
+
+def import_testcases(testcase_id = None):
+    """
+    Assumptions:
+    -test cases are defined inside a file, each file contains only one test case
+    -names of the file and class must match
+    -all test cases must be named TD_*
+
+    :param testcase_id:
+
     Imports test cases classes from TESTCASES_DIR named TD*
     Returns:
         tuple of lists:
@@ -165,19 +190,30 @@ def get_testcases():
     """
 
     # TODO take a list as a param and return corresponding testcases classes respecting the order.
+    SEARCH_STRING = 'td*.py'
     tc_plugins = {}
     testcases = []
     obsoletes = []
 
+
     prv_wd = getcwd()
-
-    # find files named "TD*" in TESTCASES_DIR
     chdir( prv_wd + TESTCASES_SUBDIR )
-    dir_list = glob.glob('td*.py')
-    modname_test_list = [path.basename(f)[:-3] for f in dir_list if
-                                                         path.isfile(f)]
 
+    #  find files named "TD*" or testcase_id (if provided) in TESTCASES_DIR
+    dir_list = glob.glob(SEARCH_STRING)
+    modname_test_list = [path.basename(f)[:-3] for f in dir_list if path.isfile(f)]
     modname_test_list.sort()
+
+    if testcase_id:
+        if testcase_id.lower() in modname_test_list:
+            modname_test_list = [testcase_id]
+
+            # filename not found in dir
+        else:
+            # move back to the previously dir
+            chdir(prv_wd)
+            raise FileNotFoundError("Testcase : " + testcase_id + " couldn't be found")
+
     # import sorted list
     for modname in modname_test_list:
         tc_plugins[modname] = getattr(__import__(modname,
@@ -202,7 +238,7 @@ def get_testcases():
 
 
 def analyse_file (filename):
-    testcases, _ = get_testcases()
+    testcases, _ = import_testcases()
     # read the frame
     # TODO: filter uninteresting frames ? (to decrease the load)
     with Data.disable_name_resolution():
@@ -261,7 +297,7 @@ reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
 
 
 def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
-    testcases, _ = get_testcases()
+    testcases, _ = import_testcases()
     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
 
     if regex is not None:
@@ -320,7 +356,7 @@ def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None
     Returns:
 
     """
-    testcases, _ = get_testcases()
+    testcases, _ = import_testcases()
 
     logger = HTMLLogger()
 
@@ -720,7 +756,9 @@ if __name__ == "__main__":
     PCAP_test =  '/Users/fsismondi/Desktop/two_coap_frames_get_NON.pcap'
     #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
     #print(dissect_pcap_to_json(PCAP_test, CoAP))
-    log(analyse_file(PCAP_error))
-
+    #print(analyse_file(PCAP_error))
+    a= get_implemented_testcases('td_coap_coren_01')
+    for f in a:
+        print(a[0][2])
 
 
