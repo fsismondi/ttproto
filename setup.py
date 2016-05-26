@@ -1,6 +1,8 @@
 from setuptools import find_packages
+from distutils.core import setup
 
-version = __import__('ttproto').get_version()
+#version = __import__('ttproto').get_version()
+version = '3c2c984'
 
 # TODO update license info
 

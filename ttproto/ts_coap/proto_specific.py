@@ -84,6 +84,7 @@ class CoAPTestcase(object):
     obsolete = False
     reverse_proxy = False
 
+
     __verdicts = None, "pass", "inconc", "fail", "error"
 
     class Stop (Exception):
@@ -94,6 +95,7 @@ class CoAPTestcase(object):
         self.text   = ""
         self.urifilter  = urifilter
         self.force  = force
+        self.failed_frames = []
         try:
             self.verdict = None
             self.__current_conversation = self.conversation
@@ -208,6 +210,7 @@ class CoAPTestcase(object):
         if not self.__iter:
             # end of conversation
             self.setverdict(verdict, "expected %s from the %s" % (template, sender))
+            self.failed_frames.append(self.frame.id)
             return False
 
         # check the sender
@@ -216,11 +219,13 @@ class CoAPTestcase(object):
             if src != self.conversation.client:
                 if verdict != None:
                     self.setverdict(verdict, "expected %s from the client" % template)
+                self.failed_frames.append(self.frame.id)
                 return False
         elif sender == "server":
             if src != self.conversation.server:
                 if verdict != None:
                     self.setverdict(verdict, "expected %s from the server" % template)
+                self.failed_frames.append(self.frame.id)
                 return False
         else:
             assert sender == None
@@ -242,6 +247,7 @@ class CoAPTestcase(object):
 
                     self.setverdict(verdict, "mismatch: %s" % template)
                     diff_list.describe(callback)
+                self.failed_frames.append(self.frame.id)
                 return False
 
         return True

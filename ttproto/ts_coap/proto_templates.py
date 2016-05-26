@@ -33,6 +33,8 @@
 import itertools
 
 from ttproto.core.data import Data, Template, get_type, store_data, DifferenceList, Mismatch
+from ttproto.core.templates	import Length, Regex, All, Range, Any
+
 from .proto_specific import *
 
 import ttproto.core.lib.inet.all

@@ -61,9 +61,7 @@ from ttproto.utils.version_git import get_git_version
 from collections import OrderedDict
 
 
-
-
-#import the specifics for the protocol to be tested
+# import the specifics for the protocol to be tested
 from . import proto_specific
 
 # small hack to allow participants running a server on non standard ports:
@@ -79,7 +77,6 @@ TESTCASES_SUBDIR = '/ttproto/ts_coap/testcases'
 # TODO abstract classes?
 TestCase = proto_specific.CoAPTestcase
 Tracker = proto_specific.CoAPTracker
-
 
 class Resolver:
     __cache = {}
@@ -259,33 +256,54 @@ def analyse_file (filename):
 
     #   print (pair_results)
 
-
-def dissect_frames_json (filename, return_only_coap):
-
-    import json
-
-    # read the frame
-    # TODO: filter uninteresting frames ? (to decrease the load)
-    with Data.disable_name_resolution():
-        frames = Frame.create_list (PcapReader (filename))
-        response={}
-
-        if return_only_coap:
-            selected_frames = [f for f in frames if f.coap]
-        else:
-            selected_frames = frames
-
-        for f in selected_frames:
-                response[f.id] = [f.msg.summary()]
-        json_response = json.dumps(response, indent = 4)
-
-        # malformed frames
-        #malformed = list (filter ((lambda f: f.exc), frames))
-    return json_response
-
-
 reg_frame = re.compile ("<Frame  *(\d+):")
 reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
+
+
+def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
+    testcases, _ = get_testcases()
+    my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
+
+    if regex is not None:
+        try:
+            re_regex = re.compile (regex, re.I)
+        except Exception as e:
+            return "Error: regular expression %r is invalid (%s)" % (regex, e)
+
+    my_testcases = list (filter ((lambda t: re_regex.search(t.__name__)), my_testcases))
+
+    if not my_testcases:
+        return "regular expression %r did not yield any testcase" % regex
+    force = len (my_testcases) == 1
+
+    with Data.disable_name_resolution():
+        frames = Frame.create_list (PcapReader (filename))
+
+        # malformed frames
+        malformed = list (filter ((lambda f: f.exc), frames))
+        tracker = Tracker (frames)
+        conversations = tracker.conversations
+        ignored = tracker.ignored_frames
+        #   sys.exit(1)
+        #   conversations, ignored = extract_coap_conversations (frames)
+        conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
+        results_by_pair = {}
+        results = []
+        #TODO implement this more efficiently
+        for pair, conversations in conversations_by_pair.items():
+            pair_results = []
+            pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
+            for tc_type in my_testcases:
+                tc_results = []
+                for tr in conversations:
+                    tc = tc_type (tr, urifilter, force)
+                    if tc.verdict:
+                        tc_results.append (tc)
+                        results.append((type(tc).__name__,tc.verdict))
+                        # remember the exception
+                    pair_results.append (tc_results)
+
+        return results
 
 
 def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):
@@ -571,50 +589,33 @@ c.className=%s;
                 g.hr()
 
 
-def analyse_file_rest_api(filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):
-    testcases, _ = get_testcases()
-    my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
+def basic_dissect_pcap_to_json (filename, return_only_coap):
+    """
 
-    if regex is not None:
-        try:
-            re_regex = re.compile (regex, re.I)
-        except Exception as e:
-            return "Error: regular expression %r is invalid (%s)" % (regex, e)
+    :param filename:
+    :param return_only_coap:
+    :return: json object with basic info about frames
+    """
 
-    my_testcases = list (filter ((lambda t: re_regex.search(t.__name__)), my_testcases))
 
-    if not my_testcases:
-        return "regular expression %r did not yield any testcase" % regex
-    force = len (my_testcases) == 1
-
+    # read the frame
+    # TODO: filter uninteresting frames ? (to decrease the load)
     with Data.disable_name_resolution():
         frames = Frame.create_list (PcapReader (filename))
+        response={}
+
+        if return_only_coap:
+            selected_frames = [f for f in frames if f.coap]
+        else:
+            selected_frames = frames
+
+        for f in selected_frames:
+                response[f.id] = [f.msg.summary()]
+        json_response = json.dumps(response, indent = 4)
 
         # malformed frames
-        malformed = list (filter ((lambda f: f.exc), frames))
-        tracker = Tracker (frames)
-        conversations = tracker.conversations
-        ignored = tracker.ignored_frames
-        #   sys.exit(1)
-        #   conversations, ignored = extract_coap_conversations (frames)
-        conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
-        results_by_pair = {}
-        results = []
-        #TODO implement this more efficiently
-        for pair, conversations in conversations_by_pair.items():
-            pair_results = []
-            pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
-            for tc_type in my_testcases:
-                tc_results = []
-                for tr in conversations:
-                    tc = tc_type (tr, urifilter, force)
-                    if tc.verdict:
-                        tc_results.append (tc)
-                        results.append((type(tc).__name__,tc.verdict))
-                        # remember the exception
-                    pair_results.append (tc_results)
-
-        return results
+        #malformed = list (filter ((lambda f: f.exc), frames))
+    return json_response
 
 
 def dissect_pcap_to_json(filename, protocol_selection=None):
@@ -675,7 +676,7 @@ def value_to_list(l: list, value: Value , extra_data=None, layer_dict:dict=None)
         layer_dict[extra_data] = str(value)
 
 
-def pcap_to_list( PCAP_file, add_header=True, protocol_selection=None):
+def pcap_to_list(pcap_file, add_header=True, protocol_selection=None):
 
     if protocol_selection:
         assert issubclass(protocol_selection,PacketValue)
@@ -686,7 +687,7 @@ def pcap_to_list( PCAP_file, add_header=True, protocol_selection=None):
     # for speeding up the process
     with Data.disable_name_resolution():
 
-        frames = Frame.create_list(PcapReader(PCAP_file))
+        frames = Frame.create_list(PcapReader(pcap_file))
 
 
         for f in frames:
@@ -708,15 +709,18 @@ def pcap_to_list( PCAP_file, add_header=True, protocol_selection=None):
                 parent_lst.append(lst)
     return parent_lst
 
-if __name__ == '__main__':
-    #from ttproto.ts_coap.analysis import Frame, PcapReader
-    PCAP = getcwd() + '/tests/test_dumps/two_coap_frames_get_NON.pcap'
-    #frames = Frame.create_list(PcapReader(PCAP))
-    #values = (frames[217].msg.get_value())
-    #value_to_list(l,values)
-    #print(json.dumps(l, indent= 2 ), )
-    print(dissect_pcap_to_json(PCAP, CoAP))
 
-    #not working now :/
+################################################################################
+# Main()
+################################################################################
+
+if __name__ == "__main__":
+
+    PCAP_error = '/Users/fsismondi/git/pcap-dumps/dumps CoAP online test tool/data/'+'150713_204439_0065.dump'
+    PCAP_test =  '/Users/fsismondi/Desktop/two_coap_frames_get_NON.pcap'
+    #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
+    #print(dissect_pcap_to_json(PCAP_test, CoAP))
+    log(analyse_file(PCAP_error))
+
 
 
