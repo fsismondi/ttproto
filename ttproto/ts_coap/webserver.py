@@ -44,6 +44,7 @@ import select
 import subprocess
 import cgi
 import cgitb
+import json
 import email.feedparser
 import email.message
 from . import analysis
@@ -59,6 +60,21 @@ LOGDIR = "log"
 CHANGELOG = []
 
 CHANGELOG_FIRST_COMMIT = "iot2-beta"
+
+
+# ########################## ttproto API ########################### #
+
+def api_error(message):
+    """
+        Function for generating a json error
+    """
+    return {
+        ".ok": False,
+        ".type": "error",
+        ".value": message
+    }
+
+# ######################## End of API part ######################### #
 
 
 def prepare_changelog():
@@ -251,40 +267,41 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "text/html;charset=utf-8")
+            self.send_header("Content-Type", "application/json;charset=utf-8")
             self.end_headers()
-
-            # Get the parameters
-            params = parse_qs(url.query)
-            if len(params) != 1 or 'testcase_id' not in params:
-                self.send_error(400)  # Bad request format
-                return
-
-            # Check the value of the testcase_id passed
-            if len(params['testcase_id']) != 1:
-                self.send_error(400)  # Bad request format
-                return
-
-            # Get the id of the test case then
-            testcase_id = params['testcase_id'][0]
-
-            # Check that the parameter is a string representing an integer
-            if not testcase_id.isdigit():
-                self.send_error(400)  # Bad request format
-                return
-
-            # Format the id before passing it to the process function
-            testcase_id = int(testcase_id)
-
-            # Here we will prepare the Json file to send
-            json = {}
 
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
-            # Print the json result
-            print("The id of the tc is %s" % params)
-            print("The id of the tc is %d" % testcase_id)
+            # Get the parameters
+            params = parse_qs(url.query)
+            try:
+
+                # Correct execution
+                if all((
+                    len(params) == 1,
+                    'testcase_id' in params,
+                    len(params['testcase_id']) == 1,
+                    params['testcase_id'][0].isdigit()
+                )):
+                    # Format the id before passing it to the process function
+                    testcase_id = int(params['testcase_id'][0])
+
+                    # Here the process from ttproto core
+                    json_results = params
+
+                # Error
+                else:
+                    raise
+
+            # Catch errors (key mostly) or if wrong parameter
+            except:
+                json_results = api_error(
+                    'Incorrects parameters expected \'?testcase_id=[integer]\''
+                )
+
+            # Dump the json result
+            print(json.dumps(json_results))
             return
 
         # GET handler for the get_frame uri
@@ -302,37 +319,41 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "text/html;charset=utf-8")
+            self.send_header("Content-Type", "application/json;charset=utf-8")
             self.end_headers()
-
-            # Get the parameters
-            params = parse_qs(url.query)
-            if len(params) != 1 or 'frame_id' not in params:
-                self.send_error(400)  # Bad request format
-                return
-
-            # Check the value of the frame_id passed
-            if len(params['frame_id']) != 1:
-                self.send_error(400)  # Bad request format
-                return
-
-            # Get the id of the test case then
-            frame_id = params['frame_id'][0]
-
-            # Check that the parameter is a string representing an integer
-            if not frame_id.isdigit():
-                self.send_error(400)  # Bad request format
-                return
-
-            # Format the id before passing it to the process function
-            frame_id = int(frame_id)
-
-            # Here we will prepare the Json file to send
-            json = {}
 
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-            print("<h1>This is a test!</h1>")
+
+            # Get the parameters
+            params = parse_qs(url.query)
+            try:
+
+                # Correct execution
+                if all((
+                    len(params) == 1,
+                    'frame_id' in params,
+                    len(params['frame_id']) == 1,
+                    params['frame_id'][0].isdigit()
+                )):
+                    # Format the id before passing it to the process function
+                    frame_id = int(params['frame_id'][0])
+
+                    # Here the process from ttproto core
+                    json_results = params
+
+                # Error
+                else:
+                    raise
+
+            # Catch errors (key mostly) or if wrong parameter
+            except:
+                json_results = api_error(
+                    'Incorrects parameters expected \'?frame_id=[integer]\''
+                )
+
+            # Dump the json result
+            print(json.dumps(json_results))
             return
 
         # ######################## End of API part ######################### #
@@ -459,6 +480,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # \param pcap_file => The pcap file that we want to analyse
         # \param testcase_id => The id of the corresponding test case
+        #
         if self.path == '/api/v1/testcase_analyse':
 
             # Request binded
@@ -469,12 +491,53 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'text/html;charset=utf-8')
             self.end_headers()
 
+            # Parse headers
+            headers = cgi.parse_header(self.headers['Content-Type'])
+
+            # Check the content type
+            if headers[0] != 'multipart/form-data':
+                self.send_error(400)  # Bad request format
+                return
+
+            # Get post values
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                keep_blank_values=True,
+                environ={
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': self.headers['Content-Type']
+                })
+            print(form)
+
+            # Check that we have the two values
+            if len(form) != 2 \
+                or 'pcap_file' not in form \
+                    or 'testcase_id' not in form:
+                self.send_error(400)  # Bad request format
+                return
+
+            # Check the testcase_id value
+            testcase_id = form.getvalue('testcase_id')
+            if any(
+                isinstance(testcase_id, list),
+                not testcase_id.isdigit()
+            ):
+                self.send_error(400)  # Bad request format
+                return
+
+            # Get the value
+            testcase_id = int(testcase_id)
+
+            # Get the pcap file
+            pcap_file = form.getvalue('pcap_file')
+            print(pcap_file)
+
             # Here we will analyse the pcap file and get the results as json
             results = {}
 
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-            print("<h1>This is a test!</h1>")
             return
 
         # POST handler for the frames_dissect uri
@@ -482,6 +545,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # \param pcap_file => The pcap file that we want to dissect
         # \param protocol_selection => The protocol name (optional)
+        #
         if self.path == '/api/v1/frames_dissect':
 
             # Request binded
