@@ -68,11 +68,11 @@ def api_error(message):
     """
         Function for generating a json error
     """
-    return {
+    print(json.dumps({
         ".ok": False,
         ".type": "error",
         ".value": message
-    }
+    }))
 
 # ######################## End of API part ######################### #
 
@@ -278,30 +278,26 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
 
                 # Correct execution
-                if all((
-                    len(params) == 1,
-                    'testcase_id' in params,
-                    len(params['testcase_id']) == 1,
-                    params['testcase_id'][0].isdigit()
+                if any((
+                    len(params) != 1,
+                    'testcase_id' not in params,
+                    len(params['testcase_id']) != 1,
+                    not params['testcase_id'][0].isdigit()
                 )):
-                    # Format the id before passing it to the process function
-                    testcase_id = int(params['testcase_id'][0])
-
-                    # Here the process from ttproto core
-                    json_results = params
-
-                # Error
-                else:
                     raise
 
             # Catch errors (key mostly) or if wrong parameter
             except:
-                json_results = api_error(
+                api_error(
                     'Incorrects parameters expected \'?testcase_id=[integer]\''
                 )
+                return
 
-            # Dump the json result
-            print(json.dumps(json_results))
+            # Format the id before passing it to the process function
+            testcase_id = int(params['testcase_id'][0])
+
+            # Here the process from ttproto core
+            print(json.dumps(params))
             return
 
         # GET handler for the get_frame uri
@@ -330,27 +326,26 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
 
                 # Correct execution
-                if all((
-                    len(params) == 1,
-                    'frame_id' in params,
-                    len(params['frame_id']) == 1,
-                    params['frame_id'][0].isdigit()
+                if any((
+                    len(params) != 1,
+                    'frame_id' not in params,
+                    len(params['frame_id']) != 1,
+                    not params['frame_id'][0].isdigit()
                 )):
-                    # Format the id before passing it to the process function
-                    frame_id = int(params['frame_id'][0])
-
-                    # Here the process from ttproto core
-                    json_results = params
-
-                # Error
-                else:
                     raise
 
             # Catch errors (key mostly) or if wrong parameter
             except:
-                json_results = api_error(
+                api_error(
                     'Incorrects parameters expected \'?frame_id=[integer]\''
                 )
+                return
+
+            # Format the id before passing it to the process function
+            frame_id = int(params['frame_id'][0])
+
+            # Here the process from ttproto core
+            json_results = params
 
             # Dump the json result
             print(json.dumps(json_results))
@@ -488,15 +483,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header('Content-Type', 'text/html;charset=utf-8')
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
             # Parse headers
             headers = cgi.parse_header(self.headers['Content-Type'])
 
             # Check the content type
             if headers[0] != 'multipart/form-data':
-                self.send_error(400)  # Bad request format
+                print(json.dumps(api_error(
+                    'POST format of \'multipart/form-data\' expected'
+                )))
                 return
 
             # Get post values
@@ -511,11 +511,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(form)
 
             # Check that we have the two values
-            if len(form) != 2 \
-                or 'pcap_file' not in form \
-                    or 'testcase_id' not in form:
-                self.send_error(400)  # Bad request format
-                return
+            if any((
+                len(form) != 2,
+                'pcap_file' not in form,
+                'testcase_id' not in form
+            )):
+                json_results = api_error(
+                    'Expected \'testcase_id\' and \'pcap_file\' form fields'
+                )
 
             # Check the testcase_id value
             testcase_id = form.getvalue('testcase_id')
@@ -523,7 +526,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 isinstance(testcase_id, list),
                 not testcase_id.isdigit()
             ):
-                self.send_error(400)  # Bad request format
+                self.send_error(400)
                 return
 
             # Get the value
@@ -535,9 +538,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Here we will analyse the pcap file and get the results as json
             results = {}
-
-            # Bind the stdout to the http output
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
             return
 
         # POST handler for the frames_dissect uri
