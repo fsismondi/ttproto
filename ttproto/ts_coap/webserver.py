@@ -300,7 +300,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             g("%s" % analysis.TOOL_VERSION)
             with g.br():  # FIXME: bug generator
                 pass
-            with g.form(method="POST", action="testcase_analyse", enctype="multipart/form-data"):
+            with g.form(method="POST", action="submit", enctype="multipart/form-data"):
                 g("This tool(more details at ")
                 g.a("www.irisa.fr/tipi", href="http://www.irisa.fr/tipi/wiki/doku.php/passive_validation_tool_for_coap")
                 g(") allows executing CoAP interoperability test suites(see below Available Test Scenarios) on the provided traces of CoAP Client-Server interactions.")
