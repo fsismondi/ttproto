@@ -11,6 +11,12 @@
 		<!-- Latest compiled and minified JavaScript -->
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
+		<!-- React scripts -->
+		<script src="https://fb.me/react-15.1.0.js"></script>
+		<script src="https://fb.me/react-dom-15.1.0.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.6.16/browser.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.5/marked.min.js"></script>
+
 		<!-- Latest compiled and minified CSS -->
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous" />
 
@@ -55,60 +61,10 @@
 			</div>
 		</div>
 
-		<div class="container">
+		<div class="container" id="content" />
 
-			<div class="row">
-
-				<form action="pcap-processing" method="post" enctype="multipart/form-data">
-
-					<div class="col-sm-6">
-
-						<div class="page-header">
-							<h1>Pcap file to analyse</h1>
-						</div>
-
-						<div class="input-group">
-							<span class="input-group-addon">Enter your pcap file</span>
-							<input type="file" class="form-control" name="pcap" />
-						</div>
-
-					</div>
-
-					<div class="col-sm-6">
-
-						<div class="page-header">
-							<h1>Analyse options</h1>
-						</div>
-
-						<div class="input-group" >
-							<span class="input-group-addon" >Frame number</span>
-							<input class="form-control" type="text" name="frame-number" placeholder="Enter a frame number if only one wanted" />
-						</div>
-
-						<div style="text-align: center;">
-
-							<div class="btn-group" data-toggle="buttons">
-								<label class="btn btn-info active">
-									<input type="radio" id="analyse-option" autocomplete="off" name="options" value="analyse" checked /> Analyse
-								</label>
-								<label class="btn btn-info">
-									<input type="radio" id="dissect-option" autocomplete="off" name="options" value="dissect" /> Dissect
-								</label>
-							</div>
-
-						</div>
-
-					</div>
-
-					<p style="text-align: center;">
-						<input type="submit" value="Execute" class="btn btn-success centered-block" />
-					</p>
-
-				</form>
-
-			</div>
-
-		</div>
+		<!-- React.js implementation script -->
+		<script type="text/babel" src="react-gui.js"></script>
 
 	</body>
 </html>
