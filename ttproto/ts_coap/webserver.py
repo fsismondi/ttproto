@@ -50,6 +50,7 @@ import email.message
 from . import analysis
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
+from ttproto.core.lib.inet import coap
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 
 
@@ -593,50 +594,31 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             form = cgi.FieldStorage(
                 fp=self.rfile,
                 headers=self.headers,
-                keep_blank_values=True,
                 environ={
                     'REQUEST_METHOD': 'POST',
                     'CONTENT_TYPE': self.headers['Content-Type']
                 })
             # print(form)
 
-            # If we only have the pcap_file value
-            if len(form) == 1:
-                if 'pcap_file' not in form:
-                    api_error('Expected \'pcap_file\' form fields')
-                    return
-
-            # If we have the pcap_file and the protocol_selection values
-            elif len(form) == 2:
-
-                # Check the parameters passed
-                if any((
-                    'pcap_file' not in form,
-                    'protocol_selection' not in form
-                )):
-                    api_error(
-                        'Expected \'pcap_file\' and protocol_selection form fields'
-                    )
-                    return
-
-                # If good parameters
-                else:
-
-                    # Check the protocol_selection value
-                    protocol_selection = form.getvalue('protocol_selection')
-                    if any((
-                        isinstance(protocol_selection, list),
-                        not protocol_selection.isdigit()
-                    )):
-                        api_error(
-                            '\'protocol_selection\' POST value should be an integer'
-                        )
-                        return
-
-            # Wrong number of parameters
-            else:
+            # Check the parameters passed
+            if any((
+                len(form) != 2,
+                'pcap_file' not in form,
+                'protocol_selection' not in form
+            )):
                 api_error(
-                    'Incorrects parameters expected \'?frame_id=[integer]\''
+                    'Expected \'pcap_file\' and protocol_selection form fields'
+                )
+                return
+
+            # Check the protocol_selection value
+            protocol_selection = form.getvalue('protocol_selection')
+            if protocol_selection != '' and any((
+                isinstance(protocol_selection, list),
+                not protocol_selection.isdigit()
+            )):
+                api_error(
+                    '\'protocol_selection\' POST value should be an integer'
                 )
                 return
 
@@ -655,10 +637,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
 
+            # Think about adding the header of the responses
+
             # Here we will analyse the pcap file and get the results as json
-            print(json.dumps({
-                "protocol_selection": protocol_selection
-            }))
+            # print(analysis.dissect_pcap_to_json(pcap_path, coap.CoAP))
+            print(analysis.dissect_pcap_to_json(pcap_path, None))
             return
 
         # ######################## End of API part ######################### #
