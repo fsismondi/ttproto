@@ -1,3 +1,15 @@
+// ############### Some parameters ###############
+
+/*var baseUrl = 'http://127.0.0.1:2080';
+var analyseUrl = '/api/v1/testcase_analyse';
+var dissectUrl = '/api/v1/frames_dissect';
+var getTestCasesUrl = '/api/v1/get_testcases';*/
+var baseUrl = 'http://127.0.0.1:8000';
+var analyseUrl = '/api/v1/testcase_analyse';
+var dissectUrl = '/api/v1/frames_dissect';
+var getTestCasesUrl = '/test_cases.json';
+
+
 // ############### React code ###############
 
 // A renderer for the radio buttons
@@ -9,12 +21,13 @@ var RadioButton = React.createClass({
 	render: function() {
 		var selected = (this.props.currentAction == this.props.inputValue);
 		return (
-			<label className={ (selected) ? 'btn btn-info' : 'btn btn-info' } onClick={this.props.switchAction} value={this.props.inputValue} >
-				<input type="radio" checked={selected} id={this.props.inputValue} name={this.props.inputName} value={this.props.inputValue} /> {this.props.inputText}
+			<label className={ (selected) ? 'btn btn-info active' : 'btn btn-info' } onClick={this.props.switchAction} value={this.props.inputValue} >
+				<input type="radio" checked={selected} id={this.props.inputValue} name={this.props.inputName} value={this.props.inputValue} onChange={function(){}} /> {this.props.inputText}
 			</label>
 		);
 	}
 });
+
 
 
 // A renderer for the input groups
@@ -44,8 +57,62 @@ var InputGroupBloc = React.createClass({
 });
 
 
+
+// A renderer for the select group
+var SelectGroupBloc = React.createClass({
+
+	/**
+	 * Render function for InputGroupBloc
+	 */
+	render: function() {
+
+		// Analyse action
+		if (this.props.currentAction == 'analyse') {
+			var optionInputName = 'testcase_id';
+			var optionAddonText = 'Test case';
+
+			// For the moment, only this part is done
+			return (
+				<div className="input-group">
+					<span className="input-group-addon" data-toggle="tooltip" data-placement="left" title="Hey hi">{optionAddonText}</span>
+					<select name="cars" className="form-control">
+						{
+							this.props.testCases.map(function(tc){
+								return (
+									<option value={tc[0]} data-toggle="tooltip" data-placement="left" title="Hey hi" >{tc[0]}</option>
+								);
+							})
+						}
+					</select>
+				</div>
+			);
+		}
+
+		// TODO: Dissect options
+	}
+});
+
+
+
 // The FormBloc renderer
 var FormBloc = React.createClass({
+
+	/**
+	 * Get the list of test cases from the server
+	 */
+	loadTestCases: function() {
+		$.ajax({
+			url: this.props.baseUrl + getTestCasesUrl,
+			dataType: 'json',
+			success: function(data) {
+				this.setState({testCases: data});
+			}.bind(this),
+			error: function(xhr, status, err) {
+				console.error(this.props.url, status, err.toString());
+			}.bind(this)
+		});
+	},
+
 
 	/**
 	 * Handler for when the user change the action (dissect or analyse)
@@ -56,11 +123,20 @@ var FormBloc = React.createClass({
 
 
 	/**
+	 * Function thrown after the element is fully loaded
+	 */
+	componentDidMount: function() {
+		this.loadTestCases();
+	},
+
+
+	/**
 	 * Getter of the initial state for parameters
 	 */
 	getInitialState: function() {
 		return {
-			action: 'analyse'
+			action: 'analyse',
+			testCases: []
 		};
 	},
 
@@ -70,27 +146,18 @@ var FormBloc = React.createClass({
 	 */
 	render: function() {
 
-		// The things that will change in the view
-		var url = 'http://127.0.0.1:2080';
-		var fileTitle = 'Pcap field to ' + this.state.action;
-		var optionsTitle = '';
-		var optionInputName = '';
-		var optionAddonText = '';
-
-		// Analyse action
+		// The things that will change in the view in function of the current action
 		if (this.state.action == 'analyse') {
-			url += '/api/v1/testcase_analyse';
-			optionsTitle = 'Analysis options';
-			optionInputName = 'testcase_id';
-			optionAddonText = 'Please choose a test case';
-
-		// Dissect action
+			var url = this.props.baseUrl + analyseUrl;
+			var optionsTitle = 'Analysis options';
+			var selectOptions = <SelectGroupBloc currentAction={this.state.action} testCases={this.state.testCases} />;
 		} else {
-			url += '/api/v1/frames_dissect';
-			optionsTitle = 'Dissection options';
-			optionInputName = 'protocol_selection';
-			optionAddonText = 'Please choose a protocol';
+			var url = this.props.baseUrl + dissectUrl;
+			var optionsTitle = 'Dissection options';
+			var selectOptions = null;
 		}
+		
+		var fileTitle = 'Pcap field to ' + this.state.action;
 
 		return (
 			<form action={url} method="post" enctype="multipart/form-data">
@@ -106,6 +173,8 @@ var FormBloc = React.createClass({
 						<h1>{optionsTitle}</h1>
 					</div>
 					<InputGroupBloc inputName="frame-number" inputType="text" addonText="Frame number" textOnLeft={true} inputPlaceholder="Enter a frame number if only one wanted" />
+
+					{selectOptions}
 
 					<div style={{textAlign: 'center'}}>
 						<div className="btn-group" data-toggle="buttons" >
@@ -124,8 +193,8 @@ var FormBloc = React.createClass({
 });
 
 
-// The PcapForm renderer
-var PcapForm = React.createClass({
+// The PcapUtility renderer
+var PcapUtility = React.createClass({
 
 	/**
 	 * Render function for PcapForm
@@ -133,14 +202,24 @@ var PcapForm = React.createClass({
 	render: function() {
 		return (
 			<div className="row">
-				<FormBloc />
+				<FormBloc baseUrl={baseUrl} />
 			</div>
 		);
 	}
 });
 
 
+
 ReactDOM.render(
-	<PcapForm />,
+	<PcapUtility />,
 	document.getElementById('content')
 );
+
+
+
+// ############### Extern code ###############
+
+// Activate bootstrap's tooltip
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+});

@@ -301,6 +301,31 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(params))
             return
 
+        # GET handler for the get_testcases uri
+        # It will give to the gui the list of the test cases
+        #
+        elif url.path == '/api/v1/get_testcases':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # TODO: Maybe a light method to get only the names ?
+
+            # Own function to clean the datas received
+            raw_test_cases = analysis.get_implemented_testcases()
+            clean_test_cases = []  # Dict of (tc_id, tc_desc)
+            for raw_tc in raw_test_cases:
+                clean_test_cases.append({raw_tc[0]: raw_tc[1]})
+
+            # Just give the json representation of the test cases list
+            print(json.dumps(clean_test_cases))
+            return
+
         # GET handler for the get_frame uri
         # It will allow a user to get a single frame from the previous pcap
         #
