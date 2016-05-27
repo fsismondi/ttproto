@@ -1,13 +1,9 @@
 // ############### Some parameters ###############
 
-/*var baseUrl = 'http://127.0.0.1:2080';
+var baseUrl = 'http://127.0.0.1:2080';
 var analyseUrl = '/api/v1/testcase_analyse';
 var dissectUrl = '/api/v1/frames_dissect';
-var getTestCasesUrl = '/api/v1/get_testcases';*/
-var baseUrl = 'http://127.0.0.1:8000';
-var analyseUrl = '/api/v1/testcase_analyse';
-var dissectUrl = '/api/v1/frames_dissect';
-var getTestCasesUrl = '/test_cases.json';
+var getTestCasesUrl = '/api/v1/get_testcases';
 
 
 // ############### React code ###############
@@ -71,15 +67,17 @@ var SelectGroupBloc = React.createClass({
 			var optionInputName = 'testcase_id';
 			var optionAddonText = 'Test case';
 
+			// console.log("TCs into SelectGroupBloc:" + this.props.testCases);
+
 			// For the moment, only this part is done
 			return (
 				<div className="input-group">
-					<span className="input-group-addon" data-toggle="tooltip" data-placement="left" title="Hey hi">{optionAddonText}</span>
+					<span className="input-group-addon" >{optionAddonText}</span>
 					<select name="cars" className="form-control">
 						{
 							this.props.testCases.map(function(tc){
 								return (
-									<option value={tc[0]} data-toggle="tooltip" data-placement="left" title="Hey hi" >{tc[0]}</option>
+									<option key={tc.name} value={tc.name} data-toggle="tooltip" data-placement="left" title={tc.desc} >{tc.name}</option>
 								);
 							})
 						}
@@ -96,6 +94,33 @@ var SelectGroupBloc = React.createClass({
 
 // The FormBloc renderer
 var FormBloc = React.createClass({
+
+	/**
+	 * Handler for the submit of the form
+	 */
+	handlePcapSubmit: function(form) {
+
+		// Bloc the "real" submit of the form, instead use this function
+		form.preventDefault();
+
+		console.log(form.currentTarget);
+		console.log("Francis POST action = " + form.currentTarget.action);
+
+		// Send the post request in ajax
+		$.ajax({
+			url: form.currentTarget.action,
+			dataType: 'jsonp',
+			type: 'POST',
+			data: [],
+			success: function(data) {
+				console.log('success');
+			}.bind(this),
+			error: function(xhr, status, err) {
+				console.error(this.props.url, status, err.toString());
+			}.bind(this)
+		});
+	},
+
 
 	/**
 	 * Get the list of test cases from the server
@@ -156,11 +181,13 @@ var FormBloc = React.createClass({
 			var optionsTitle = 'Dissection options';
 			var selectOptions = null;
 		}
+
+		// console.log(this.state.testCases);
 		
 		var fileTitle = 'Pcap field to ' + this.state.action;
 
 		return (
-			<form action={url} method="post" enctype="multipart/form-data">
+			<form action={url} method="post" enctype="multipart/form-data" onSubmit={this.handlePcapSubmit} >
 				<div className="col-sm-6">
 					<div className="page-header">
 						<h1>{fileTitle}</h1>

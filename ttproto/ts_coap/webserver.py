@@ -320,7 +320,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             raw_test_cases = analysis.get_implemented_testcases()
             clean_test_cases = []  # Dict of (tc_id, tc_desc)
             for raw_tc in raw_test_cases:
-                clean_test_cases.append({raw_tc[0]: raw_tc[1]})
+                clean_test_cases.append({'name': raw_tc[0], 'desc': raw_tc[1]})
 
             # Just give the json representation of the test cases list
             print(json.dumps(clean_test_cases))
@@ -491,9 +491,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
 
-        # Variable set to check if we managed to bind the post request
-        request_binded = False
-
         # The job counter
         global job_id
         job_id += 1
@@ -507,9 +504,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # \param testcase_id => The id of the corresponding test case
         #
         if self.path == '/api/v1/testcase_analyse':
-
-            # Request binded
-            request_binded = True
 
             # Send the header
             self.send_response(200)
@@ -592,10 +586,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # \param pcap_file => The pcap file that we want to dissect
         # \param protocol_selection => The protocol name (optional)
         #
-        if self.path == '/api/v1/frames_dissect':
-
-            # Request binded
-            request_binded = True
+        elif self.path == '/api/v1/frames_dissect':
 
             # Send the header
             self.send_response(200)
@@ -671,10 +662,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         # ######################## End of API part ######################### #
 
-        if (self.path == "/submit"):
-
-            # Request binded
-            request_binded = True
+        elif (self.path == "/submit"):
 
             if os.fork():
                 # close the socket right now(because the
@@ -781,7 +769,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             shutdown()
 
         # If we didn't manage to bind the request
-        if not request_binded:
+        else:
             self.send_error(404)
             return
 
