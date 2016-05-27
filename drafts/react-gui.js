@@ -8,10 +8,9 @@ var RadioButton = React.createClass({
 	 */
 	render: function() {
 		var selected = (this.props.currentAction == this.props.inputValue);
-		console.log('selected = ' + selected);
 		return (
-			<label className={ (selected) ? 'btn btn-info' : 'btn btn-info' } >
-				<input type="radio" id={this.props.inputValue} name={this.props.inputName} checked={selected} value={this.props.inputValue} onChange={this.props.switchAction} /> {this.props.inputText}
+			<label className={ (selected) ? 'btn btn-info' : 'btn btn-info' } onClick={this.props.switchAction} value={this.props.inputValue} >
+				<input type="radio" checked={selected} id={this.props.inputValue} name={this.props.inputName} value={this.props.inputValue} /> {this.props.inputText}
 			</label>
 		);
 	}
@@ -48,11 +47,13 @@ var InputGroupBloc = React.createClass({
 // The FormBloc renderer
 var FormBloc = React.createClass({
 
+	/**
+	 * Handler for when the user change the action (dissect or analyse)
+	 */
 	switchAction: function(optionChoosed) {
-		this.state.action = optionChoosed.currentTarget.value;
-		console.log("Action = " + optionChoosed.currentTarget.value);
-		console.log("New action = " + this.state.action);
+		this.setState({action: optionChoosed.currentTarget.value});
 	},
+
 
 	/**
 	 * Getter of the initial state for parameters
@@ -62,6 +63,7 @@ var FormBloc = React.createClass({
 			action: 'analyse'
 		};
 	},
+
 
 	/**
 	 * Render function for FormBloc
@@ -106,7 +108,7 @@ var FormBloc = React.createClass({
 					<InputGroupBloc inputName="frame-number" inputType="text" addonText="Frame number" textOnLeft={true} inputPlaceholder="Enter a frame number if only one wanted" />
 
 					<div style={{textAlign: 'center'}}>
-						<div className="" >
+						<div className="btn-group" data-toggle="buttons" >
 							<RadioButton inputName="options" inputValue="analyse" inputText="Analyse" currentAction={this.state.action} switchAction={this.switchAction} />
 							<RadioButton inputName="options" inputValue="dissect" inputText="Dissect" currentAction={this.state.action} switchAction={this.switchAction} />
 						</div>
