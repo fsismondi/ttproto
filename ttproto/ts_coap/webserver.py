@@ -615,18 +615,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
+            # Get the content type
+            content_type = cgi.parse_header(self.headers['Content-Type'])
+            content_type = content_type[0]
+
             # Check headers
-            if self.headers['Content-Type'] is None:
-                api_error(
-                    'POST format of \'multipart/form-data\' expected'
-                )
-                return
-
-            # Parse headers
-            headers = cgi.parse_header(self.headers['Content-Type'])
-
-            # Check the content type
-            if headers[0] != 'multipart/form-data':
+            if any((
+                content_type is None,
+                content_type != 'multipart/form-data'
+            )):
                 api_error(
                     'POST format of \'multipart/form-data\' expected'
                 )
@@ -639,9 +636,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 keep_blank_values=True,
                 environ={
                     'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': self.headers['Content-Type']
+                    'CONTENT_TYPE': content_type
                 })
-            # print(form)
 
             # Check that we have the two values
             if any((
@@ -653,20 +649,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     'Expected \'testcase_id\' and \'pcap_file\' form fields'
                 )
                 return
-
-            # Check the testcase_id value
-            # testcase_id = form.getvalue('testcase_id')
-            # if any((
-            #     isinstance(testcase_id, list),
-            #     not testcase_id.isdigit()
-            # )):
-            #     api_error(
-            #         '\'testcase_id\' POST value should be an integer'
-            #     )
-            #     return
-
-            # # Get the value
-            # testcase_id = int(testcase_id)
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
@@ -683,10 +665,17 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
 
+            # Prepare the result to return
+            json_result = {
+                'ok': True,
+                'type': 'verdict',
+                'value': {
+                    # TODO: Put the results of function calls here
+                }
+            }
+
             # Here we will analyse the pcap file and get the results as json
-            print(json.dumps({
-                "testcase_id": testcase_id
-            }))
+            print(json.dumps(json_result))
             return
 
         # POST handler for the frames_dissect uri
@@ -705,18 +694,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
+            # Get the content type
+            content_type = cgi.parse_header(self.headers['Content-Type'])
+            content_type = content_type[0]
+
             # Check headers
-            if self.headers['Content-Type'] is None:
-                api_error(
-                    'POST format of \'multipart/form-data\' expected'
-                )
-                return
-
-            # Parse headers
-            headers = cgi.parse_header(self.headers['Content-Type'])
-
-            # Check the content type
-            if headers[0] != 'multipart/form-data':
+            if any((
+                content_type is None,
+                content_type != 'multipart/form-data'
+            )):
                 api_error(
                     'POST format of \'multipart/form-data\' expected'
                 )
@@ -728,7 +714,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 headers=self.headers,
                 environ={
                     'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': self.headers['Content-Type']
+                    'CONTENT_TYPE': content_type
                 })
             # print(form)
 
@@ -743,27 +729,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
-            # # Check the protocol_selection value if it was an interger
-            # protocol_selection = form.getvalue('protocol_selection')
-            # if protocol_selection != '' and any((
-            #     isinstance(protocol_selection, list),
-            #     not protocol_selection.isdigit()
-            # )):
-            #     api_error(
-            #         '\'protocol_selection\' POST value should be an integer'
-            #     )
-            #     return
-
             # Check the protocol_selection value
             protocol_selection = form.getvalue('protocol_selection')
-            if any(
-                protocol_selection == '',
-                isinstance(protocol_selection, list)
-            ):
-                api_error(
-                    '\'protocol_selection\' POST value should be a string'
-                )
-                return
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
@@ -790,7 +757,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'ok': True,
                 'type': 'frame_list',
                 'value': {
-                    analysis.dissect_pcap_to_json(pcap_path, protocol)
+                    # TODO: Put the results of function calls here
                 }
             }
 

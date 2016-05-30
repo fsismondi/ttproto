@@ -173,8 +173,9 @@ var FormBloc = React.createClass({
 		// Send the post request in ajax
 		$.ajax({
 			url: url,
-			dataType: 'json',
 			type: 'POST',
+			processData: false,
+			contentType: 'multipart/form-data',
 			data: [],
 			success: function(data) {
 				checkError('POST request on ' + url, data);
