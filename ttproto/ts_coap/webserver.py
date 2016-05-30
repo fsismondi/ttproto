@@ -70,9 +70,9 @@ def api_error(message):
         Function for generating a json error
     """
     print(json.dumps({
-        ".ok": False,
-        ".type": "error",
-        ".value": message
+        'ok': False,
+        'type': 'error',
+        'value': message
     }))
 
 # ######################## End of API part ######################### #
@@ -325,7 +325,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Try to get the test case
             try:
-                test_case = analysis.get_implemented_testcases(testcase_id)
+                test_cases = analysis.get_implemented_testcases(testcase_id)
             except FileNotFoundError:
                 api_error(
                     'No test case with the id %s' % testcase_id
@@ -340,8 +340,26 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
+            print(test_cases)
+            if (len(test_cases) != 1):
+                api_error(
+                    'TC %s is not unique' % testcase_id
+                )
+                return
+
+            # The result to return
+            json_result = {
+                'ok': True,
+                'type': 'testcase_implementation',
+                'value': {
+                    'name': test_cases[0][0],
+                    'description': test_cases[0][1],
+                    'implementation': test_cases[0][2]
+                }
+            }
+
             # Here the process from ttproto core
-            print(json.dumps(test_case))
+            print(json.dumps(json_result))
             return
 
         # GET handler for the get_testcases uri
@@ -362,15 +380,48 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             clean_test_cases = []  # Dict of (tc_id, tc_desc)
             for raw_tc in raw_test_cases:
                 clean_test_cases.append({
-                    '.name': raw_tc[0],
-                    '.description': raw_tc[1]
+                    'name': raw_tc[0],
+                    'description': raw_tc[1]
                 })
 
             # The result to return
             json_result = {
-                '.ok': True,
-                '.type': 'testcase_list',
-                '.value': clean_test_cases
+                'ok': True,
+                'type': 'testcase_list',
+                'value': clean_test_cases
+            }
+
+            # Just give the json representation of the test cases list
+            print(json.dumps(json_result))
+            return
+
+        # GET handler for the get_protocols uri
+        # It will give to the gui the list of the protocols implemented
+        #
+        elif url.path == '/api/v1/get_protocols':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # The result to return
+            json_result = {
+                'ok': True,
+                'type': 'protocol_list',
+                'value': [
+                    {
+                        'name': 'None',
+                        'description': 'No particular protocol'
+                    },
+                    {
+                        'name': 'CoAP',
+                        'description': ''
+                    }
+                ]
             }
 
             # Just give the json representation of the test cases list
@@ -564,6 +615,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
+            # Check headers
+            if self.headers['Content-Type'] is None:
+                api_error(
+                    'POST format of \'multipart/form-data\' expected'
+                )
+                return
+
             # Parse headers
             headers = cgi.parse_header(self.headers['Content-Type'])
 
@@ -597,18 +655,18 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # Check the testcase_id value
-            testcase_id = form.getvalue('testcase_id')
-            if any((
-                isinstance(testcase_id, list),
-                not testcase_id.isdigit()
-            )):
-                api_error(
-                    '\'testcase_id\' POST value should be an integer'
-                )
-                return
+            # testcase_id = form.getvalue('testcase_id')
+            # if any((
+            #     isinstance(testcase_id, list),
+            #     not testcase_id.isdigit()
+            # )):
+            #     api_error(
+            #         '\'testcase_id\' POST value should be an integer'
+            #     )
+            #     return
 
-            # Get the value
-            testcase_id = int(testcase_id)
+            # # Get the value
+            # testcase_id = int(testcase_id)
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
@@ -647,6 +705,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
+            # Check headers
+            if self.headers['Content-Type'] is None:
+                api_error(
+                    'POST format of \'multipart/form-data\' expected'
+                )
+                return
+
             # Parse headers
             headers = cgi.parse_header(self.headers['Content-Type'])
 
@@ -678,14 +743,25 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
+            # # Check the protocol_selection value if it was an interger
+            # protocol_selection = form.getvalue('protocol_selection')
+            # if protocol_selection != '' and any((
+            #     isinstance(protocol_selection, list),
+            #     not protocol_selection.isdigit()
+            # )):
+            #     api_error(
+            #         '\'protocol_selection\' POST value should be an integer'
+            #     )
+            #     return
+
             # Check the protocol_selection value
             protocol_selection = form.getvalue('protocol_selection')
-            if protocol_selection != '' and any((
-                isinstance(protocol_selection, list),
-                not protocol_selection.isdigit()
-            )):
+            if any(
+                protocol_selection == '',
+                isinstance(protocol_selection, list)
+            ):
                 api_error(
-                    '\'protocol_selection\' POST value should be an integer'
+                    '\'protocol_selection\' POST value should be a string'
                 )
                 return
 
@@ -704,11 +780,22 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
 
-            # Think about adding the header of the responses
+            # In function of the protocol asked
+            protocol = None
+            if protocol_selection == 'CoAP':
+                protocol = coap.CoAP
+
+            # Prepare the result to return
+            json_result = {
+                'ok': True,
+                'type': 'frame_list',
+                'value': {
+                    analysis.dissect_pcap_to_json(pcap_path, protocol)
+                }
+            }
 
             # Here we will analyse the pcap file and get the results as json
-            # print(analysis.dissect_pcap_to_json(pcap_path, coap.CoAP))
-            print(analysis.dissect_pcap_to_json(pcap_path, None))
+            print(json.dumps(json_result))
             return
 
         # ######################## End of API part ######################### #
