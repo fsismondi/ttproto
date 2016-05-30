@@ -12,7 +12,12 @@ var getProtocolsUrl = '/api/v1/get_protocols';
 function checkError(errorTrigger, data) {
 
 	// Check the datas received
-	if (!data.ok && data.type == 'error') {
+	if (data && !data.ok && data.type == 'error') {
+
+		// Clear the error message displayer
+		$('#error-modal .modal-body .alert').html(
+			'<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>'
+		);
 
 		// The error message to display
 		var errorMessage = 'An error occured';
@@ -100,7 +105,7 @@ var SelectGroupBloc = React.createClass({
 							{
 								this.props.optionGroups.value.map(function(tc){
 									return (
-										<option key={tc.name} value={tc.name} data-toggle="tooltip" data-placement="left" title={tc.description} >{tc.name}</option>
+										<option key={tc.name} value={tc.name} title={tc.description} >{tc.name}</option>
 									);
 								})
 							}
@@ -132,7 +137,7 @@ var SelectGroupBloc = React.createClass({
 							{
 								this.props.optionGroups.value.map(function(tc){
 									return (
-										<option key={tc.name} value={tc.name} data-toggle="tooltip" data-placement="left" title={tc.description} >{tc.name}</option>
+										<option key={tc.name} value={tc.name} title={tc.description} >{tc.name}</option>
 									);
 								})
 							}
@@ -199,7 +204,7 @@ var FormBloc = React.createClass({
 			url: this.props.baseUrl + getTestCasesUrl,
 			dataType: 'json',
 			success: function(data) {
-				checkError()
+				checkError('the fetching the test cases', data);
 				this.setState({testCases: data});
 			}.bind(this),
 			error: function(xhr, status, err) {
@@ -212,6 +217,7 @@ var FormBloc = React.createClass({
 			url: this.props.baseUrl + getProtocolsUrl,
 			dataType: 'json',
 			success: function(data) {
+				checkError('the fetching the protocols', data);
 				this.setState({protocols: data});
 			}.bind(this),
 			error: function(xhr, status, err) {
@@ -227,8 +233,8 @@ var FormBloc = React.createClass({
 	getInitialState: function() {
 		return {
 			action: 'analyse',
-			testCases: [],
-			protocols: []
+			testCases: {ok: false},
+			protocols: {ok: false}
 		};
 	},
 
@@ -326,12 +332,3 @@ ReactDOM.render(
 	<PcapUtility />,
 	document.getElementById('content')
 );
-
-
-
-// ############### Extern code ###############
-
-// Activate bootstrap's tooltip
-$(function () {
-  $('[data-toggle="tooltip"]').tooltip()
-});
