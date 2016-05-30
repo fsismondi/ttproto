@@ -38,14 +38,14 @@ var InputGroupBloc = React.createClass({
 		if (this.props.textOnLeft) return (
 			<div className="input-group">
 				<span className="input-group-addon">{this.props.addonText}</span>
-				<input type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} />
+				<input type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} />
 			</div>
 		);
 
 		// If addon on left
 		else return (
 			<div className="input-group">
-				<input type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} />
+				<input type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} />
 				<span className="input-group-addon">{this.props.addonText}</span>
 			</div>
 		);
@@ -73,7 +73,7 @@ var SelectGroupBloc = React.createClass({
 			return (
 				<div className="input-group">
 					<span className="input-group-addon" >{optionAddonText}</span>
-					<select name="cars" className="form-control">
+					<select name="testcase_id" className="form-control">
 						{
 							this.props.testCases.map(function(tc){
 								return (
@@ -103,13 +103,12 @@ var FormBloc = React.createClass({
 		// Bloc the "real" submit of the form, instead use this function
 		form.preventDefault();
 
-		console.log(form.currentTarget);
 		console.log("Francis POST action = " + form.currentTarget.action);
 
 		// Send the post request in ajax
 		$.ajax({
 			url: form.currentTarget.action,
-			dataType: 'jsonp',
+			dataType: 'json',
 			type: 'POST',
 			data: [],
 			success: function(data) {
@@ -192,14 +191,14 @@ var FormBloc = React.createClass({
 					<div className="page-header">
 						<h1>{fileTitle}</h1>
 					</div>
-					<InputGroupBloc inputName="pcap" inputType="file" addonText="Enter your pcap file" textOnLeft={true} inputPlaceholder="" />
+					<InputGroupBloc inputName="pcap" inputType="file" addonText="Enter your pcap file" required={true} textOnLeft={true} inputPlaceholder="" />
 				</div>
 
 				<div className="col-sm-6">
 					<div className="page-header">
 						<h1>{optionsTitle}</h1>
 					</div>
-					<InputGroupBloc inputName="frame-number" inputType="text" addonText="Frame number" textOnLeft={true} inputPlaceholder="Enter a frame number if only one wanted" />
+					<InputGroupBloc inputName="frame-number" inputType="text" addonText="Frame number" required={false} textOnLeft={true} inputPlaceholder="Enter a frame number if only one wanted" />
 
 					{selectOptions}
 
