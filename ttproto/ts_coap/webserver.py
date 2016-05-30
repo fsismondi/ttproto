@@ -276,29 +276,72 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the parameters
             params = parse_qs(url.query)
+
+            # ### The id is not an integer
+            # try:
+
+            #     # Check parameters
+            #     if any((
+            #         len(params) != 1,
+            #         'testcase_id' not in params,
+            #         len(params['testcase_id']) != 1,
+            #         not params['testcase_id'][0].isdigit()
+            #     )):
+            #         raise
+
+            # # Catch errors (key mostly) or if wrong parameter
+            # except:
+            #   api_error(
+            #       'Incorrects parameters expected \'?testcase_id=[integer]\''
+            #   )
+            #     return
+
+            # # Format the id before passing it to the process function
+            # testcase_id = int(params['testcase_id'][0])
+
             try:
 
-                # Correct execution
+                # Check parameters
                 if any((
                     len(params) != 1,
                     'testcase_id' not in params,
-                    len(params['testcase_id']) != 1,
-                    not params['testcase_id'][0].isdigit()
+                    len(params['testcase_id']) != 1
                 )):
                     raise
 
             # Catch errors (key mostly) or if wrong parameter
             except:
                 api_error(
-                    'Incorrects parameters expected \'?testcase_id=[integer]\''
+                    'Incorrects parameters expected \'?testcase_id=[string]\''
                 )
                 return
 
-            # Format the id before passing it to the process function
-            testcase_id = int(params['testcase_id'][0])
+            # Get the id
+            testcase_id = params['testcase_id'][0]
+
+            # FIXME: The method throw an ImportError when it found the TC
+            # It seems that it's trying to import a module with its name
+            # CF analysis:220
+
+            # Try to get the test case
+            try:
+                test_case = analysis.get_implemented_testcases(testcase_id)
+            except FileNotFoundError:
+                api_error(
+                    'No test case with the id %s' % testcase_id
+                )
+                return
+
+            # FIXME: Don't forget to remove this block when the bug is fixed
+            except ImportError:
+                os.chdir('../../..')
+                api_error(
+                    'TC %s found but a bug is to fix' % testcase_id
+                )
+                return
 
             # Here the process from ttproto core
-            print(json.dumps(params))
+            print(json.dumps(test_case))
             return
 
         # GET handler for the get_testcases uri
@@ -314,16 +357,24 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
-            # TODO: Maybe a light method to get only the names ?
-
             # Own function to clean the datas received
             raw_test_cases = analysis.get_implemented_testcases()
             clean_test_cases = []  # Dict of (tc_id, tc_desc)
             for raw_tc in raw_test_cases:
-                clean_test_cases.append({'name': raw_tc[0], 'desc': raw_tc[1]})
+                clean_test_cases.append({
+                    '.name': raw_tc[0],
+                    '.description': raw_tc[1]
+                })
+
+            # The result to return
+            json_result = {
+                '.ok': True,
+                '.type': 'testcase_list',
+                '.value': clean_test_cases
+            }
 
             # Just give the json representation of the test cases list
-            print(json.dumps(clean_test_cases))
+            print(json.dumps(json_result))
             return
 
         # GET handler for the get_frame uri
