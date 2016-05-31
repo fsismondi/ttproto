@@ -474,6 +474,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'ok': True,
                 'content': [
                     {
+                        '_type': 'token',
+                        'value': token
+                    },
+                    {
                         '_type': 'frame',
                         'id': '',
                         'timestamp': '',
@@ -619,6 +623,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # \param pcap_file => The pcap file that we want to analyse
         # \param testcase_id => The id of the corresponding test case
+        # \param token => The token previously provided
+        # The pcap_file or the token is required, having both is also forbidden
         #
         if self.path == '/api/v1/testcase_analyse':
 
@@ -657,16 +663,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Check that we have the two values
             if any((
                 len(form) != 2,
-                'pcap_file' not in form,
-                'testcase_id' not in form
+                'testcase_id' not in form,
+                all((  # None of the two required => Error
+                    'pcap_file' not in form,
+                    'token' not in form
+                )),
+                all((  # Both of them => Error
+                    'pcap_file' in form,
+                    'token' in form
+                ))
             )):
                 api_error(
-                    'Expected \'testcase_id\' and \'pcap_file\' form fields'
+                    'Expected POST=([pcap_file|token], testcase_id)'
                 )
                 return
-
-            # Get the token
-            token = None
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
@@ -682,6 +692,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # Write the pcap file to a temporary destination
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
+
+            # Get the token
+            token = form.getvalue('token')
 
             # Generate the token if none given
             if not token:
@@ -718,7 +731,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # It will allow users to analyse a pcap file corresponding to a TC
         #
         # \param pcap_file => The pcap file that we want to dissect
+        # \param token => The token previously provided
         # \param protocol_selection => The protocol name (optional)
+        # The pcap_file or the token is required, having both is also forbidden
         #
         elif self.path == '/api/v1/frames_dissect':
 
@@ -755,17 +770,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Check the parameters passed
             if any((
-                len(form) != 2,
-                'pcap_file' not in form,
-                'protocol_selection' not in form
+                len(form) not in [1, 2],
+                all((  # None of the two required => Error
+                    'pcap_file' not in form,
+                    'token' not in form
+                )),
+                all((  # Both of them => Error
+                    'pcap_file' in form,
+                    'token' in form
+                )),
+                len(form) == 2 and 'protocol_selection' not in form
             )):
                 api_error(
-                    'Expected \'pcap_file\' and protocol_selection form fields'
+                    'Expected POST=([pcap_file|token], protocol_selection?)'
                 )
                 return
-
-            # Get the token
-            token = None
 
             # Check the protocol_selection value
             protocol_selection = form.getvalue('protocol_selection')
@@ -784,6 +803,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # Write the pcap file to a temporary destination
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
+
+            # Get the token
+            token = form.getvalue('token')
 
             # Generate the token if none given
             if not token:
