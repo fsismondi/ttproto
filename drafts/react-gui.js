@@ -145,12 +145,12 @@ var SelectGroupBloc = React.createClass({
 			);
 
 		// An error occured
-		} else {
+		} else if (typeof this.props.optionGroups === 'object') {
 			console.log('WARNING: Couldn\'t retrieve ' + optionInputName);
 			if (this.props.optionGroups && this.props.optionGroups._type == 'error' && !this.props.optionGroups.ok)
 				console.log('More informations: ' + this.props.optionGroups.value);
-			return null;
 		}
+		return null;
 	}
 });
 
@@ -220,7 +220,7 @@ var FormBloc = React.createClass({
 		var output = new FormData();
 
 		// Analyse or dissect
-		if (this.state.action == 'analyse') output.append('testcase_id', $("input[name=testcase_id]").val());
+		if (this.state.action == 'analyse') output.append('testcase_id', $("select[name=testcase_id]").val());
 		else output.append('protocol_selection', $("input[name=protocol_selection]").val());
 
 		// The token or the file
@@ -310,8 +310,8 @@ var FormBloc = React.createClass({
 			action: 'analyse',
 			token: false,
 			pcapFile: false,
-			testCases: {ok: false},
-			protocols: {ok: false}
+			testCases: false,
+			protocols: false
 		};
 	},
 

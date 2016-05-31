@@ -323,7 +323,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
-            print(test_cases)
             if (len(test_cases) != 1):
                 api_error(
                     'TC %s is not unique' % testcase_id
@@ -711,6 +710,30 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 token = base64.urlsafe_b64encode(token.digest()).decode()
 
+            # Get the test case and its informations
+            testcase_id = form.getvalue('testcase_id')
+            try:
+                test_case = analysis.get_implemented_testcases(testcase_id)
+            except FileNotFoundError:
+                api_error(
+                    'No test case with the id %s' % testcase_id
+                )
+                return
+
+            # FIXME: Don't forget to remove this block when the bug is fixed
+            except ImportError:
+                os.chdir('../../..')
+                api_error(
+                    'TC %s found but a bug is to fix' % testcase_id
+                )
+                return
+
+            if (len(test_case) != 1):
+                api_error(
+                    'TC %s is not unique' % testcase_id
+                )
+                return
+
             # Prepare the result to return
             json_result = {
                 '_type': 'response',
@@ -719,6 +742,17 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     {
                         '_type': 'token',
                         'value': token
+                    },
+                    {
+                        '_type': 'tc_basic',
+                        'id': test_case[0][0],
+                        'objective': test_case[0][1]
+                    },
+                    {
+                        '_type': 'verdict',
+                        'verdict': '',
+                        'description': '',
+                        'review_frames': []
                     }
                 ]
             }
@@ -835,7 +869,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'content': [
                     {
                         '_type': 'token',
-                        'token': token
+                        'value': token
                     }
                 ]
             }
