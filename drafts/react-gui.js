@@ -18,26 +18,32 @@ var getTestCaseImplementation = '/api/v1/testcase_getTestcaseImplementation';
 function checkError(errorTrigger, data) {
 
 	// Check the datas received
-	if (data && data._type == 'response' && !data.ok) {
+	if (data && data._type == 'response') {
 
-		// Clear the error message displayer
-		$('#error-modal .modal-body .alert').html(
-			'<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>'
-		);
+		// Check that there's an error to display
+		if (!data.ok) {
 
-		// The error message to display
-		var errorMessage = 'An error occured';
+			// Clear the error message displayer
+			$('#error-modal .modal-body .alert').html(
+				'<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>'
+			);
 
-		// Check if we have the error trigger
-		if (errorTrigger != '') errorMessage += ' during ' + errorTrigger;
+			// The error message to display
+			var errorMessage = 'An error occured';
 
-		// Check the data we have
-		if (data.error != '') errorMessage += '<br/><br/>More informations:</br>' + data.error;
-		
-		// Display the error itself in a bootstrap model
-		$('#error-modal .modal-body .alert').append(errorMessage);
-		$('#error-modal').modal('show');
-	}
+			// Check if we have the error trigger
+			if (errorTrigger != '') errorMessage += ' during ' + errorTrigger;
+
+			// Check the data we have
+			if (data.error != '') errorMessage += '<br/><br/>More informations:</br>' + data.error;
+			
+			// Display the error itself in a bootstrap model
+			$('#error-modal .modal-body .alert').append(errorMessage);
+			$('#error-modal').modal('show');
+		}
+
+	// Wrong values passed
+	} else console.log('WARNING: The data passed for the checking isn\'t a correct response');
 }
 
 
@@ -76,7 +82,7 @@ var InputGroupBloc = React.createClass({
 		return (
 			<div className="input-group">
 				{ (this.props.textOnLeft) ? addonPart : null }
-				<input id={this.props.inputName} type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} onChange={this.props.onChange} />
+				<input id={this.props.inputName} type={this.props.inputType} readOnly={this.props.readOnly} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} onChange={this.props.onChange} />
 				{ (this.props.textOnLeft) ? null : addonPart }
 			</div>
 		);
@@ -94,19 +100,16 @@ var SelectGroupBloc = React.createClass({
 	mapOptionGroups: function(o) {
 
 		// Analyse function
-		if (this.props.currentAction == 'analyse') {
-			if (o._type == 'tc_basic')
-				return (
-					<option key={o.id} value={o.id} title={o.objective} >{o.id}</option>
-				);
+		if ((this.props.currentAction == 'analyse') && (o._type == 'tc_basic'))
+			return (
+				<option key={o.id} value={o.id} title={o.objective} >{o.id}</option>
+			);
 
 		// Dissect function
-		} else {
-			if (o._type == 'protocol')
-				return (
-					<option key={o.name} value={o.name} title={o.description} >{o.name}</option>
-				);
-		}
+		else if (o._type == 'protocol')
+			return (
+				<option key={o.name} value={o.name} title={o.description} >{o.name}</option>
+			);
 
 		// Error if not entered into the previous returns
 		console.log('WARNING: Wrong type ' + o._type + ' for the select group');
@@ -157,6 +160,51 @@ var SelectGroupBloc = React.createClass({
 var FormBloc = React.createClass({
 
 	/**
+	 * A token manager to manage the current token
+	 */
+	tokenManager(response) {
+
+		// Check that it's a response
+		if (response && response._type == 'response') {
+
+			// Check that it's correct
+			if (response.ok && response.content) {
+
+				// Get the token of the packet
+				var newToken = false;
+				var i = 0;
+				while (!newToken) {
+
+					// No token found in the response
+					if (i == response.content.length) {
+						console.log('WARNING: Token manager received a response which doesn\'t contain a token');
+						return;
+					}
+
+					// Parse the values util the token is found
+					if (response.content[i]._type == 'token') newToken = response.content[i].value;
+					i++;
+				}
+
+				// If no token for the moment
+				if (!this.state.token) {
+
+					// Update the current token
+					this.setState({token: newToken});
+
+					// Remove the current pcap file
+					this.setState({pcapFile: false});
+				
+				// If there's already a token, check that the values correspond!
+				} else if (this.state.token != newToken) console.log('WARNING: Token manager received a token that doesn\'t correspond to the current one');
+			}
+
+		// Incorrect data
+		} else console.log('WARNING: Token manager received incorrect response data');
+	},
+
+
+	/**
 	 * Handler for the submit of the form
 	 */
 	handlePcapSubmit: function(form) {
@@ -170,11 +218,15 @@ var FormBloc = React.createClass({
 
 		// Prepare the post datas
 		var output = new FormData();
-		output.append('pcap_file', this.state.pcapFile[0]);
 
 		// Analyse or dissect
 		if (this.state.action == 'analyse') output.append('testcase_id', $("input[name=testcase_id]").val());
 		else output.append('protocol_selection', $("input[name=protocol_selection]").val());
+
+		// The token or the file
+		if (!this.state.token && this.state.pcapFile) output.append('pcap_file', this.state.pcapFile[0]);
+		else if (this.state.token && !this.state.pcapFile) output.append('token', this.state.token);
+		else console.log('ERROR: No token nor pcap file provided, the post request requires one or the other');
 
 		// Send the post request in ajax
 		$.ajax({
@@ -187,6 +239,7 @@ var FormBloc = React.createClass({
 			data: output,
 			success: function(input) {
 				checkError('POST request on ' + url, input);
+				this.tokenManager(input);
 			}.bind(this),
 			error: function(xhr, status, err) {
 				console.error(url, status, err.toString());
@@ -255,7 +308,8 @@ var FormBloc = React.createClass({
 	getInitialState: function() {
 		return {
 			action: 'analyse',
-			pcapFile: {},
+			token: false,
+			pcapFile: false,
 			testCases: {ok: false},
 			protocols: {ok: false}
 		};
@@ -275,7 +329,13 @@ var FormBloc = React.createClass({
 						<div className="page-header">
 							<h1>Pcap field to {this.state.action}</h1>
 						</div>
-						<InputGroupBloc inputName="pcap_file" inputType="file" addonText="Enter your pcap file" required={true} textOnLeft={true} inputPlaceholder="" onChange={this.updatePcapFile} />
+						{
+							(this.state.token)
+							?
+							<InputGroupBloc inputName="token" inputType="text" addonText="Token" required={true} textOnLeft={true} readOnly={true} inputPlaceholder={this.state.token} onChange={function(){}} />
+							:
+							<InputGroupBloc inputName="pcap_file" inputType="file" addonText="Enter your pcap file" required={true} textOnLeft={true} readOnly={false} inputPlaceholder="" onChange={this.updatePcapFile} />
+						}
 					</div>
 
 					<div className="col-sm-6">

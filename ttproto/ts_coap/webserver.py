@@ -696,7 +696,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                         )
                     ), encoding='utf-8')
                 )
-                token = base64.b64encode(token.digest()).decode()
+                token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # Prepare the result to return
             json_result = {
@@ -798,7 +798,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                         )
                     ), encoding='utf-8')
                 )
-                token = base64.b64encode(token.digest()).decode()
+                token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # In function of the protocol asked
             # TODO: For the moment only one protocol, but later use a dict
