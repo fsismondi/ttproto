@@ -870,6 +870,157 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     {
                         '_type': 'token',
                         'value': token
+                    },
+                    {
+                        '_type': 'frame',
+                        'id': 1,
+                        'timestamp': 1456858700.521622,
+                        'error': None,
+                        'protocol_stack': [
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'Ethernet',
+                                'DestinationAddress': '18:1e:78:4e:03:10',
+                                'SourceAddress': 'ac:bc:32:cd:f3:8b',
+                                'Type': '0x0800',
+                                'Trailer': 'b'''
+                            },
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'IPv4',
+                                'Version': '4',
+                                'HeaderLength': '5',
+                                'TypeOfService': '0x00',
+                                'TotalLength': '41',
+                                'Identification': '0x5948',
+                                'Reserved': '0',
+                                'DontFragment': '0',
+                                'MoreFragments': '0',
+                                'FragmentOffset': '0',
+                                'TimeToLive': '64',
+                                'Protocol': '17',
+                                'HeaderChecksum': '0xceee',
+                                'SourceAddress': '192.168.1.17',
+                                'DestinationAddress': '129.132.15.80',
+                                'Options': 'b'''
+                            },
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'UDP',
+                                'SourcePort': '65236',
+                                'DestinationPort': '5683',
+                                'Length': '21',
+                                'Checksum': '0x16b8'
+                            },
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'CoAP',
+                                'Version': '1',
+                                'Type': '1',
+                                'TokenLength': '2',
+                                'Code': '1',
+                                'MessageID': '0x3bf1',
+                                'Token': 'b\'b\\xda\'',
+                                'Payload': 'b''',
+                                'Options': [
+                                    {
+                                        '_type': 'option',
+                                        'Option': 'CoAPOptionUriPath',
+                                        'Delta': '11',
+                                        'Length': '4',
+                                        'Value': 'test'
+                                    },
+                                    {
+                                        '_type': 'option',
+                                        'Option': 'CoAPOptionBlock2',
+                                        'Delta': '12',
+                                        'Length': '1',
+                                        'Number': '0',
+                                        'M': '0',
+                                        'SizeExponent': '2'
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        '_type': 'frame',
+                        'id': 2,
+                        'timestamp': 1456858706.951686,
+                        'error': None,
+                        'protocol_stack:': [
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'Ethernet',
+                                'DestinationAddress': 'ac:bc:32:cd:f3:8b',
+                                'SourceAddress': '18:1e:78:4e:03:11',
+                                'Type': '0x0800',
+                                'Trailer': 'b'''
+                            },
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'IPv4',
+                                'Version': '4',
+                                'HeaderLength': '5',
+                                'TypeOfService': '0x00',
+                                'TotalLength': '90',
+                                'Identification': '0x0000',
+                                'Reserved': '0',
+                                'DontFragment': '1',
+                                'MoreFragments': '0',
+                                'FragmentOffset': '0',
+                                'TimeToLive': '43',
+                                'Protocol': '17',
+                                'HeaderChecksum': '0xfd05',
+                                'SourceAddress': '129.132.15.80',
+                                'DestinationAddress': '192.168.1.17',
+                                'Options': 'b'''
+                            },
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'UDP',
+                                'SourcePort': '5683',
+                                'DestinationPort': '65236',
+                                'Length': '70',
+                                'Checksum': '0x1469'
+                            },
+                            {
+                                '_type': 'protocol',
+                                'Protocol': 'CoAP',
+                                'Version': '1',
+                                'Type': '1',
+                                'TokenLength': '2',
+                                'Code': '69',
+                                'MessageID': '0xa312',
+                                'Token': 'b\'b\\xda\'',
+                                'Payload': 'b\'Type: 1 (NON)\\nCode: 1 (GET)\\nMID: 15345\\nToken: 62da\'',
+                                'Options': [
+                                    {
+                                        '_type': 'option',
+                                        'Option': 'CoAPOptionContentFormat',
+                                        'Delta': '12',
+                                        'Length': '0',
+                                        'Value': '0'
+                                    },
+                                    {
+                                        '_type': 'option',
+                                        'Option': 'CoAPOptionMaxAge',
+                                        'Delta': '2',
+                                        'Length': '1',
+                                        'Value': '30'
+                                    },
+                                    {
+                                        '_type': 'option',
+                                        'Option': 'CoAPOptionBlock2',
+                                        'Delta': '9',
+                                        'Length': '1',
+                                        'Number': '0',
+                                        'M': '0',
+                                        'SizeExponent': '2'
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             }
