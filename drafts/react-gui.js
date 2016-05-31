@@ -5,6 +5,7 @@ var analyseUrl = '/api/v1/testcase_analyse';
 var dissectUrl = '/api/v1/frames_dissect';
 var getTestCasesUrl = '/api/v1/get_testcases';
 var getProtocolsUrl = '/api/v1/get_protocols';
+var acceptedActions = ['analyse', 'dissect'];
 
 
 
@@ -63,19 +64,15 @@ var InputGroupBloc = React.createClass({
 	 */
 	render: function() {
 
-		// If addon on right
-		if (this.props.textOnLeft) return (
-			<div className="input-group">
-				<span className="input-group-addon">{this.props.addonText}</span>
-				<input type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} />
-			</div>
-		);
+		// Prepare the addon part
+		var addonPart = <span className="input-group-addon">{this.props.addonText}</span>;
 
-		// If addon on left
-		else return (
+		// Return the input group with the text on the left or on the right
+		return (
 			<div className="input-group">
-				<input type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} />
-				<span className="input-group-addon">{this.props.addonText}</span>
+				{ (this.props.textOnLeft) ? addonPart : null }
+				<input id={this.props.inputName} type={this.props.inputType} className="form-control" name={this.props.inputName} placeholder={this.props.inputPlaceholder} required={this.props.required} onChange={this.props.onChange} />
+				{ (this.props.textOnLeft) ? null : addonPart }
 			</div>
 		);
 	}
@@ -95,63 +92,38 @@ var SelectGroupBloc = React.createClass({
 		if (this.props.currentAction == 'analyse') {
 			var optionInputName = 'testcase_id';
 			var optionAddonText = 'Test case';
-
-			// Check the result
-			if (this.props.optionGroups && this.props.optionGroups.ok && this.props.optionGroups.type == 'testcase_list') {
-				return (
-					<div className="input-group">
-						<span className="input-group-addon" >{optionAddonText}</span>
-						<select name="testcase_id" className="form-control">
-							{
-								this.props.optionGroups.value.map(function(tc){
-									return (
-										<option key={tc.name} value={tc.name} title={tc.description} >{tc.name}</option>
-									);
-								})
-							}
-						</select>
-					</div>
-				);
-
-			// An error occured
-			} else {
-				console.log('ERROR: Couldn\'t retrieve the list of test cases');
-				if (this.props.optionGroups && !this.props.optionGroups.ok && this.props.optionGroups.type == 'error')
-					console.log('More informations: ' + this.props.optionGroups.value);
-				return null;
-			}
-		}
+			var expectedType = 'testcase_list';
 
 		// Dissect action
-		else {
-
+		} else {
 			var optionInputName = 'protocol_selection';
 			var optionAddonText = 'Protocol';
+			var expectedType = 'protocol_list';
+		}
 
-			// Check the result
-			if (this.props.optionGroups && this.props.optionGroups.ok && this.props.optionGroups.type == 'protocol_list') {
-				return (
-					<div className="input-group">
-						<span className="input-group-addon" >{optionAddonText}</span>
-						<select name="testcase_id" className="form-control">
-							{
-								this.props.optionGroups.value.map(function(tc){
-									return (
-										<option key={tc.name} value={tc.name} title={tc.description} >{tc.name}</option>
-									);
-								})
-							}
-						</select>
-					</div>
-				);
+		// Check the result
+		if (this.props.optionGroups && this.props.optionGroups.ok && this.props.optionGroups.type == expectedType) {
+			return (
+				<div className="input-group">
+					<span className="input-group-addon" >{optionAddonText}</span>
+					<select name={optionInputName} className="form-control">
+						{
+							this.props.optionGroups.value.map(function(o) {
+								return (
+									<option key={o.name} value={o.name} title={o.description} >{o.name}</option>
+								);
+							})
+						}
+					</select>
+				</div>
+			);
 
-			// An error occured
-			} else {
-				console.log('ERROR: Couldn\'t retrieve the list of protocols');
-				if (this.props.optionGroups && !this.props.optionGroups.ok && this.props.optionGroups.type == 'error')
-					console.log('More informations: ' + this.props.optionGroups.value);
-				return null;
-			}
+		// An error occured
+		} else {
+			console.log('WARNING: Couldn\'t retrieve ' + expectedType);
+			if (this.props.optionGroups && !this.props.optionGroups.ok && this.props.optionGroups.type == 'error')
+				console.log('More informations: ' + this.props.optionGroups.value);
+			return null;
 		}
 	}
 });
@@ -167,21 +139,34 @@ var FormBloc = React.createClass({
 	handlePcapSubmit: function(form) {
 
 		// Bloc the "real" submit of the form, instead use this function
+		form.stopPropagation();
 		form.preventDefault();
+
+		// Get the url
 		var url = form.currentTarget.action;
+
+		// Prepare the post datas
+		var output = new FormData();
+		output.append('pcap_file', this.state.pcapFile[0]);
+
+		// Analyse or dissect
+		if (this.state.action == 'analyse') output.append('testcase_id', $("input[name=testcase_id]").val());
+		else output.append('protocol_selection', $("input[name=protocol_selection]").val());
 
 		// Send the post request in ajax
 		$.ajax({
 			url: url,
 			type: 'POST',
+			cache: false,
+			dataType: 'json',
 			processData: false,
-			contentType: 'multipart/form-data',
-			data: [],
-			success: function(data) {
-				checkError('POST request on ' + url, data);
+			contentType: false,
+			data: output,
+			success: function(input) {
+				checkError('POST request on ' + url, input);
 			}.bind(this),
 			error: function(xhr, status, err) {
-				console.error(this.props.url, status, err.toString());
+				console.error(url, status, err.toString());
 			}.bind(this)
 		});
 	},
@@ -191,7 +176,20 @@ var FormBloc = React.createClass({
 	 * Handler for when the user change the action (dissect or analyse)
 	 */
 	switchAction: function(optionChoosed) {
-		this.setState({action: optionChoosed.currentTarget.value});
+
+		// Check the new value before updating it
+		if ($.inArray(optionChoosed.currentTarget.value, acceptedActions) > -1)
+			this.setState({action: optionChoosed.currentTarget.value});
+		else console.log('WARNING: Unaccepted action value of ' + optionChoosed.currentTarget.value);
+	},
+
+
+	/**
+	 * Handler for when the user change the pcap file
+	 * This function allows us to always have the value of the file input
+	 */
+	updatePcapFile: function(newPcapFile) {
+		this.setState({pcapFile: newPcapFile.currentTarget.files});
 	},
 
 
@@ -234,6 +232,7 @@ var FormBloc = React.createClass({
 	getInitialState: function() {
 		return {
 			action: 'analyse',
+			pcapFile: {},
 			testCases: {ok: false},
 			protocols: {ok: false}
 		};
@@ -245,38 +244,23 @@ var FormBloc = React.createClass({
 	 */
 	render: function() {
 
-		// The things that will change in the view in function of the current action
-		if (this.state.action == 'analyse') {
-			var url = this.props.baseUrl + analyseUrl;
-			var optionsTitle = 'Analysis options';
-			var selectOptions = <SelectGroupBloc currentAction={this.state.action} optionGroups={this.state.testCases} />;
-		} else {
-			var url = this.props.baseUrl + dissectUrl;
-			var optionsTitle = 'Dissection options';
-			var selectOptions =<SelectGroupBloc currentAction={this.state.action} optionGroups={this.state.protocols} />;
-		}
-
-		// console.log(this.state.testCases);
-		
-		var fileTitle = 'Pcap field to ' + this.state.action;
-
 		return (
-			<form action={url} method="post" enctype="multipart/form-data" onSubmit={this.handlePcapSubmit} >
+			<form action={ this.props.baseUrl + ((this.state.action == 'analyse') ? analyseUrl : dissectUrl) } method="post" enctype="multipart/form-data" onSubmit={this.handlePcapSubmit} >
 
 				<div className="row">
 					<div className="col-sm-6">
 						<div className="page-header">
-							<h1>{fileTitle}</h1>
+							<h1>Pcap field to {this.state.action}</h1>
 						</div>
-						<InputGroupBloc inputName="pcap" inputType="file" addonText="Enter your pcap file" required={true} textOnLeft={true} inputPlaceholder="" />
+						<InputGroupBloc inputName="pcap_file" inputType="file" addonText="Enter your pcap file" required={true} textOnLeft={true} inputPlaceholder="" onChange={this.updatePcapFile} />
 					</div>
 
 					<div className="col-sm-6">
 						<div className="page-header">
-							<h1>{optionsTitle}</h1>
+							<h1>{ (this.state.action == 'analyse') ? 'Analysis options' : 'Dissection options' }</h1>
 						</div>
 
-						{selectOptions}
+						<SelectGroupBloc currentAction={this.state.action} optionGroups={ (this.state.action == 'analyse') ? this.state.testCases : this.state.protocols } />
 
 						<div style={{textAlign: 'center'}}>
 							<div className="btn-group" data-toggle="buttons" >
@@ -329,6 +313,7 @@ var PcapUtility = React.createClass({
 
 
 
+// The final ReactDom renderer
 ReactDOM.render(
 	<PcapUtility />,
 	document.getElementById('content')
