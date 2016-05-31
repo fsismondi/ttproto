@@ -277,28 +277,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get the parameters
             params = parse_qs(url.query)
 
-            # ### The id is not an integer
-            # try:
-
-            #     # Check parameters
-            #     if any((
-            #         len(params) != 1,
-            #         'testcase_id' not in params,
-            #         len(params['testcase_id']) != 1,
-            #         not params['testcase_id'][0].isdigit()
-            #     )):
-            #         raise
-
-            # # Catch errors (key mostly) or if wrong parameter
-            # except:
-            #   api_error(
-            #       'Incorrects parameters expected \'?testcase_id=[integer]\''
-            #   )
-            #     return
-
-            # # Format the id before passing it to the process function
-            # testcase_id = int(params['testcase_id'][0])
-
             try:
 
                 # Check parameters
@@ -353,9 +331,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'ok': True,
                 'content': [
                     {
-                        '_type': 'testcase_implementation',
+                        '_type': 'tc_basic',
                         'id': test_cases[0][0],
-                        'objective': test_cases[0][1],
+                        'objective': test_cases[0][1]
+                    },
+                    {
+                        '_type': 'tc_implementation',
                         'implementation': test_cases[0][2]
                     }
                 ]
@@ -438,6 +419,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # It will allow a user to get a single frame from the previous pcap
         #
         # /param frame_id => The id of the wanted frame
+        # /param token => The token of the corresponding pcap file
         #
         # /remark Maybe it will be better to give an id to testes, store them
         #         into databases and then add another param representing the
@@ -461,29 +443,45 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
                 # Correct execution
                 if any((
-                    len(params) != 1,
+                    len(params) != 2,
                     'frame_id' not in params,
+                    'token' not in params,
                     len(params['frame_id']) != 1,
-                    not params['frame_id'][0].isdigit()
+                    not params['frame_id'][0].isdigit(),
+                    len(params['token']) != 1
                 )):
                     raise
 
             # Catch errors (key mostly) or if wrong parameter
             except:
                 api_error(
-                    'Incorrects parameters expected \'?frame_id=[integer]\''
+                    'Incorrects parameters expected \'?frame_id=[integer]&token=[string]\''
                 )
                 return
 
             # Format the id before passing it to the process function
             frame_id = int(params['frame_id'][0])
+            token = params['token'][0]
 
             # Here the process from ttproto core
             json_result = {
                 '_type': 'response',
                 'ok': True,
                 'content': [
-                    params
+                    {
+                        '_type': 'frame',
+                        'id': '',
+                        'timestamp': '',
+                        'error': '',
+                        'protocol_stack': [
+                            {
+                                '_type': 'protocol',
+                                'protocol': 'proto name',
+                                'field_1_name': 'sth',
+                                'field_2_name': 'sth_else'
+                            }
+                        ]
+                    }
                 ]
             }
 
@@ -679,11 +677,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Prepare the result to return
             json_result = {
+                '_type': 'response',
                 'ok': True,
-                'type': 'verdict',
-                'value': {
-                    # TODO: Put the results of function calls here
-                }
+                'content': [
+                    {
+                        '_type': 'token',
+                        'value': '[generated_token]'
+                    }
+                ]
             }
 
             # Here we will analyse the pcap file and get the results as json
@@ -760,17 +761,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     f.write(pcap_file)
 
             # In function of the protocol asked
+            # TODO: For the moment only one protocol, but later use a dict
             protocol = None
             if protocol_selection == 'CoAP':
                 protocol = coap.CoAP
 
             # Prepare the result to return
             json_result = {
+                '_type': 'response',
                 'ok': True,
-                'type': 'frame_list',
-                'value': {
-                    # TODO: Put the results of function calls here
-                }
+                'content': [
+                    {
+                        '_type': 'token',
+                        'token': '[generated_value]'
+                    }
+                ]
             }
 
             # Here we will analyse the pcap file and get the results as json

@@ -130,8 +130,6 @@ var SelectGroupBloc = React.createClass({
 			var optionAddonText = 'Protocol';
 		}
 
-		console.log(this.props.optionGroups);
-
 		// Check the result
 		if (this.props.optionGroups && this.props.optionGroups._type == 'response' && this.props.optionGroups.ok) {
 			return (
