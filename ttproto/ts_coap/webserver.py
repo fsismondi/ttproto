@@ -45,6 +45,8 @@ import subprocess
 import cgi
 import cgitb
 import json
+import hashlib
+import base64
 import email.feedparser
 import email.message
 from . import analysis
@@ -59,6 +61,9 @@ TMPDIR = "tmp"
 LOGDIR = "log"
 
 CHANGELOG = []
+
+HASH_PREFIX = 'tt'
+HASH_SUFFIX = 'proto'
 
 CHANGELOG_FIRST_COMMIT = "iot2-beta"
 
@@ -660,6 +665,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
+            # Get the token
+            token = None
+
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
             if (pcap_file):
@@ -675,6 +683,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
 
+            # Generate the token if none given
+            if not token:
+                token = hashlib.sha1(
+                    str.encode((
+                        "%s%s%04d%s" %
+                        (
+                            HASH_PREFIX,
+                            timestamp,
+                            job_id,
+                            HASH_SUFFIX
+                        )
+                    ), encoding='utf-8')
+                )
+                token = base64.b64encode(token.digest()).decode()
+
             # Prepare the result to return
             json_result = {
                 '_type': 'response',
@@ -682,7 +705,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'content': [
                     {
                         '_type': 'token',
-                        'value': '[generated_token]'
+                        'value': token
                     }
                 ]
             }
@@ -729,7 +752,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     'REQUEST_METHOD': 'POST',
                     'CONTENT_TYPE': content_type
                 })
-            # print(form)
 
             # Check the parameters passed
             if any((
@@ -741,6 +763,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     'Expected \'pcap_file\' and protocol_selection form fields'
                 )
                 return
+
+            # Get the token
+            token = None
 
             # Check the protocol_selection value
             protocol_selection = form.getvalue('protocol_selection')
@@ -760,6 +785,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(pcap_path, 'wb') as f:
                     f.write(pcap_file)
 
+            # Generate the token if none given
+            if not token:
+                token = hashlib.sha1(
+                    str.encode((
+                        "%s%s%04d%s" %
+                        (
+                            HASH_PREFIX,
+                            timestamp,
+                            job_id,
+                            HASH_SUFFIX
+                        )
+                    ), encoding='utf-8')
+                )
+                token = base64.b64encode(token.digest()).decode()
+
             # In function of the protocol asked
             # TODO: For the moment only one protocol, but later use a dict
             protocol = None
@@ -773,7 +813,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'content': [
                     {
                         '_type': 'token',
-                        'token': '[generated_value]'
+                        'token': token
                     }
                 ]
             }
