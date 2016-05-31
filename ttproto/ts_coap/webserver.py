@@ -70,9 +70,9 @@ def api_error(message):
         Function for generating a json error
     """
     print(json.dumps({
+        '_type': 'response',
         'ok': False,
-        'type': 'error',
-        'value': message
+        'error': message
     }))
 
 # ######################## End of API part ######################### #
@@ -264,7 +264,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # /param testcase_id => The unique id of the test case
         #
-        elif url.path == '/api/v1/get_testcase_implementation':
+        elif url.path == '/api/v1/testcase_getTestcaseImplementation':
 
             # Send the header
             self.send_response(200)
@@ -349,13 +349,16 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # The result to return
             json_result = {
+                '_type': 'response',
                 'ok': True,
-                'type': 'testcase_implementation',
-                'value': {
-                    'name': test_cases[0][0],
-                    'description': test_cases[0][1],
-                    'implementation': test_cases[0][2]
-                }
+                'content': [
+                    {
+                        '_type': 'testcase_implementation',
+                        'id': test_cases[0][0],
+                        'objective': test_cases[0][1],
+                        'implementation': test_cases[0][2]
+                    }
+                ]
             }
 
             # Here the process from ttproto core
@@ -365,7 +368,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # GET handler for the get_testcases uri
         # It will give to the gui the list of the test cases
         #
-        elif url.path == '/api/v1/get_testcases':
+        elif url.path == '/api/v1/testcase_getList':
 
             # Send the header
             self.send_response(200)
@@ -380,15 +383,16 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             clean_test_cases = []  # Dict of (tc_id, tc_desc)
             for raw_tc in raw_test_cases:
                 clean_test_cases.append({
-                    'name': raw_tc[0],
-                    'description': raw_tc[1]
+                    '_type': 'tc_basic',
+                    'id': raw_tc[0],
+                    'objective': raw_tc[1]
                 })
 
             # The result to return
             json_result = {
+                '_type': 'response',
                 'ok': True,
-                'type': 'testcase_list',
-                'value': clean_test_cases
+                'content': clean_test_cases
             }
 
             # Just give the json representation of the test cases list
@@ -398,7 +402,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # GET handler for the get_protocols uri
         # It will give to the gui the list of the protocols implemented
         #
-        elif url.path == '/api/v1/get_protocols':
+        elif url.path == '/api/v1/frames_getProtocols':
 
             # Send the header
             self.send_response(200)
@@ -410,16 +414,18 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # The result to return
             json_result = {
+                '_type': 'response',
                 'ok': True,
-                'type': 'protocol_list',
-                'value': [
+                'content': [
                     {
+                        '_type': 'protocol',
                         'name': 'None',
                         'description': 'No particular protocol'
                     },
                     {
+                        '_type': 'protocol',
                         'name': 'CoAP',
-                        'description': ''
+                        'description': 'CoAP protocol'
                     }
                 ]
             }
@@ -473,10 +479,16 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             frame_id = int(params['frame_id'][0])
 
             # Here the process from ttproto core
-            json_results = params
+            json_result = {
+                '_type': 'response',
+                'ok': True,
+                'content': [
+                    params
+                ]
+            }
 
             # Dump the json result
-            print(json.dumps(json_results))
+            print(json.dumps(json_result))
             return
 
         # ######################## End of API part ######################### #

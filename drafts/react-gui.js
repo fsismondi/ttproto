@@ -1,11 +1,16 @@
 // ############### Some parameters ###############
 
+// Some constant values
 var baseUrl = 'http://127.0.0.1:2080';
-var analyseUrl = '/api/v1/testcase_analyse';
-var dissectUrl = '/api/v1/frames_dissect';
-var getTestCasesUrl = '/api/v1/get_testcases';
-var getProtocolsUrl = '/api/v1/get_protocols';
 var acceptedActions = ['analyse', 'dissect'];
+
+// Urls of the API
+var dissectUrl = '/api/v1/frames_dissect';
+var getFrameUrl = '/api/v1/frames_getFrame';
+var getProtocolsUrl = '/api/v1/frames_getProtocols';
+var analyseUrl = '/api/v1/testcase_analyse';
+var getTestCasesUrl = '/api/v1/testcase_getList';
+var getTestCaseImplementation = '/api/v1/testcase_getTestcaseImplementation';
 
 
 
@@ -13,7 +18,7 @@ var acceptedActions = ['analyse', 'dissect'];
 function checkError(errorTrigger, data) {
 
 	// Check the datas received
-	if (data && !data.ok && data.type == 'error') {
+	if (data && data._type == 'response' && !data.ok) {
 
 		// Clear the error message displayer
 		$('#error-modal .modal-body .alert').html(
@@ -27,7 +32,7 @@ function checkError(errorTrigger, data) {
 		if (errorTrigger != '') errorMessage += ' during ' + errorTrigger;
 
 		// Check the data we have
-		if (data.value != '') errorMessage += '<br/><br/>More informations:</br>' + data.value;
+		if (data.error != '') errorMessage += '<br/><br/>More informations:</br>' + data.error;
 		
 		// Display the error itself in a bootstrap model
 		$('#error-modal .modal-body .alert').append(errorMessage);
@@ -84,6 +89,32 @@ var InputGroupBloc = React.createClass({
 var SelectGroupBloc = React.createClass({
 
 	/**
+	 * Map the option group received
+	 */
+	mapOptionGroups: function(o) {
+
+		// Analyse function
+		if (this.props.currentAction == 'analyse') {
+			if (o._type == 'tc_basic')
+				return (
+					<option key={o.id} value={o.id} title={o.objective} >{o.id}</option>
+				);
+
+		// Dissect function
+		} else {
+			if (o._type == 'protocol')
+				return (
+					<option key={o.name} value={o.name} title={o.description} >{o.name}</option>
+				);
+		}
+
+		// Error if not entered into the previous returns
+		console.log('WARNING: Wrong type ' + o._type + ' for the select group');
+		return null;
+	},
+
+
+	/**
 	 * Render function for InputGroupBloc
 	 */
 	render: function() {
@@ -92,36 +123,30 @@ var SelectGroupBloc = React.createClass({
 		if (this.props.currentAction == 'analyse') {
 			var optionInputName = 'testcase_id';
 			var optionAddonText = 'Test case';
-			var expectedType = 'testcase_list';
 
 		// Dissect action
 		} else {
 			var optionInputName = 'protocol_selection';
 			var optionAddonText = 'Protocol';
-			var expectedType = 'protocol_list';
 		}
 
+		console.log(this.props.optionGroups);
+
 		// Check the result
-		if (this.props.optionGroups && this.props.optionGroups.ok && this.props.optionGroups.type == expectedType) {
+		if (this.props.optionGroups && this.props.optionGroups._type == 'response' && this.props.optionGroups.ok) {
 			return (
 				<div className="input-group">
 					<span className="input-group-addon" >{optionAddonText}</span>
 					<select name={optionInputName} className="form-control">
-						{
-							this.props.optionGroups.value.map(function(o) {
-								return (
-									<option key={o.name} value={o.name} title={o.description} >{o.name}</option>
-								);
-							})
-						}
+						{ this.props.optionGroups.content.map(this.mapOptionGroups) }
 					</select>
 				</div>
 			);
 
 		// An error occured
 		} else {
-			console.log('WARNING: Couldn\'t retrieve ' + expectedType);
-			if (this.props.optionGroups && !this.props.optionGroups.ok && this.props.optionGroups.type == 'error')
+			console.log('WARNING: Couldn\'t retrieve ' + optionInputName);
+			if (this.props.optionGroups && this.props.optionGroups._type == 'error' && !this.props.optionGroups.ok)
 				console.log('More informations: ' + this.props.optionGroups.value);
 			return null;
 		}
