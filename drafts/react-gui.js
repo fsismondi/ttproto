@@ -47,6 +47,28 @@ function checkError(errorTrigger, data) {
 }
 
 
+
+// ############### Utility functions ###############
+function newFrame(data) {
+
+	// Check that the datas are correct and that we have at least one frame
+	if (data && data.ok && data._type == 'response') {
+
+		// Check that we have at least one frame
+		var frameFoundInResponse = false;
+		var id = 0;
+		while (!frameFoundInResponse || (id  < data.content.length)) {
+			if (data.content[id]._type == 'frame') frameFoundInResponse = true;
+			id++;
+		}
+
+		// If one found, tell the other elements which one it is
+		console.log('Frame is ' + frameFoundInResponse + ' and its id is ' + id);
+	}
+}
+
+
+
 // ############### React code ###############
 
 // A renderer for the radio buttons
@@ -240,6 +262,7 @@ var FormBloc = React.createClass({
 			success: function(input) {
 				checkError('POST request on ' + url, input);
 				this.tokenManager(input);
+				newFrame(input);
 			}.bind(this),
 			error: function(xhr, status, err) {
 				console.error(url, status, err.toString());
@@ -365,6 +388,215 @@ var FormBloc = React.createClass({
 });
 
 
+
+// The FrameBloc renderer
+var FrameBloc = React.createClass({
+
+	/**
+	 * Mapped function to parse the protocol stack
+	 */
+	mapProtocolStack: function(prot) {
+
+		// Check the type value
+		if (prot._type == 'protocol') {
+
+			// Increment the protocol stack id
+			this.state.protocolStackId++;
+
+			// For all the fields of the protocol
+			var frameContent = '';
+			for (field in prot) {
+
+				// Check that it's not the name of the protocol
+				if (field != 'Protocol') {
+
+					// If the value is an array (like options for CoAP)
+					if (Array.isArray(prot[field])) {
+						frameContent += '<div>' + field + ': <div class="indent">';
+						for (f in prot[field]) frameContent += '<div>' + field + ': ' + prot[field] + '</div>';
+						frameContent += '</div></div>';
+					}
+
+					// Just a couple field => value
+					else frameContent += '<div>' + field + ': ' + prot[field] + '</div>';
+				}
+			}
+
+			return (
+				<div className="panel panel-default">
+					<a className="collapsed" role="button" data-toggle="collapse" href={ '#collapse' + this.state.protocolStackId } aria-expanded="false" aria-controls={ 'collapse' + this.state.protocolStackId }>
+						<span className="panel-heading" role="tab" id={ 'frame' + this.state.protocolStackId }>
+							{this.state.Protocol}
+						</span>
+					</a>
+
+					<div id={ 'collapse' + this.state.protocolStackId } className="panel-collapse collapse" role="tabpanel" aria-labelledby={ 'frame' + this.state.protocolStackId }>
+						<div className="panel-body">
+							{frameContent}
+						</div>
+					</div>
+				</div>
+			);
+		}
+
+		console.log('WARNING: MapProtocolStack() received a wrong protocol data');
+		return null;
+	},
+
+
+	/**
+	 * Getter of the initial state for parameters
+	 */
+	getInitialState: function() {
+		return {
+			frame: false,
+			protocolStackId: 0
+		};
+	},
+
+
+	/**
+	 * Render function for FrameBloc
+	 */
+	render: function() {
+
+		// Only if this is a correct frame
+		if (this.state.frame)
+			return (
+				<div className="row">
+					<div className="col-md-2"></div>
+
+					<div className="col-md-8">
+						<div className="panel panel-default">
+							<div className="panel-heading">
+								<h1 className="panel-title">{this.state.frame.id}</h1>
+							</div>
+
+							<div className="panel-body">
+								<div className="panel-group packet-content" id="frames" role="tablist" aria-multiselectable="true">
+
+									{ this.state.frame.protocol_stack.map(this.mapProtocolStack) }
+
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="col-md-2"></div>
+				</div>
+				
+			);
+		else return null;
+	}
+});
+
+
+
+// The FrameNavigationBloc renderer
+var FrameNavigationBloc = React.createClass({
+	
+	/**
+	 * Render function for FrameNavigationBloc
+	 */
+	render: function() {
+		return (
+			<div className="row">
+
+				<div className="col-xs-3" style={{textAlign: 'center'}}>
+					<a href="#"><span className="glyphicon glyphicon-chevron-left arrow" ></span></a>
+				</div>
+
+				<div className="col-md-1 visible-lg visible-md"></div>
+
+				<div className="col-xs-6 col-md-4">
+					<div className="input-group" style={{marginTop: '10px'}}>
+						<span className="input-group-addon" >Directly access to frame </span>
+						<input className="form-control" type="text" name="frame-number" placeholder="number" />
+						<a className="input-group-addon btn btn-info" type="submit" placeholder="number" >
+							<span className="glyphicon glyphicon-fast-forward"></span>
+						</a>
+					</div>
+				</div>
+
+				<div className="col-md-1 visible-lg visible-md"></div>
+
+				<div className="col-xs-3" style={{textAlign: 'center'}}>
+					<a href="#"><span className="glyphicon glyphicon-chevron-right arrow" ></span></a>
+				</div>
+
+			</div>
+		);
+	}
+});
+
+
+
+// The ResultBloc renderer
+var ResultBloc = React.createClass({
+
+	/**
+	 * Getter of the initial state for parameters
+	 */
+	getInitialState: function() {
+		return {
+			results: false
+		};
+	},
+
+
+	/**
+	 * Render function for ResultBloc
+	 */
+	render: function() {
+
+		// If there are some results
+		if (this.state.results)
+			return (
+				<div>
+					<div className="page-header" id="result-header">
+						<h1>Result</h1>
+					</div>
+
+					<FrameBloc />
+
+					<FrameNavigationBloc />
+				</div>
+			);
+
+		// If no result for the moment
+		else return null;
+	}
+});
+
+
+
+// The ErrorModalBloc renderer
+var ErrorModalBloc = React.createClass({
+
+	/**
+	 * Render function for ErrorModalBloc
+	 */
+	render: function() {
+		return (
+			<div className="modal fade" role="dialog" id="error-modal">
+				<div className="modal-dialog">
+					<div className="modal-content">
+						<div className="modal-body">
+							<div className="alert alert-danger">
+								<button type="button" className="close" data-dismiss="modal" aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+});
+
+
+
 // The PcapUtility renderer
 var PcapUtility = React.createClass({
 
@@ -373,21 +605,17 @@ var PcapUtility = React.createClass({
 	 */
 	render: function() {
 		return (
-			<div className="row">
-				<FormBloc baseUrl={baseUrl} />
+			<div>
+				<div className="row">
+					<FormBloc baseUrl={baseUrl} />
+				</div>
 
-				<div className="modal fade" role="dialog" id="error-modal">
-					<div className="modal-dialog">
-						<div className="modal-content">
-							<div className="modal-body">
-								<div className="alert alert-danger">
-									<button type="button" className="close" data-dismiss="modal" aria-label="Close">
-										<span aria-hidden="true">&times;</span>
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
+				<div className="row">
+					<ResultBloc />
+				</div>
+
+				<div className="row">
+					<ErrorModalBloc />
 				</div>
 			</div>
 		);
