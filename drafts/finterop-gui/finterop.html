@@ -56,15 +56,13 @@
 		<div class="container">
 
 			<div class="row">
-
 				<div class="col-sm-6">
 
 					<div class="page-header">
 						<h1>Test cases</h1>
 					</div>
 
-					<ul class="list-group" id="test-cases" style="max-height: 650px; overflow-y: scroll;">
-					</ul>
+					<ul class="list-group" id="test-cases" style="max-height: 650px; overflow-y: scroll;"></ul>
 
 				</div>
 
@@ -74,25 +72,15 @@
 						<h1>Console</h1>
 					</div>
 
-					<div class="jumbotron">
-
-					</div>
-
+					<div class="jumbotron" id="console" style="padding: 15px;" ></div>
 				</div>
-
 			</div>
 
 			<div class="row">
-
-				<p style="text-align: center;">
+				<p style="text-align: center;" id="button-bloc">
 					<button class="btn btn-success centered-block" onClick="getTestCases()" id="get-tc-button" >Get Test Cases</button>
-					<button class="btn btn-success centered-block" onClick="" >Start Test Suite</button>
-					<button class="btn btn-success centered-block" >Start Test Case</button>
-					<button class="btn btn-danger centered-block" >Finish Test Case</button>
 				</p>
-
 			</div>
-
 		</div>
 
 		<script type="text/javascript">
@@ -126,6 +114,94 @@
 						// Hide the button
 						$('#get-tc-button').hide();
 
+						// Put the start ts button
+						$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestSuite()" id="start-ts-button" >Start Test Suite</button>');
+					},
+					error: function(xhr, status, err) {
+						console.error(url, status, err.toString());
+					}
+				});
+			}
+
+
+			/**
+			 * Function to start the test suite
+			 */
+			function startTestSuite() {
+
+				var url = baseUrl + '/finterop/start_test_suite';
+
+				// Send the post request in ajax
+				$.ajax({
+					url: url,
+					type: 'GET',
+					dataType: 'json',
+					success: function(input) {
+
+						// Correct response
+						if (input.ok == true && input._type == 'response')  {
+
+							// Parse the response
+							for (var inp in input.content) {
+
+								// Display the message if there's one
+								if (input.content[inp]._type == 'message')
+									$('#console').append('<div class="alert alert-info alert-dismissible" role="alert">' + input.content[inp].message + '</div>');
+
+								// Put the first TC if there's one
+								if (input.content[inp]._type == 'tc_basic') {
+									$('#' + input.content[inp].id).attr('class', $('#' + input.content[inp].id).attr('class') + ' active');
+
+									// Hide the start button
+									$('#start-ts-button').hide();
+
+									// Put the start tc button
+									$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestCase()" id="start-tc-button" >Start Test Case</button>');
+								}
+							}
+
+						// If we have an error
+						} else {
+
+							// Display the error message
+							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert">' + input.error + '</div>');
+						}
+					},
+					error: function(xhr, status, err) {
+						console.error(url, status, err.toString());
+					}
+				});
+			}
+
+
+			/**
+			 * Function to start the test case
+			 */
+			function startTestCase() {
+
+				var url = baseUrl + '/finterop/start_test_case';
+
+				// Send the post request in ajax
+				$.ajax({
+					url: url,
+					type: 'POST',
+					dataType: 'json',
+					success: function(input) {
+
+						// Display the input
+						if (input.ok != false) console.log('ERROR: Test suite start threw an error');
+
+						// Display the message
+						$('#console').append('<div class="alert alert-success" role="alert">' + input.message + '</div>');
+
+						// Hide the start button
+						$('#start-ts-button').hide();
+
+						// Put the first test case to launch
+						$('#' + input.first.id).attr('class', $('#' + input.first.id).attr('class') + ' active');
+
+						// Put the start tc button
+						$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestCase()" id="start-tc-button" >Start Test Case</button>');
 					},
 					error: function(xhr, status, err) {
 						console.error(url, status, err.toString());

@@ -45,6 +45,17 @@ from urllib.parse import urlparse, parse_qs
 API_URL = 'http://127.0.0.1:2080'
 
 
+def api_error(message):
+    """
+        Function for generating a json error
+    """
+    print(json.dumps({
+        '_type': 'response',
+        'ok': False,
+        'error': message
+    }))
+
+
 class RequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -72,6 +83,46 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Just forward the json
             print(json.dumps(resp.json()))
+            return
+
+        # GET handler for the start_test_suite uri
+        # It will begin the test suite process
+        #
+        elif url.path == '/finterop/start_test_suite':
+
+            #
+            # HERE YOU PUT THE FUNCTIONS THAT YOU NEED TO START THE TEST SUITE
+            #
+
+            # Launch the post request on ttproto api
+            resp = requests.get(API_URL + '/api/v1/testcase_getList')
+
+            # Get the first test case
+            tcs = resp.json()
+            first_tc = tcs['content'][0]
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Just forward the json
+            print(json.dumps(
+                {
+                    '_type': 'response',
+                    'ok': True,
+                    'content': [
+                        first_tc,
+                        {
+                            '_type': 'message',
+                            'message': 'Start TC when ready'
+                        }
+                    ]
+                }
+            ))
             return
 
         # #################### End of Coordinator part ##################### #
@@ -107,10 +158,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             content_type = content_type[0]
 
             # Check headers
-            if any((
-                content_type is None,
-                content_type != 'multipart/form-data'
-            )):
+            if content_type is None:
                 api_error(
                     'POST format of \'multipart/form-data\' expected'
                 )
