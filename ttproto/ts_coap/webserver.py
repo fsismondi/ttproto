@@ -47,6 +47,7 @@ import cgitb
 import json
 import hashlib
 import base64
+import requests
 import email.feedparser
 import email.message
 from . import analysis
@@ -64,6 +65,7 @@ CHANGELOG = []
 
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
+API_URL = 'http://127.0.0.1:2080'
 
 CHANGELOG_FIRST_COMMIT = "iot2-beta"
 

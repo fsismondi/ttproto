@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>Finterop client</title>
+
+		<!-- Jquery -->
+		<script src="js-libs/jquery-2.2.4.min.js"></script>
+
+		<!-- Latest compiled and minified JavaScript -->
+		<script src="js-libs/bootstrap.min.js"></script>
+
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="js-libs/bootstrap.min.css" />
+
+		<style type="text/css">
+			.centered-block {
+				display: block;
+				margin-left: auto;
+				margin-right: auto;
+			}
+
+			h1 {
+				text-align: center;
+			}
+
+			.btn {
+				margin: 15px;
+				display: inline-block;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="navbar navbar-default">
+			<div class="container-fluid">
+
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand" href="#">Finterop client</a>
+				</div>
+
+				<div class="collapse navbar-collapse" id="navbar-collapse">
+					<ul class="nav navbar-nav">
+					</ul>
+				</div>
+			</div>
+		</div>
+
+		<div class="container">
+
+			<div class="row">
+
+				<div class="col-sm-6">
+
+					<div class="page-header">
+						<h1>Test cases</h1>
+					</div>
+
+					<ul class="list-group" id="test-cases" style="max-height: 650px; overflow-y: scroll;">
+					</ul>
+
+				</div>
+
+				<div class="col-sm-6 ">
+
+					<div class="page-header">
+						<h1>Console</h1>
+					</div>
+
+					<div class="jumbotron">
+
+					</div>
+
+				</div>
+
+			</div>
+
+			<div class="row">
+
+				<p style="text-align: center;">
+					<button class="btn btn-success centered-block" onClick="getTestCases()" id="get-tc-button" >Get Test Cases</button>
+					<button class="btn btn-success centered-block" onClick="" >Start Test Suite</button>
+					<button class="btn btn-success centered-block" >Start Test Case</button>
+					<button class="btn btn-danger centered-block" >Finish Test Case</button>
+				</p>
+
+			</div>
+
+		</div>
+
+		<script type="text/javascript">
+			var baseUrl = 'http://127.0.0.1:8080';
+
+
+			/**
+			 * Function to get the test cases
+			 */
+			function getTestCases() {
+
+				var url = baseUrl + '/finterop/get_testcases';
+
+				// Send the post request in ajax
+				$.ajax({
+					url: url,
+					type: 'GET',
+					dataType: 'json',
+					success: function(input) {
+
+						// Display the list of test cases
+						for (var tc in input.content) {
+							$('#test-cases').append(
+								'<li class="list-group-item" id="' + input.content[tc].id + '">\
+									<h4 class="list-group-item-heading">' + input.content[tc].id + '</h4>\
+									<p class="list-group-item-text">' + input.content[tc].objective + '</p>\
+								</li>\
+							');
+						}
+
+						// Hide the button
+						$('#get-tc-button').hide();
+
+					},
+					error: function(xhr, status, err) {
+						console.error(url, status, err.toString());
+					}
+				});
+			}
+		</script>
+
+	</body>
+</html>
