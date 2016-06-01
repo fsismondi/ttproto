@@ -757,9 +757,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                 'client'
                             )
 
-            print(analysis_results)
-            return
-
             # Only take the first
             # TODO: Maybe change it to get many of them
             verdict = {

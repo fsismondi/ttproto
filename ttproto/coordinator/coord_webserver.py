@@ -40,6 +40,7 @@ import json
 import hashlib
 import base64
 import requests
+import time
 from urllib.parse import urlparse, parse_qs
 
 API_URL = 'http://127.0.0.1:2080'
@@ -186,6 +187,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # HERE YOU PUT THE FUNCTIONS THAT YOU NEED TO START THE TEST CASE
             # ASSOCIATED WITH THIS TEST CASE ID
             #
+            # Start the sniffer
+            #
 
             # Send the header
             self.send_response(200)
@@ -208,28 +211,87 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # POST handler for the testcase_analyse uri
-        # It will allow users to analyse a pcap file corresponding to a TC
+        # POST handler for the finish_test_case uri
+        # It will allow users to end a test case
         #
-        # \param pcap_file => The pcap file that we want to analyse
-        # \param testcase_id => The id of the corresponding test case
-        # \param token => The token previously provided
-        # The pcap_file or the token is required, having both is also forbidden
+        # \param testcase_id => The TC that we want to end
         #
-        elif self.path == '/api/v1/testcase_analyse':
-
-            # Send the header
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json;charset=utf-8')
-            self.end_headers()
+        elif self.path == '/finterop/finish_test_case':
 
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
-            # TODO
+            # Get post values
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                keep_blank_values=True,
+                environ={
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': self.headers['Content-Type']
+                })
+
+            # Check that we have the two values
+            if any((
+                len(form) != 1,
+                'testcase_id' not in form
+            )):
+                cord_error('Expected POST=(testcase_id)')
+                return
+
+            # Get the test case id
+            testcase_id = form.getvalue('testcase_id')
+
+            # Launch the post request on ttproto api
+            resp = requests.get(API_URL + '/api/v1/testcase_getList')
+            test_cases = resp.json()
+
+            # Check that the test case is contained into the available ones
+            valid_testcase = False
+            for tc in test_cases['content']:
+                if tc['id'] == testcase_id:
+                    valid_testcase = True
+                    next_test_case = (test_cases['content'].index(tc) + 1)
+                    break
+
+            # If not valid test case
+            if not valid_testcase:
+                cord_error('Test case not found')
+                return
+
+            #
+            # HERE YOU PUT THE FUNCTIONS THAT YOU NEED TO STOP THE TEST CASE
+            # ASSOCIATED WITH THIS TEST CASE ID
+            #
+            # Kill the sniffer
+            # Get the pcap file
+            # Analyse it and return the result
+            #
+
+            # Simulate the waiting time
+            time.sleep(2)
 
             # Prepare the result to return
             json_result = {
+                '_type': 'response',
+                'ok': True,
+                'content': [
+                    {
+                        '_type': 'message',
+                        'message': 'Test case ' + testcase_id + ' correctly finished'
+                    },
+                    {
+                        '_type': 'information',
+                        'last_test_case': (next_test_case == len(test_cases['content']))
+                    },
+                    test_cases['content'][next_test_case],  # The next test case
+                    {
+                        '_type': 'verdict',
+                        'verdict': 'inconc',
+                        'description': testcase_id,
+                        'review_frames': []
+                    }
+                ]
             }
 
             # Here we will analyse the pcap file and get the results as json
