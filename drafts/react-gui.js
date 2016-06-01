@@ -48,27 +48,6 @@ function checkError(errorTrigger, data) {
 
 
 
-// ############### Utility functions ###############
-function newFrame(data) {
-
-	// Check that the datas are correct and that we have at least one frame
-	if (data && data.ok && data._type == 'response') {
-
-		// Check that we have at least one frame
-		var frameFoundInResponse = false;
-		var id = 0;
-		while (!frameFoundInResponse || (id  < data.content.length)) {
-			if (data.content[id]._type == 'frame') frameFoundInResponse = true;
-			id++;
-		}
-
-		// If one found, tell the other elements which one it is
-		console.log('Frame is ' + frameFoundInResponse + ' and its id is ' + id);
-	}
-}
-
-
-
 // ############### React code ###############
 
 // A renderer for the radio buttons
@@ -262,7 +241,7 @@ var FormBloc = React.createClass({
 			success: function(input) {
 				checkError('POST request on ' + url, input);
 				this.tokenManager(input);
-				newFrame(input);
+				this.props.frameUpdated(input);
 			}.bind(this),
 			error: function(xhr, status, err) {
 				console.error(url, status, err.toString());
@@ -405,20 +384,29 @@ var FrameBloc = React.createClass({
 
 			// For all the fields of the protocol
 			var frameContent = '';
-			for (field in prot) {
+			var uniqueKey = 0;
+			for (var field in prot) {
 
 				// Check that it's not the name of the protocol
-				if (field != 'Protocol') {
+				if (field != 'Protocol' && field != '_type') {
 
 					// If the value is an array (like options for CoAP)
 					if (Array.isArray(prot[field])) {
-						frameContent += '<div>' + field + ': <div class="indent">';
-						for (f in prot[field]) frameContent += '<div>' + field + ': ' + prot[field] + '</div>';
+						frameContent += '<div key="' + uniqueKey + '">' + field + ': <div class="indent">';
+						for (var option in prot[field]) {
+							var options[];
+							for (var f in prot[field][option]) {
+								frameContent += '<div>' + f + ': ' + prot[field][option][f] + '</div>';
+							}
+						}
 						frameContent += '</div></div>';
 					}
 
 					// Just a couple field => value
-					else frameContent += '<div>' + field + ': ' + prot[field] + '</div>';
+					else frameContent += '<div key="' + uniqueKey + '">' + field + ': ' + prot[field] + '</div>';
+
+					// Increment the unique key
+					uniqueKey++;
 				}
 			}
 
@@ -426,14 +414,12 @@ var FrameBloc = React.createClass({
 				<div className="panel panel-default">
 					<a className="collapsed" role="button" data-toggle="collapse" href={ '#collapse' + this.state.protocolStackId } aria-expanded="false" aria-controls={ 'collapse' + this.state.protocolStackId }>
 						<span className="panel-heading" role="tab" id={ 'frame' + this.state.protocolStackId }>
-							{this.state.Protocol}
+							{prot.Protocol}
 						</span>
 					</a>
 
 					<div id={ 'collapse' + this.state.protocolStackId } className="panel-collapse collapse" role="tabpanel" aria-labelledby={ 'frame' + this.state.protocolStackId }>
-						<div className="panel-body">
-							{frameContent}
-						</div>
+						<div className="panel-body" dangerouslySetInnerHTML={{__html: frameContent}} />
 					</div>
 				</div>
 			);
@@ -449,8 +435,7 @@ var FrameBloc = React.createClass({
 	 */
 	getInitialState: function() {
 		return {
-			frame: false,
-			protocolStackId: 0
+			protocolStackId: false
 		};
 	},
 
@@ -460,8 +445,11 @@ var FrameBloc = React.createClass({
 	 */
 	render: function() {
 
+		// Put back to 0 the protocol stack id
+		this.state.protocolStackId = 0;
+
 		// Only if this is a correct frame
-		if (this.state.frame)
+		if (this.props.frame)
 			return (
 				<div className="row">
 					<div className="col-md-2"></div>
@@ -469,13 +457,13 @@ var FrameBloc = React.createClass({
 					<div className="col-md-8">
 						<div className="panel panel-default">
 							<div className="panel-heading">
-								<h1 className="panel-title">{this.state.frame.id}</h1>
+								<h1 className="panel-title">Frame n°{this.props.frame.id}</h1>
 							</div>
 
 							<div className="panel-body">
 								<div className="panel-group packet-content" id="frames" role="tablist" aria-multiselectable="true">
 
-									{ this.state.frame.protocol_stack.map(this.mapProtocolStack) }
+									{ this.props.frame.protocol_stack.map(this.mapProtocolStack) }
 
 								</div>
 							</div>
@@ -535,36 +523,20 @@ var FrameNavigationBloc = React.createClass({
 var ResultBloc = React.createClass({
 
 	/**
-	 * Getter of the initial state for parameters
-	 */
-	getInitialState: function() {
-		return {
-			results: false
-		};
-	},
-
-
-	/**
 	 * Render function for ResultBloc
 	 */
 	render: function() {
-
-		// If there are some results
-		if (this.state.results)
-			return (
-				<div>
-					<div className="page-header" id="result-header">
-						<h1>Result</h1>
-					</div>
-
-					<FrameBloc />
-
-					<FrameNavigationBloc />
+		return (
+			<div>
+				<div className="page-header" id="result-header">
+					<h1>Result</h1>
 				</div>
-			);
 
-		// If no result for the moment
-		else return null;
+				<FrameBloc frame={this.props.frame} />
+
+				<FrameNavigationBloc />
+			</div>
+		);
 	}
 });
 
@@ -601,18 +573,60 @@ var ErrorModalBloc = React.createClass({
 var PcapUtility = React.createClass({
 
 	/**
+	 * Function to call when a new frame is to display
+	 */
+	newFrame: function(data) {
+
+		// Check that the datas are correct and that we have at least one frame
+		if (data && data.ok && data._type == 'response') {
+
+			// Check that we have at least one frame
+			var frameFoundInResponse = false;
+			var id = 0;
+			while (!frameFoundInResponse && (id  < data.content.length)) {
+				if (data.content[id]._type == 'frame') frameFoundInResponse = true;
+				id++;
+			}
+
+			// If one found, tell the other elements which one it is
+			if (frameFoundInResponse) {
+
+				// Update the state
+				this.setState({
+					results: data,
+					frameId: (id - 1)
+				});
+			}
+		}
+	},
+
+
+	/**
+	 * Getter of the initial state for parameters
+	 */
+	getInitialState: function() {
+		return {
+			results: false,
+			frameId: false
+		};
+	},
+
+
+	/**
 	 * Render function for PcapForm
 	 */
 	render: function() {
 		return (
 			<div>
 				<div className="row">
-					<FormBloc baseUrl={baseUrl} />
+					<FormBloc baseUrl={baseUrl} frameUpdated={this.newFrame} />
 				</div>
 
-				<div className="row">
-					<ResultBloc />
-				</div>
+				{ (this.state.results) ?
+					<div className="row">
+						<ResultBloc frame={this.state.results.content[this.state.frameId]} />
+					</div>
+				: null }
 
 				<div className="row">
 					<ErrorModalBloc />

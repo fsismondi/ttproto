@@ -948,7 +948,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                         'id': 2,
                         'timestamp': 1456858706.951686,
                         'error': None,
-                        'protocol_stack:': [
+                        'protocol_stack': [
                             {
                                 '_type': 'protocol',
                                 'Protocol': 'Ethernet',
