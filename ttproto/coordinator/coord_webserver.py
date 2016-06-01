@@ -194,7 +194,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # ASSOCIATED WITH THIS TEST CASE ID
             #
             # Start the sniffer
-            #
+
+            CURRENT_TESTCASE = testcase_id
+
+            par = {'testcase_id': testcase_id}
+            url = API_SNIFFER + "/sniffer_api/launchSniffer"
+            r = requests.post(url, params=par)
+            # TODO log(r.content)
 
             # Send the header
             self.send_response(200)
@@ -292,7 +298,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # finish sniffer
             url = API_SNIFFER + "/sniffer_api/finishSniffer"
             r = requests.post(url)
-            # TODO tologger(r) start logging this stuff!!
+            # TODO tologger(r.content) start logging this stuff!!
 
             # get PCAP from sniffer, and put it in TEMP_DIR
             getPcapFromApiSniffer(API_SNIFFER, "/sniffer_api/getPcap", CURRENT_TESTCASE, TEMP_DIR)
