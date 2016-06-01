@@ -186,22 +186,33 @@
 					url: url,
 					type: 'POST',
 					dataType: 'json',
+					data: ['test_case'],
 					success: function(input) {
 
-						// Display the input
-						if (input.ok != false) console.log('ERROR: Test suite start threw an error');
+						// Correct response
+						if (input.ok == true && input._type == 'response')  {
 
-						// Display the message
-						$('#console').append('<div class="alert alert-success" role="alert">' + input.message + '</div>');
+							// Parse the response
+							for (var inp in input.content) {
 
-						// Hide the start button
-						$('#start-ts-button').hide();
+								// If the verdict, display it
+								if (input.content[inp]._type == 'verdict') {
+									$('#' + input.content[inp].id).attr('class', $('#' + input.content[inp].id).attr('class') + ' active');
 
-						// Put the first test case to launch
-						$('#' + input.first.id).attr('class', $('#' + input.first.id).attr('class') + ' active');
+									// Hide the start button
+									$('#start-ts-button').hide();
 
-						// Put the start tc button
-						$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestCase()" id="start-tc-button" >Start Test Case</button>');
+									// Put the start tc button
+									$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestCase()" id="start-tc-button" >Start Test Case</button>');
+								}
+							}
+
+						// If we have an error
+						} else {
+
+							// Display the error message
+							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert">' + input.error + '</div>');
+						}
 					},
 					error: function(xhr, status, err) {
 						console.error(url, status, err.toString());

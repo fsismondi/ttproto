@@ -714,6 +714,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the test case and its informations
             testcase_id = form.getvalue('testcase_id')
+            if not testcase_id or testcase_id == '':
+                testcase_id = ''
+
+            # Try to get the test case the common way
             try:
                 test_case = analysis.get_implemented_testcases(testcase_id)
             except FileNotFoundError:
@@ -725,16 +729,45 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # FIXME: Don't forget to remove this block when the bug is fixed
             except ImportError:
                 os.chdir('../../..')
-                api_error(
-                    'TC %s found but a bug is to fix' % testcase_id
-                )
-                return
+                # api_error(
+                #     'TC %s found but a bug is to fix' % testcase_id
+                # )
+                test_cases = analysis.get_implemented_testcases()
+                for tc in test_cases:
+                    if tc[0] == testcase_id:
+                        test_case = {
+                            '_type': 'tc_basic',
+                            'id': tc[0],
+                            'objective': tc[1]
+                        }
 
-            if (len(test_case) != 1):
-                api_error(
-                    'TC %s is not unique' % testcase_id
-                )
-                return
+            # print(test_case)
+            # if (len(test_case) != 1):
+            #     api_error(
+            #         'TC %s is not unique' % testcase_id
+            #     )
+            #     return
+
+            # Get the result of the analysis
+            analysis_results = analysis.analyse_file_rest_api(
+                                pcap_path,
+                                False,
+                                None,
+                                testcase_id,
+                                'client'
+                            )
+
+            print(analysis_results)
+            return
+
+            # Only take the first
+            # TODO: Maybe change it to get many of them
+            verdict = {
+                '_type': 'verdict',
+                'verdict': analysis_results[0][1],
+                'description': test_case['objective'],
+                'review_frames': []
+            }
 
             # Prepare the result to return
             json_result = {
@@ -745,17 +778,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                         '_type': 'token',
                         'value': token
                     },
-                    {
-                        '_type': 'tc_basic',
-                        'id': test_case[0][0],
-                        'objective': test_case[0][1]
-                    },
-                    {
-                        '_type': 'verdict',
-                        'verdict': '',
-                        'description': '',
-                        'review_frames': []
-                    }
+                    test_case,
+                    verdict
                 ]
             }
 

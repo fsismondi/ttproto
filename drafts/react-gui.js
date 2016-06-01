@@ -239,9 +239,11 @@ var FormBloc = React.createClass({
 			contentType: false,
 			data: output,
 			success: function(input) {
+				console.log(input);
 				checkError('POST request on ' + url, input);
 				this.tokenManager(input);
 				this.props.frameUpdated(input);
+				console.log(input);
 			}.bind(this),
 			error: function(xhr, status, err) {
 				console.error(url, status, err.toString());
@@ -394,7 +396,7 @@ var FrameBloc = React.createClass({
 					if (Array.isArray(prot[field])) {
 						frameContent += '<div key="' + uniqueKey + '">' + field + ': <div class="indent">';
 						for (var option in prot[field]) {
-							var options[];
+							var options = [];
 							for (var f in prot[field][option]) {
 								frameContent += '<div>' + f + ': ' + prot[field][option][f] + '</div>';
 							}
