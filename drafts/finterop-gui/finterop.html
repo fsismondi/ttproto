@@ -29,6 +29,10 @@
 				margin: 15px;
 				display: inline-block;
 			}
+
+			.alert {
+				margin-bottom: 10px;
+			}
 		</style>
 	</head>
 
@@ -62,7 +66,7 @@
 						<h1>Test cases</h1>
 					</div>
 
-					<ul class="list-group" id="test-cases" style="max-height: 650px; overflow-y: scroll;"></ul>
+					<ul class="list-group" id="test-cases" style="height: 630px; overflow-y: scroll;"></ul>
 
 				</div>
 
@@ -72,7 +76,7 @@
 						<h1>Console</h1>
 					</div>
 
-					<div class="jumbotron" id="console" style="padding: 15px;" ></div>
+					<div class="jumbotron" id="console" style="padding: 15px; height: 630px; overflow-y: scroll;" ></div>
 				</div>
 			</div>
 
@@ -111,6 +115,9 @@
 							');
 						}
 
+						// Display the state						
+						$('#console').append('<div class="alert alert-info alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.content.length + ' test cases loaded</div>');
+
 						// Hide the button
 						$('#get-tc-button').hide();
 
@@ -146,7 +153,7 @@
 
 								// Display the message if there's one
 								if (input.content[inp]._type == 'message')
-									$('#console').append('<div class="alert alert-info alert-dismissible" role="alert">' + input.content[inp].message + '</div>');
+									$('#console').append('<div class="alert alert-info alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.content[inp].message + '</div>');
 
 								// Put the first TC if there's one
 								if (input.content[inp]._type == 'tc_basic') {
@@ -164,7 +171,7 @@
 						} else {
 
 							// Display the error message
-							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert">' + input.error + '</div>');
+							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.error + '</div>');
 						}
 					},
 					error: function(xhr, status, err) {
@@ -186,7 +193,7 @@
 					url: url,
 					type: 'POST',
 					dataType: 'json',
-					data: ['test_case'],
+					data: {'testcase_id': $('#test-cases .active').attr('id')},
 					success: function(input) {
 
 						// Correct response
@@ -195,15 +202,15 @@
 							// Parse the response
 							for (var inp in input.content) {
 
-								// If the verdict, display it
-								if (input.content[inp]._type == 'verdict') {
-									$('#' + input.content[inp].id).attr('class', $('#' + input.content[inp].id).attr('class') + ' active');
+								// Just display the message
+								if (input.content[inp]._type == 'message') {
+									$('#console').append('<div class="alert alert-info" role="alert">' + input.content[inp].message + '</div>');
 
 									// Hide the start button
-									$('#start-ts-button').hide();
+									$('#start-tc-button').hide();
 
-									// Put the start tc button
-									$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestCase()" id="start-tc-button" >Start Test Case</button>');
+									// Put the finish tc button
+									$('#button-bloc').append('<button class="btn btn-danger centered-block" onClick="finishTestCase()" id="finish-tc-button" >Finish Test Case</button>');
 								}
 							}
 
@@ -211,7 +218,7 @@
 						} else {
 
 							// Display the error message
-							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert">' + input.error + '</div>');
+							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.error + '</div>');
 						}
 					},
 					error: function(xhr, status, err) {
