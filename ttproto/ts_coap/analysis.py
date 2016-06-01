@@ -176,7 +176,6 @@ def get_implemented_testcases(testcase_id = None):
         return ret
 
 
-
 def import_testcases(testcase_id = None):
     """
     Assumptions:
@@ -299,51 +298,6 @@ reg_frame = re.compile ("<Frame  *(\d+):")
 reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
 
 
-# def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
-#     testcases, _ = import_testcases()
-#     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
-#
-#     if regex is not None:
-#         try:
-#             re_regex = re.compile (regex, re.I)
-#             my_testcases = list(filter((lambda t: re_regex.search(t.__name__)), my_testcases))
-#         except Exception as e:
-#             return "Error: regular expression %r is invalid (%s)" % (regex, e)
-#
-#
-#
-#     if not my_testcases:
-#         return "regular expression %r did not yield any testcase" % regex
-#     force = len (my_testcases) == 1
-#
-#     with Data.disable_name_resolution():
-#         frames = Frame.create_list (PcapReader (filename))
-#
-#         # malformed frames
-#         malformed = list (filter ((lambda f: f.exc), frames))
-#         tracker = Tracker (frames)
-#         conversations = tracker.conversations
-#         ignored = tracker.ignored_frames
-#         #   sys.exit(1)
-#         #   conversations, ignored = extract_coap_conversations (frames)
-#         conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
-#         results_by_pair = {}
-#         results = []
-#         #TODO implement this more efficiently
-#         for pair, conversations in conversations_by_pair.items():
-#             pair_results = []
-#             pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
-#             for tc_type in my_testcases:
-#                 tc_results = []
-#                 for tr in conversations:
-#                     tc = tc_type (tr, urifilter, force)
-#                     if tc.verdict:
-#                         tc_results.append (tc)
-#                         results.append((type(tc).__name__,tc.verdict))
-#                         # remember the exception
-#                     pair_results.append (tc_results)
-#
-#         return tc_results
 def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
     testcases, _ = import_testcases()
     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
@@ -373,6 +327,7 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
         conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
         results_by_pair = {}
         results = []
+        ocurrences = 0
         for pair, conversations in conversations_by_pair.items():
             pair_results = []
             pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
@@ -381,12 +336,14 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
                 for tr in conversations:
                     tc = tc_type (tr, urifilter, force)
                     if tc.verdict:
+                        ocurrences += 1
                         tc_results.append (tc)
-                        results.append((type(tc).__name__,tc.verdict))
+                        results.append((ocurrences,type(tc).__name__,tc.verdict))
                         # remember the exception
                     pair_results.append (tc_results)
 
         return results
+
 
 def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):
     """
@@ -799,11 +756,11 @@ def pcap_to_list(pcap_file, add_header=True, protocol_selection=None):
 
 if __name__ == "__main__":
 
-    PCAP_error = '/Users/fsismondi/git/pcap-dumps/dumps CoAP online test tool/data/'+'150713_204439_0065.dump'
-    PCAP_test =  '/Users/fsismondi/Desktop/two_coap_frames_get_NON.pcap'
+
+    PCAP_test2 = getcwd()+ "/tests/test_dumps/obs_large.pcap"
     #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
     #print(dissect_pcap_to_json(PCAP_test, CoAP))
-    print(analyse_file_rest_api(PCAP_test,False,None,"TD_COAP_CORE_17","client"))
+    print(analyse_file_rest_api(PCAP_test2,False,None,"TD_COAP_CORE_17","client"))
 
     #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
 
