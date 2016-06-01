@@ -165,13 +165,16 @@ def get_implemented_testcases(testcase_id = None):
         -tc_objective
         -tc_sourcecode
     """
-
-    testcases,_= import_testcases(testcase_id)
     ret = []
-    for tc in testcases:
-        ret.append((tc.__name__ ,tc.get_objective(), inspect.getsource(tc)))
+    try:
+        testcases,_= import_testcases(testcase_id)
+        for tc in testcases:
+            ret.append((tc.__name__ ,tc.get_objective(), inspect.getsource(tc)))
+        return ret
+    except (FileNotFoundError):
+        ret.append((testcase_id, "file not found",""))
+        return ret
 
-    return ret
 
 
 def import_testcases(testcase_id = None):
@@ -296,6 +299,51 @@ reg_frame = re.compile ("<Frame  *(\d+):")
 reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
 
 
+# def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
+#     testcases, _ = import_testcases()
+#     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
+#
+#     if regex is not None:
+#         try:
+#             re_regex = re.compile (regex, re.I)
+#             my_testcases = list(filter((lambda t: re_regex.search(t.__name__)), my_testcases))
+#         except Exception as e:
+#             return "Error: regular expression %r is invalid (%s)" % (regex, e)
+#
+#
+#
+#     if not my_testcases:
+#         return "regular expression %r did not yield any testcase" % regex
+#     force = len (my_testcases) == 1
+#
+#     with Data.disable_name_resolution():
+#         frames = Frame.create_list (PcapReader (filename))
+#
+#         # malformed frames
+#         malformed = list (filter ((lambda f: f.exc), frames))
+#         tracker = Tracker (frames)
+#         conversations = tracker.conversations
+#         ignored = tracker.ignored_frames
+#         #   sys.exit(1)
+#         #   conversations, ignored = extract_coap_conversations (frames)
+#         conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
+#         results_by_pair = {}
+#         results = []
+#         #TODO implement this more efficiently
+#         for pair, conversations in conversations_by_pair.items():
+#             pair_results = []
+#             pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
+#             for tc_type in my_testcases:
+#                 tc_results = []
+#                 for tr in conversations:
+#                     tc = tc_type (tr, urifilter, force)
+#                     if tc.verdict:
+#                         tc_results.append (tc)
+#                         results.append((type(tc).__name__,tc.verdict))
+#                         # remember the exception
+#                     pair_results.append (tc_results)
+#
+#         return tc_results
 def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
     testcases, _ = import_testcases()
     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
@@ -320,12 +368,11 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
         tracker = Tracker (frames)
         conversations = tracker.conversations
         ignored = tracker.ignored_frames
-        #   sys.exit(1)
-        #   conversations, ignored = extract_coap_conversations (frames)
+        #	sys.exit(1)
+        #	conversations, ignored = extract_coap_conversations (frames)
         conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
         results_by_pair = {}
         results = []
-        #TODO implement this more efficiently
         for pair, conversations in conversations_by_pair.items():
             pair_results = []
             pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
@@ -340,7 +387,6 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
                     pair_results.append (tc_results)
 
         return results
-
 
 def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):
     """
@@ -662,14 +708,14 @@ def dissect_pcap_to_json(filename, protocol_selection=None):
     :return: frame dissected in JSON format:
         [
             {
-               ".type": "Ethernet",
+               "_type": "Ethernet",
                 "DestinationAddress": "ac:bc:32:cd:f3:8b",
                 "SourceAddress": "18:1e:78:4e:03:11",
                 "Type": "0x0800",
                 "Trailer": "b''"
             },
             {
-                ".type": "IPv4",
+                "_type": "IPv4",
                 "Version": "4",
                 "HeaderLength": "5",
                 ...
@@ -683,10 +729,10 @@ def dissect_pcap_to_json(filename, protocol_selection=None):
 def value_to_list(l: list, value: Value , extra_data=None, layer_dict:dict=None):
     """
     metadata
-    .type to specify how to interprate the json strucure, options are:
+    _type to specify how to interprate the json structure, options are:
         - frame
         - protocol
-    .proto
+    protocol
         protocol name
     """
 
@@ -694,7 +740,9 @@ def value_to_list(l: list, value: Value , extra_data=None, layer_dict:dict=None)
     if isinstance(value, PacketValue):
 
         od = OrderedDict()
-        od[".type"] = value.get_variant().__name__
+        od["_type"] = "protocol"
+        # TODO debug why some values are named here as 6 or 17 instead of ipv4
+        od["Protocol"] = value.get_variant().__name__
         l.append(od)
 
         i = 0
@@ -717,14 +765,12 @@ def pcap_to_list(pcap_file, add_header=True, protocol_selection=None):
     if protocol_selection:
         assert issubclass(protocol_selection,PacketValue)
 
-
     parent_lst = []
 
     # for speeding up the process
     with Data.disable_name_resolution():
 
         frames = Frame.create_list(PcapReader(pcap_file))
-
 
         for f in frames:
 
@@ -736,10 +782,11 @@ def pcap_to_list(pcap_file, add_header=True, protocol_selection=None):
             else:
                 if add_header:
                     header = OrderedDict()
-                    header[".type"] = "frame"
-                    header[".id"] = f.id
-                    header[".timestamp"] = f.ts
-                    header[".error"] = f.exc
+                    header["_type"] = "frame"
+                    header["id"] = f.id
+                    header["timestamp"] = f.ts
+                    header["error"] = f.exc
+                    header["protocol_stack"] = ""
                     lst.append(header)
                 value_to_list(lst, f.msg.get_value(),  None,  None)
                 parent_lst.append(lst)
@@ -756,9 +803,13 @@ if __name__ == "__main__":
     PCAP_test =  '/Users/fsismondi/Desktop/two_coap_frames_get_NON.pcap'
     #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
     #print(dissect_pcap_to_json(PCAP_test, CoAP))
-    #print(analyse_file(PCAP_error))
-    a= get_implemented_testcases('td_coap_coren_01')
-    for f in a:
-        print(a[0][2])
+    print(analyse_file_rest_api(PCAP_test,False,None,"TD_COAP_CORE_17","client"))
+
+    #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
+
+    #a= get_implemented_testcases('td_coap_coreasd_01')
+    #for f in a:
+    #    print(a)
+
 
 
