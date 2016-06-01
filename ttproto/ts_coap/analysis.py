@@ -173,7 +173,6 @@ def get_implemented_testcases(testcase_id = None):
 
     return ret
 
-
 def import_testcases(testcase_id = None):
     """
     Assumptions:
@@ -325,7 +324,7 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
         conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
         results_by_pair = {}
         results = []
-        #TODO implement this more efficiently
+        ocurrences = 0
         for pair, conversations in conversations_by_pair.items():
             pair_results = []
             pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
@@ -334,8 +333,9 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
                 for tr in conversations:
                     tc = tc_type (tr, urifilter, force)
                     if tc.verdict:
+                        ocurrences += 1
                         tc_results.append (tc)
-                        results.append((type(tc).__name__,tc.verdict))
+                        results.append((ocurrences,type(tc).__name__,tc.verdict))
                         # remember the exception
                     pair_results.append (tc_results)
 
@@ -752,13 +752,20 @@ def pcap_to_list(pcap_file, add_header=True, protocol_selection=None):
 
 if __name__ == "__main__":
 
-    PCAP_error = '/Users/fsismondi/git/pcap-dumps/dumps CoAP online test tool/data/'+'150713_204439_0065.dump'
-    PCAP_test =  '/Users/fsismondi/Desktop/two_coap_frames_get_NON.pcap'
+
+    PCAP_test2 = getcwd()+ "/tests/test_dumps/obs_large.pcap"
     #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
     #print(dissect_pcap_to_json(PCAP_test, CoAP))
+
     #print(analyse_file(PCAP_error))
     a= get_implemented_testcases('td_coap_coren_01')
     for f in a:
         print(a[0][2])
 
+    print(analyse_file_rest_api(PCAP_test2,False,None,"TD_COAP_CORE_17","client"))
 
+    #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
+
+    #a= get_implemented_testcases('td_coap_coreasd_01')
+    #for f in a:
+    #    print(a)
