@@ -45,6 +45,11 @@ from urllib.parse import urlparse, parse_qs
 
 API_URL = 'http://127.0.0.1:2080'
 
+# TO MERGE (start)
+API_SNIFFER = 'http://127.0.0.1:5000'
+CURRENT_TESTCASE = "TEST"
+TEMP_DIR = "./data/coordinator/dumps"
+# TO MERGE (finished)
 
 def cord_error(message):
     """
@@ -125,6 +130,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 }
             ))
             return
+
 
         # #################### End of Coordinator part ##################### #
 
@@ -266,11 +272,41 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Kill the sniffer
             # Get the pcap file
             # Analyse it and return the result
-            #
 
-            # Simulate the waiting time
-            time.sleep(2)
 
+            # TODO maybe some of this are not necessary?
+            global CURRENT_TESTCASE
+            global TEMP_DIR
+            global API_SNIFFER
+
+            # TODO useful for other API calls?
+            def getPcapFromApiSniffer(api_sniffer: str, route: str, testcase_id, save_dir: str):
+
+                par = {'testcase_id': testcase_id}
+                r = requests.get(api_sniffer + route, params=par)
+                attachment_data = r.content
+                # save to file
+                with open(save_dir + testcase_id + ".pcap", 'wb') as f:
+                    f.write(attachment_data)
+
+            # finish sniffer
+            url = API_SNIFFER + "/sniffer_api/finishSniffer"
+            r = requests.get(url)
+            # TODO tologger(r) start logging this stuff!!
+
+            # get PCAP from sniffer, and put it in TEMP_DIR
+            getPcapFromApiSniffer(API_SNIFFER, "/sniffer_api/getPcap", CURRENT_TESTCASE, TEMP_DIR)
+            # TODO log
+
+            # forwards PCAP to TAT API
+            url = API_URL + "/api/v1/testcase_analyse"
+            par = {'testcase_id': CURRENT_TESTCASE}
+            fileToPost = {'file': open(TEMP_DIR, 'rb')}
+            r = requests.post(url, files=fileToPost, params=par)
+            # TODO log
+            return r.json()
+
+            # TODO put r.json into the json_result
             # Prepare the result to return
             json_result = {
                 '_type': 'response',
