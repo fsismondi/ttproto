@@ -291,7 +291,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # finish sniffer
             url = API_SNIFFER + "/sniffer_api/finishSniffer"
-            r = requests.get(url)
+            r = requests.post(url)
             # TODO tologger(r) start logging this stuff!!
 
             # get PCAP from sniffer, and put it in TEMP_DIR
