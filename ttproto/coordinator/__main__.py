@@ -6,13 +6,43 @@ from .coord_webserver import *
 
 if __name__ == "__main__":
 
+    reopen_log_file(None, None)
+
     __shutdown = False
 
     def shutdown():
         global __shutdown
         __shutdown = True
 
+    for d in TMPDIR, DATADIR, LOGDIR:
+        try:
+            os.makedirs(d)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
+
+def reopen_log_file(signum, frame):
+    global log_file
+    log_file = open(os.path.join(LOGDIR, "coord-webserver.log"), "a")
+
+
+reopen_log_file(None, None)
+
+# log rotation
+# -> reopen the log file upon SIGHUP
+signal.signal(signal.SIGHUP, reopen_log_file)
+
 server = http.server.HTTPServer(("0.0.0.0", 8080), RequestHandler)
 print('Server is ready')
 while not __shutdown:
-    server.handle_request()
+    try:
+        l = log_file
+        server.handle_request()
+    except select.error:
+        # do not abort when we receive a signal
+        if l == log_file:
+            raise
+
+    if len(sys.argv) > 1:
+        break

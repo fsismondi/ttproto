@@ -41,7 +41,14 @@ import hashlib
 import base64
 import requests
 import time
+import errno
+import signal
 from urllib.parse import urlparse, parse_qs
+
+
+DATADIR = "data"
+TMPDIR = "tmp"
+LOGDIR = "log"
 
 API_URL = 'http://127.0.0.1:2080'
 API_SNIFFER = 'http://127.0.0.1:5000'
@@ -50,18 +57,38 @@ TEMP_DIR = "./data/coordinator/dumps"
 TEST_CASES = []
 
 
-def cord_error(message):
-    """
-        Function for generating a json error
-    """
-    print(json.dumps({
-        '_type': 'response',
-        'ok': False,
-        'error': message
-    }))
-
-
 class RequestHandler(http.server.BaseHTTPRequestHandler):
+
+    def coord_error(self, message):
+        """
+            Function for generating a json error
+        """
+        self.log_message("%s error: %s", self.path, message)
+        print(json.dumps({
+            '_type': 'response',
+            'ok': False,
+            'error': message
+        }))
+
+    def log_message(self, format, *args, append=""):
+        global log_file
+        host = self.address_string()
+        if host in("172.17.42.1", "localhost", "127.0.0.1", "::1"):
+            xff = self.headers.get("x-forwarded-for")
+            if xff:
+                host = xff
+
+        txt = ("%s - - [%s] %s - %s\n%s" %
+               (host,
+                self.log_date_time_string(),
+                format % args,
+                self.headers.get("user-agent"),
+                "".join("\t%s\n" % l for l in append.splitlines()),
+                ))
+
+        sys.stderr.write(txt)
+        log_file.write(txt)
+        log_file.flush()
 
     def do_GET(self):
 
@@ -81,6 +108,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 fp = open('drafts/finterop-gui/finterop.html', 'rb')
             except FileNotFoundError:
+                self.log_message('Finterop html file not found')
                 self.send_error(404)
                 return
 
@@ -99,6 +127,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 fp = open('drafts/finterop-gui' + url.path, 'rb')
             except FileNotFoundError:
+                self.log_message("Assert file %s not found", url.path)
                 self.send_error(404)
                 return
 
@@ -138,7 +167,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 if resp.status_code != requests.codes.ok:
                     raise
             except:
-                cord_error(
+                self.coord_error(
                     'ERROR: No test cases found, maybe the API isn\'t up yet'
                 )
                 return
@@ -161,6 +190,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the first test case
             first_tc = TEST_CASES['content'][0]
+            self.log_message(
+                "Test suite launched with first tc as %s",
+                first_tc['id']
+            )
 
             # Send the header
             self.send_response(200)
@@ -225,7 +258,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 len(form) != 1,
                 'testcase_id' not in form
             )):
-                cord_error('Expected POST=(testcase_id)')
+                self.coord_error('Expected POST=(testcase_id)')
                 return
 
             # Get the test case id
@@ -240,7 +273,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # If not valid test case
             if not valid_testcase:
-                cord_error('Test case not found')
+                self.coord_error('Test case not found')
                 return
 
             # Start the sniffer
@@ -252,7 +285,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 r = requests.post(url, params=par)
             except:
-                cord_error(
+                self.coord_error(
                     'Sniffer API dosen\'t respond, maybe it isn\'t up yet'
                 )
                 return
@@ -304,7 +337,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 len(form) != 1,
                 'testcase_id' not in form
             )):
-                cord_error('Expected POST=(testcase_id)')
+                self.coord_error('Expected POST=(testcase_id)')
                 return
 
             # Get the test case id
@@ -320,7 +353,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # If not valid test case
             if not valid_testcase:
-                cord_error('Test case not found')
+                self.coord_error('Test case not found')
                 return
 
             #
@@ -338,24 +371,44 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 r = requests.get(api_sniffer + route, params=par)
                 attachment_data = r.content
                 # save to file
-                with open(save_dir + testcase_id + ".pcap", 'wb') as f:
-                    f.write(attachment_data)
+                try:
+                    with open(save_dir + testcase_id + ".pcap", 'wb') as f:
+                        f.write(attachment_data)
+                    self.log_message(
+                        "Pcap correctly save at %s for tc %s from sniffer %s",
+                        save_dir,
+                        testcase_id,
+                        api_sniffer + route
+                    )
+                except:
+                    self.log_message(
+                        "Didn't manage to save pcap at %s for tc %s from sniffer %s",
+                        save_dir,
+                        testcase_id,
+                        api_sniffer + route
+                    )
 
             # finish sniffer
             url = API_SNIFFER + "/sniffer_api/finishSniffer"
 
             try:
                 r = requests.post(url)
+                self.log_message("Call to %s done", url)
             except:
-                cord_error(
+                self.coord_error(
                     'Sniffer API dosen\'t respond, maybe it isn\'t up yet'
                 )
                 return
-            # TODO tologger(r.content) start logging this stuff!!
+
+            # tologger(r.content)
+            self.log_message(
+                "Content of the response on %s call is %s",
+                url,
+                r.content.json()
+            )
 
             # get PCAP from sniffer, and put it in TEMP_DIR
             getPcapFromApiSniffer(API_SNIFFER, "/sniffer_api/getPcap", CURRENT_TESTCASE, TEMP_DIR)
-            # TODO log
 
             # forwards PCAP to TAT API
             url = API_URL + "/api/v1/testcase_analyse"
@@ -364,14 +417,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             try:
                 r = requests.post(url, files=fileToPost, params=par)
+                self.log_message("Call to %s done", url)
             except:
-                cord_error(
+                self.coord_error(
                     'Sniffer API dosen\'t respond, maybe it isn\'t up yet'
                 )
                 return
 
             # TODO log
-            return r.json()
+            self.log_message(
+                "Content of the response on %s call is %s",
+                url,
+                r.json()
+            )
 
             # TODO put r.json into the json_result
             # Prepare the result to return
@@ -414,3 +472,11 @@ __shutdown = False
 def shutdown():
     global __shutdown
     __shutdown = True
+
+
+def reopen_log_file(signum, frame):
+    global log_file
+    log_file = open(os.path.join(LOGDIR, "coord-webserver.log"), "a")
+
+    # ttproto API part
+    cgitb.enable(display=0, logdir=LOGDIR)
