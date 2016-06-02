@@ -119,9 +119,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(fp.read())
             return
 
-        # GET handler for the gui asserts
+        # GET handler for the gui js asserts
         #
-        elif url.path[:8] == '/js-libs':
+        elif url.path == '/asserts/gui.js':
 
             # Just open and provide the file
             try:
@@ -131,16 +131,27 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_error(404)
                 return
 
-            # In function of the type
-            if url.path[-2:] == 'js':
-                content_type = 'application/javascript'
-            elif url.path[-3:] == 'css':
-                content_type = 'text/css'
-            else:
-                content_type = 'text/html'
+            self.send_response(200)
+            self.send_header("Content-Type", 'application/javascript')
+            self.end_headers()
+
+            self.wfile.write(fp.read())
+            return
+
+        # GET handler for the gui css asserts
+        #
+        elif url.path == '/asserts/gui.css':
+
+            # Just open and provide the file
+            try:
+                fp = open('drafts/finterop-gui' + url.path, 'rb')
+            except FileNotFoundError:
+                self.log_message("Assert file %s not found", url.path)
+                self.send_error(404)
+                return
 
             self.send_response(200)
-            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Type", 'text/css')
             self.end_headers()
 
             self.wfile.write(fp.read())
