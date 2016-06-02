@@ -44,12 +44,11 @@ import time
 from urllib.parse import urlparse, parse_qs
 
 API_URL = 'http://127.0.0.1:2080'
-
-# TO MERGE (start)
 API_SNIFFER = 'http://127.0.0.1:5000'
 CURRENT_TESTCASE = "TEST"
 TEMP_DIR = "./data/coordinator/dumps"
-# TO MERGE (finished)
+TEST_CASES = []
+
 
 def cord_error(message):
     """
@@ -69,26 +68,86 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # Get the url and parse it
         url = urlparse(self.path)
 
-        # ######################## Coordinator part ######################### #
+        # The global variable
+        global TEST_CASES
+
+        # #################### GUI part ####################
+
+        # GET handler for the gui web page
+        #
+        if url.path == '/':
+
+            # Just open and provide the file
+            try:
+                fp = open('drafts/finterop-gui/finterop.html', 'rb')
+            except FileNotFoundError:
+                self.send_error(404)
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+
+            self.wfile.write(fp.read())
+            return
+
+        # GET handler for the gui asserts
+        #
+        elif url.path[:8] == '/js-libs':
+
+            # Just open and provide the file
+            try:
+                fp = open('drafts/finterop-gui' + url.path, 'rb')
+            except FileNotFoundError:
+                self.send_error(404)
+                return
+
+            # In function of the type
+            if url.path[-2:] == 'js':
+                content_type = 'application/javascript'
+            elif url.path[-3:] == 'css':
+                content_type = 'text/css'
+            else:
+                content_type = 'text/html'
+
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.end_headers()
+
+            self.wfile.write(fp.read())
+            return
+
+        # #################### End of GUI part ####################
 
         # GET handler for the get_testcases uri
         # It will give to the finterop client the list of the test cases
         #
-        if url.path == '/finterop/get_testcases':
+        elif url.path == '/finterop/get_testcases':
 
-            # Launch the post request on ttproto api
-            resp = requests.get(API_URL + '/api/v1/testcase_getList')
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
             # Send the header
             self.send_response(200)
             self.send_header("Content-Type", "application/json;charset=utf-8")
             self.end_headers()
 
-            # Bind the stdout to the http output
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+            # Launch the post request on ttproto api
+            try:
+                resp = requests.get(API_URL + '/api/v1/testcase_getList')
+                if resp.status_code != requests.codes.ok:
+                    raise
+            except:
+                cord_error(
+                    'ERROR: No test cases found, maybe the API isn\'t up yet'
+                )
+                return
+
+            # Store the test cases into a variable
+            TEST_CASES = resp.json()
 
             # Just forward the json
-            print(json.dumps(resp.json()))
+            print(json.dumps(TEST_CASES))
             return
 
         # GET handler for the start_test_suite uri
@@ -100,12 +159,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # HERE YOU PUT THE FUNCTIONS THAT YOU NEED TO START THE TEST SUITE
             #
 
-            # Launch the post request on ttproto api
-            resp = requests.get(API_URL + '/api/v1/testcase_getList')
-
             # Get the first test case
-            tcs = resp.json()
-            first_tc = tcs['content'][0]
+            first_tc = TEST_CASES['content'][0]
 
             # Send the header
             self.send_response(200)
@@ -131,16 +186,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             ))
             return
 
-
-        # #################### End of Coordinator part ##################### #
+        # If unknown request
+        else:
+            self.send_error(404)
+            return
 
     def do_POST(self):
 
         # The job counter
         global job_id
+        global CURRENT_TESTCASE
+        global TEMP_DIR
+        global API_SNIFFER
         job_id += 1
-
-        # ########################## ttproto API ########################### #
 
         # POST handler for the start_test_case uri
         # It will allow users to begin a TC
@@ -173,13 +231,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get the test case id
             testcase_id = form.getvalue('testcase_id')
 
-            # Launch the post request on ttproto api
-            resp = requests.get(API_URL + '/api/v1/testcase_getList')
-            test_cases = resp.json()
-
             # Check that the test case is contained into the available ones
             valid_testcase = False
-            for tc in test_cases['content']:
+            for tc in TEST_CASES['content']:
                 if tc['id'] == testcase_id:
                     valid_testcase = True
                     break
@@ -189,17 +243,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 cord_error('Test case not found')
                 return
 
-            #
-            # HERE YOU PUT THE FUNCTIONS THAT YOU NEED TO START THE TEST CASE
-            # ASSOCIATED WITH THIS TEST CASE ID
-            #
             # Start the sniffer
 
             CURRENT_TESTCASE = testcase_id
 
             par = {'testcase_id': testcase_id}
             url = API_SNIFFER + "/sniffer_api/launchSniffer"
-            r = requests.post(url, params=par)
+            try:
+                r = requests.post(url, params=par)
+            except:
+                cord_error(
+                    'Sniffer API dosen\'t respond, maybe it isn\'t up yet'
+                )
+                return
             # TODO log(r.content)
 
             # Send the header
@@ -254,16 +310,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get the test case id
             testcase_id = form.getvalue('testcase_id')
 
-            # Launch the post request on ttproto api
-            resp = requests.get(API_URL + '/api/v1/testcase_getList')
-            test_cases = resp.json()
-
             # Check that the test case is contained into the available ones
             valid_testcase = False
-            for tc in test_cases['content']:
+            for tc in TEST_CASES['content']:
                 if tc['id'] == testcase_id:
                     valid_testcase = True
-                    next_test_case = (test_cases['content'].index(tc) + 1)
+                    next_test_case = (TEST_CASES['content'].index(tc) + 1)
                     break
 
             # If not valid test case
@@ -279,12 +331,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get the pcap file
             # Analyse it and return the result
 
-
-            # TODO maybe some of this are not necessary?
-            global CURRENT_TESTCASE
-            global TEMP_DIR
-            global API_SNIFFER
-
             # TODO useful for other API calls?
             def getPcapFromApiSniffer(api_sniffer: str, route: str, testcase_id, save_dir: str):
 
@@ -297,7 +343,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # finish sniffer
             url = API_SNIFFER + "/sniffer_api/finishSniffer"
-            r = requests.post(url)
+
+            try:
+                r = requests.post(url)
+            except:
+                cord_error(
+                    'Sniffer API dosen\'t respond, maybe it isn\'t up yet'
+                )
+                return
             # TODO tologger(r.content) start logging this stuff!!
 
             # get PCAP from sniffer, and put it in TEMP_DIR
@@ -308,7 +361,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             url = API_URL + "/api/v1/testcase_analyse"
             par = {'testcase_id': CURRENT_TESTCASE}
             fileToPost = {'file': open(TEMP_DIR, 'rb')}
-            r = requests.post(url, files=fileToPost, params=par)
+
+            try:
+                r = requests.post(url, files=fileToPost, params=par)
+            except:
+                cord_error(
+                    'Sniffer API dosen\'t respond, maybe it isn\'t up yet'
+                )
+                return
+
             # TODO log
             return r.json()
 
@@ -324,9 +385,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     },
                     {
                         '_type': 'information',
-                        'last_test_case': (next_test_case == len(test_cases['content']))
+                        'last_test_case': (next_test_case == len(TEST_CASES['content']))
                     },
-                    test_cases['content'][next_test_case],  # The next test case
+                    TEST_CASES['content'][next_test_case],  # The next test case
                     {
                         '_type': 'verdict',
                         'verdict': 'inconc',
@@ -346,7 +407,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
 job_id = 0
-
 
 __shutdown = False
 

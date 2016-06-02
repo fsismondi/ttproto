@@ -126,27 +126,47 @@
 					dataType: 'json',
 					success: function(input) {
 
-						// Display the list of test cases
-						for (var tc in input.content) {
-							$('#test-cases').append(
-								'<li class="list-group-item" id="' + input.content[tc].id + '">\
-									<h4 class="list-group-item-heading">' + input.content[tc].id + '</h4>\
-									<p class="list-group-item-text">' + input.content[tc].objective + '</p>\
-								</li>\
-							');
+						// Correct response
+						if (input.ok == true && input._type == 'response')  {
+
+							// Display the list of test cases
+							for (var tc in input.content) {
+								$('#test-cases').append(
+									'<li class="list-group-item" id="' + input.content[tc].id + '">\
+										<h4 class="list-group-item-heading">' + input.content[tc].id + '</h4>\
+										<p class="list-group-item-text">' + input.content[tc].objective + '</p>\
+									</li>\
+								');
+							}
+
+							// Display the state						
+							$('#console').append('<div class="alert alert-info alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.content.length + ' test cases loaded</div>');
+
+							// Hide loading button
+							$('.btn-warning').remove();
+
+							// Put the start ts button
+							$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestSuite()" id="start-ts-button" >Start Test Suite</button>');
+						
+
+						// If we have an error
+						} else {
+
+							// Display the error message
+							$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.error + '</div>');
+
+							// Hide loading button
+							$('.btn-warning').remove();
+
+							// Put back the button
+							$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="getTestCases()" id="get-tc-button" >Get Test Cases</button>');
 						}
-
-						// Display the state						
-						$('#console').append('<div class="alert alert-info alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + input.content.length + ' test cases loaded</div>');
-
-						// Hide loading button
-						$('.btn-warning').remove();
-
-						// Put the start ts button
-						$('#button-bloc').append('<button class="btn btn-success centered-block" onClick="startTestSuite()" id="start-ts-button" >Start Test Suite</button>');
 					},
 					error: function(xhr, status, err) {
 						console.error(url, status, err.toString());
+
+						// Display the error message
+						$('#console').append('<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>No response from the API</div>');
 
 						// Hide loading button
 						$('.btn-warning').remove();
