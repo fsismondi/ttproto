@@ -1,5 +1,5 @@
 """
-Invokes webserver to be run at 127.0.0.1:80
+Invokes webserver to be run at 127.0.0.1:2080
 Should be run as: python3 -m ttproto.ts_coap
 """
 from .webserver import *
@@ -10,11 +10,9 @@ if __name__ == "__main__":
 
     __shutdown = False
 
-
     def shutdown():
         global __shutdown
         __shutdown = True
-
 
     for d in TMPDIR, DATADIR, LOGDIR:
         try:
@@ -36,6 +34,7 @@ reopen_log_file(None, None)
 signal.signal(signal.SIGHUP, reopen_log_file)
 
 server = http.server.HTTPServer(("0.0.0.0", 80), RequestHandler)
+print('Server is ready')
 while not __shutdown:
     try:
         l = log_file
