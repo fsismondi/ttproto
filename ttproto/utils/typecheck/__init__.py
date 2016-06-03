@@ -696,7 +696,7 @@ class Function(CheckType):
             return cls(obj)
             
     def __typecheck__(self, func, to_check):
-        if False == self._func(to_check):
+        if not self._func(to_check):
             raise _TC_FunctionError(self._func, to_check)
             
     def __str__(self):

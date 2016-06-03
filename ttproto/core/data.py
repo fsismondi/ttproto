@@ -1000,7 +1000,7 @@ class Data(named.NamedObject):
                     result = False
 
             # run type-specific checks
-            if result == True:
+            if result:
                 result = self._match(value, mismatch_list)
 
         if mismatch_list != None:

@@ -682,7 +682,7 @@ class SUTAction (snapshot.EventSource, logger.LoggedObject):
 
 	@typecheck
 	def match_done (self) -> optional (snapshot.EventMatch):
-		if self.__snapshot_status != True:
+		if not self.__snapshot_status:
 			return None
 
 		with self.lock:
