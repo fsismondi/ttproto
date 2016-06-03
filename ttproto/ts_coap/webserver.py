@@ -681,6 +681,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
+            timestamp=''
             if (pcap_file):
 
                 # Path to save the file
@@ -713,9 +714,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # Get the test case and its informations
-            testcase_id = form.getvalue('testcase_id')
-            if not testcase_id or testcase_id == '':
-                testcase_id = ''
+            testcase_id = str(form.getvalue('testcase_id'))
+            assert type(testcase_id)==str
+            #if not testcase_id or testcase_id == '':
+            #    testcase_id = ''
 
             # Try to get the test case the common way
             try:
