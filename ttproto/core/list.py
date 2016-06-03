@@ -121,7 +121,7 @@ class ListValue (Value):
 
 		if isinstance (index, type):
 			result = self.find_type (index)
-			if result == None:
+			if result is None:
 				raise KeyError
 			return result
 		else:
@@ -214,7 +214,7 @@ class ListValue (Value):
 		else:
 			result = False
 
-			if mismatch_list != None:
+			if mismatch_list is not None:
 				mismatch_list.append (LengthMismatch (value, self))
 			else:
 				# no need to continue
@@ -226,7 +226,7 @@ class ListValue (Value):
 			for value, pattern in zip (value.get_datas(), self.get_data()):
 				if not pattern.match (value):
 					result = False
-					if mismatch_list == None:
+					if mismatch_list is None:
 						# no need to continue
 						break
 
@@ -238,7 +238,7 @@ class ListValue (Value):
 
 				result = False
 
-				if mismatch_list != None:
+				if mismatch_list is not None:
 					mismatch_list.append (ValueMismatch (value, self))
 		return result
 
@@ -286,7 +286,7 @@ class ListValue (Value):
 			values.append (v)
 
 		try:
-			if count != None:
+			if count is not None:
 				# decode exactly 'count' entries
 				for i in range (count):
 					decode_field()

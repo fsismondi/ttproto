@@ -576,10 +576,10 @@ class BinarySlice:
               BinarySlice (b"abc", left=1, left_bits=2)
             BinarySlice (b"abc", left_bits=10)
         """
-        assert left == None or left_bits == None or (left * left_bits) >= 0  # same sign
-        assert right == None or right_bits == None or (right * right_bits) >= 0  # same sign
+        assert left is None or left_bits is None or (left * left_bits) >= 0  # same sign
+        assert right is None or right_bits is None or (right * right_bits) >= 0  # same sign
 
-        if left == None and left_bits == None:
+        if left is None and left_bits is None:
             left_bits = 0
 
         self.__str = buff
@@ -632,15 +632,15 @@ class BinarySlice:
     @typecheck
     def __compute_offset(self, bytes_: optional(int), bits: optional(int), relative: bool = False) -> int:
         """compute a relative offset (typically to generate a subslice)"""
-        assert bytes_ == None or bits == None or (bytes_ * bits) >= 0  # same sign
+        assert bytes_ is None or bits is None or (bytes_ * bits) >= 0  # same sign
 
         if relative:
             orig_left, orig_right = self.__left, self.__right
         else:
             orig_left, orig_right = 0, len(self.__str) * 8
 
-        if bytes_ == None:
-            if bits == None:
+        if bytes_ is None:
+            if bits is None:
                 result = orig_right
             elif bits >= 0:
                 result = orig_left + bits
@@ -691,10 +691,10 @@ class BinarySlice:
         if type(index) == int:
             return self.get_byte(index * 8)
         else:
-            assert index.step == None  # increment not supported
+            assert index.step is None  # increment not supported
 
             return BinarySlice(self.__str,
-                               left_bits=self.__left if index.start == None else self.__compute_offset(index.start,
+                               left_bits=self.__left if index.start is None else self.__compute_offset(index.start,
                                                                                                        None, True),
                                right_bits=self.__compute_offset(index.stop, None, True)
                                )
@@ -880,7 +880,7 @@ class Data(named.NamedObject):
                             self.get_type())  # FIXME: the conversion might be too strict (especially with a subclass)  -> should we allow the child to be a subclass of the parent ?
 
         assert not self.is_frozen()
-        if self.__parent != None:
+        if self.__parent is not None:
             raise exceptions.Error("This data has already one parent data")
 
         parent.freeze()
@@ -966,33 +966,33 @@ class Data(named.NamedObject):
 
         result = True
 
-        if mismatch_list != None:
+        if mismatch_list is not None:
             # just used to ensure that the mismatch_list is populated if and only if we have a mismatch
             initial_mismatch_list_length = len(mismatch_list)
 
-        if value == None:
+        if value is None:
             result = False
-            if mismatch_list != None:
+            if mismatch_list is not None:
                 mismatch_list.append(TypeMismatch(value, self))
         else:
             # FIXME: should we have automatic conversion to type(self) ?
             value = as_data(value)
 
-            if self.__parent == None:
+            if self.__parent is None:
                 # top template
                 # -> first check that the data is compatible with this type
 
                 # FIXME: should't we do this in the constructor directly ?
                 if not self.get_type().is_valid_value(value):
                     result = False
-                    if mismatch_list != None:
+                    if mismatch_list is not None:
                         mismatch_list.append(TypeMismatch(value, self))
 
             else:
                 # child template
                 # -> first check with the parent template
                 if not self.__parent.match(value, mismatch_list):
-                    if mismatch_list != None:
+                    if mismatch_list is not None:
                         # will not change the result,
                         # but this will give a more accurate mismatchlist
                         if self.get_type().is_valid_value(value):
@@ -1003,7 +1003,7 @@ class Data(named.NamedObject):
             if result == True:
                 result = self._match(value, mismatch_list)
 
-        if mismatch_list != None:
+        if mismatch_list is not None:
             # when _match() returns False, there must be at least one difference
             have_no_new_mismatches_entries = len(mismatch_list) == initial_mismatch_list_length
 
@@ -1116,7 +1116,7 @@ class Data(named.NamedObject):
         NOTE: this function should not be reimplemented. You should
         reimplement _is_flat() instead
         """
-        return (self.__parent == None) and self._is_flat()
+        return (self.__parent is None) and self._is_flat()
 
     @typecheck
     def __contains__(self, value: is_value) -> bool:
@@ -1150,7 +1150,7 @@ class Data(named.NamedObject):
 
         if hasattr(self, "_repr"):
 
-            if self.get_parent() == None:
+            if self.get_parent() is None:
                 return self._repr()
             else:
                 return "%s.set_parent(%s)" % (self._repr(), repr(self.get_parent()))
@@ -1263,9 +1263,9 @@ def store_data(arg, type_=None, none_is_allowed=False, omit_is_allowed=False):
       other objects, those must also be immutables) FIXME: this may no
       longer be needed in the future
     """
-    assert type_ == None or issubclass(type_, Value)
+    assert type_ is None or issubclass(type_, Value)
 
-    if arg == None:
+    if arg is None:
         if none_is_allowed:
             # FIXME: it could be better to return some kind of NoneValue object here
             return None
@@ -1276,7 +1276,7 @@ def store_data(arg, type_=None, none_is_allowed=False, omit_is_allowed=False):
         # TODO: clarify this requirement (would never match otherwise)
         # TODO: enforce value vs. type checking in (PacketValue, ListValue, ...)._match()
         # FIXME: how to handle automatic conversions w/ issubclass (arg.get_type(), type_)
-        assert type_ == None or issubclass(type_, arg.get_type()) or issubclass(arg.get_type(), type_) or (
+        assert type_ is None or issubclass(type_, arg.get_type()) or issubclass(arg.get_type(), type_) or (
             issubclass(arg.get_type(), Omit) and omit_is_allowed)
 
         data = arg
@@ -1321,7 +1321,7 @@ def pack(*msg_list):
     for msg in reversed(msg_list):
         assert is_data(msg)
 
-        if next != None:
+        if next is not None:
             next = as_data(msg).pack(next)
         else:
             next = as_data(msg)
@@ -1561,7 +1561,7 @@ class Template(Data):
         _template_match() if needed.
         """
         result = self._template_match(value)
-        if not result and mismatch_list != None:
+        if not result and mismatch_list is not None:
             mismatch_list.append(TemplateMismatch(value, self))
         return result
 
@@ -1851,16 +1851,16 @@ class Bidict:
         """
 
         if isinstance(item, slice):
-            assert item.step == None
+            assert item.step is None
 
-            if item.start != None:
+            if item.start is not None:
                 # forward resolution
-                assert item.stop == None
+                assert item.stop is None
 
                 return self._fwd[item.start]
             else:
                 # backward resolution
-                assert item.stop != None
+                assert item.stop is not None
 
                 return self._bwd[item.stop]
         else:
@@ -1886,16 +1886,16 @@ class Bidict:
         deleted.
         """
         if isinstance(item, slice):
-            assert item.step == None
+            assert item.step is None
 
-            if item.start != None:
+            if item.start is not None:
                 # forward assignment
-                assert item.stop == None
+                assert item.stop is None
 
                 self._set(item.start, value)
             else:
                 # backward assignment
-                assert item.stop != None
+                assert item.stop is not None
 
                 self._set(value, item.stop)
         else:
@@ -1971,25 +1971,25 @@ class BidictValueType(Bidict):
     @typecheck
     def __init__(self, default_value: optional(is_value), default_type: optional(is_type), *k, **kw):
         super().__init__(*k, **kw)
-        self.__default_value = None if default_value == None else as_data(default_value)
-        self.__default_type = None if default_type == None else get_type(default_type)
+        self.__default_value = None if default_value is None else as_data(default_value)
+        self.__default_type = None if default_type is None else get_type(default_type)
 
     @typecheck
     def _set(self, value: is_value, type_: is_type):
         super()._set(as_data(value), get_type(type_))
 
     def __getitem__(self, item):
-        if not isinstance(item, slice) or item.stop == None:
+        if not isinstance(item, slice) or item.stop is None:
             # forward resolution (Value -> Type)
             if isinstance(item, slice):
-                assert item.stop == None
-                assert item.step == None
+                assert item.stop is None
+                assert item.step is None
 
                 item = item.start
             try:
                 return super().__getitem__(as_data(item))
             except KeyError:
-                if self.__default_type != None:
+                if self.__default_type is not None:
                     return self.__default_type
                 else:
                     raise
@@ -2002,7 +2002,7 @@ class BidictValueType(Bidict):
                     return super().__getitem__(slice(None, t, None))
                 except KeyError:
                     pass
-            if self.__default_value != None:
+            if self.__default_value is not None:
                 return self.__default_value
             else:
                 raise KeyError(item.stop)
@@ -2040,7 +2040,7 @@ class Message:
         result.    In case of decoding error, a DecodeError exception is
         raised.
         """
-        if expected_type == None:
+        if expected_type is None:
             # Build from a value
             assert is_data(data_or_binary)
 
@@ -2157,7 +2157,7 @@ class MessageDescription:
         NOTE: the attribute is updated if the given value is not None
         """
         assert name in self.__attrs
-        if value != None:
+        if value is not None:
             super(MessageDescription, self).__setattr__(name, as_data(value))
 
     def __getattr__(self, name):

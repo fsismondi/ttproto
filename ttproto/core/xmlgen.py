@@ -209,7 +209,7 @@ class XMLGenerator:
 
 				__self.__attr = " " + " ".join ((("%s=\"%s\"" % (k,v)) for k,v in __kw.items()))
 
-			if __txt == None:
+			if __txt is None:
 				return __self
 			else:
 				assert __self.__flushed == False

@@ -48,7 +48,7 @@ class Console:
 	pass
 
 def help( obj ):
-	if obj.__doc__ != None:
+	if obj.__doc__ is not None:
 		print( obj.__doc__)
 	else:
 		print("undocumented")

@@ -545,7 +545,7 @@ r.appendChild(c);
                                 if new_v > v:
                                     v = new_v
                             v_txt = verdicts[v]
-                            if v_txt == None:
+                            if v_txt is None:
                                 v_txt = "none"
 #TODO: factorise that w/ a function
                             g('''

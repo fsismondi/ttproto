@@ -309,14 +309,14 @@ class SixLowpanIPHC (
 	def _build_message (self, ip6: optional(is_flat_value) = None) -> either((is_flat_value, is_binary, int), (is_flat_value, is_binary)):
 		"""the last value returned is the number of bytes that have been compressed in the IPv6 payload"""
 
-		is_first_header = ip6 == None
+		is_first_header = ip6 is None
 		if is_first_header:
 			# first header
 			payload, payload_bin = self["pl"].build_message()
 			ip6 = payload
 		else:
 			# subsequent header (will not include "payload") into the result
-			assert self["Payload"] == None	# would be ignored anyway
+			assert self["Payload"] is None  # would be ignored anyway
 			payload, payload_bin = Omit(), b""
 
 		assert type (ip6) in (IPv6, Omit) # TODO: support other types (would need to decode the binary)
@@ -336,7 +336,7 @@ class SixLowpanIPHC (
 			ecn = (tc & 0b11000000) >> 6
 			dscp= tc & 0b00111111
 			tf = self["tf"]
-			if tf == None:
+			if tf is None:
 				if ip6["fl"]:
 					if dscp:
 						# all are present
@@ -351,20 +351,20 @@ class SixLowpanIPHC (
 					# all are elided
 					tf = 3
 				values["tf"] = tf
-			if self["iecn"] == None:
+			if self["iecn"] is None:
 				values["iecn"] = ecn if tf < 3 else Omit()
-			if self["idscp"] == None:
+			if self["idscp"] is None:
 				values["idscp"] = dscp if tf % 2 == 0 else Omit()
-			if self["ipad"] == None:
+			if self["ipad"] is None:
 				values["ipad"] = Omit() if tf >= 2 else UInt4(0) if tf == 0 else UInt2(0)
-			if self["ifl"] == None:
+			if self["ifl"] is None:
 				values["ifl"] = ip6["fl"] if tf < 2 else Omit()
 
 			#######################################################
 			# Hop Limit
 			hl = ip6["hl"]
 			# pre-compute a candidate value for hlim
-			if self["hl"] == None:
+			if self["hl"] is None:
 				if	hl == 1:	hlim = 0b01
 				elif	hl == 64:	hlim = 0b10	#FIXME: possible issue if the packet is forwarded
 				elif	hl == 255:	hlim = 0b11	#FIXME: idem, except if dsl is in fe80::/64
@@ -372,9 +372,9 @@ class SixLowpanIPHC (
 			else:
 				hlim = self["hl"]
 
-			if self["hl"] == None:
+			if self["hl"] is None:
 				values["hl"] = hlim
-			if self["ihl"] == None:
+			if self["ihl"] is None:
 				values["ihl"]  = Omit() if hlim else hl
 
 			#######################################################
@@ -410,7 +410,7 @@ class SixLowpanIPHC (
 						ac = 0
 					else:
 						ci = self.find_context (ipv6_addr)
-						if ci != None and ipv6_addr != IPV6_UNSPECIFIED_ADDRESS:
+						if ci is not None and ipv6_addr != IPV6_UNSPECIFIED_ADDRESS:
 							# stateful compression
 							ac = 1
 						else:
@@ -419,14 +419,14 @@ class SixLowpanIPHC (
 							am = 0
 							ci = None
 
-				if self[am_index] != None:
+				if self[am_index] is not None:
 					sam = self[am_index]
 
-				if self[ac_index] == None:
+				if self[ac_index] is None:
 					values[ac_index] = ac
-				if self[am_index] == None:
+				if self[am_index] is None:
 					values[am_index] = am
-				if self[addr_index] == None:
+				if self[addr_index] is None:
 					pfx = b"" if ac or am else ipv6_addr[:8]
 					if am == 2:
 						# 16 bits
@@ -457,7 +457,7 @@ class SixLowpanIPHC (
 			# Destination Address
 			dst = ip6["dst"]
 			m = dst[0] == 0xff
-			if self["m"] == None:
+			if self["m"] is None:
 				values["m"] = m
 			if not m:
 				dci = compress_unicast (ip6["dst"], hwdst, "dam", "dac", "idst")
@@ -478,15 +478,15 @@ class SixLowpanIPHC (
 					# 128 bits or stateful
 					dam = 0
 					dci = self.find_context (IPv6Address(dst[4:12]+bytes(8)), dst[3])
-					if dci != None:
+					if dci is not None:
 						# stateful compression
 						dac = 1
 
-				if self["dac"] == None:
+				if self["dac"] is None:
 					values["dac"] = dac
-				if self["dam"] == None:
+				if self["dam"] is None:
 					values["dam"] = dam
-				if self["idst"] == None:
+				if self["idst"] is None:
 					if dac == 0:
 						if dam == 0:
 							# 128 bits
@@ -511,21 +511,21 @@ class SixLowpanIPHC (
 			#######################################################
 			# Context Information Extension
 			cid = self["cid"]
-			if cid == None:
-				cid = sci != None or dci != None
+			if cid is None:
+				cid = sci is not None or dci is not None
 			sci = sci if sci else 0
 			dci = dci if dci else 0
 
-			if self["cid"] == None:
+			if self["cid"] is None:
 				values["cid"] = cid
-			if self["sci"] == None:
+			if self["sci"] is None:
 				values["sci"] = sci if cid else Omit()
-			if self["dci"] == None:
+			if self["dci"] is None:
 				values["dci"] = dci if cid else Omit()
 
 			#######################################################
 			# NextHeader
-			if self["nhc"] == None:
+			if self["nhc"] is None:
 				# enter and iid context because we may use to compressed addresses
 				with self.encapsulating_iid_context (src, dst):
 					nhc, nhc_bin, skip_add = SixLowpanNHC.compress(ip6["nh"], ip6["pl"])
@@ -536,12 +536,12 @@ class SixLowpanIPHC (
 
 			nh = nhc != Omit()	# TODO: document that this value may be computed from self["nhc"] (contrary to all other fields)
 
-			if self["nh"] == None:
+			if self["nh"] is None:
 				values["nh"] = nh
-			if self["inh"] == None:
+			if self["inh"] is None:
 				values["inh"] = Omit() if nh else ip6["nh"]
 
-			if self["nhc"] != None:
+			if self["nhc"] is not None:
 				nhc = values["nhc"]
 		else:
 			# build the NHC header
@@ -815,7 +815,7 @@ class SixLowpanIPHC (
 	@typecheck
 	def find_context (cls, addr: IPv6Address, length = None) -> optional (int):
 		with cls.__contextes_lock:
-			if length == None:
+			if length is None:
 				# address lookup
 				i=0
 				for pfx, length in cls.__contextes:

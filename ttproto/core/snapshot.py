@@ -104,7 +104,7 @@ class SnapshotBlock:
 	def push (self, block: this_class) -> this_class:
 		'''returnes the new base of the stack'''
 
-		assert block.__parent == None
+		assert block.__parent is None
 		block.__parent = self
 		return block
 
@@ -274,7 +274,7 @@ class SnapshotManager:
 
 		@typecheck
 		def attach_handler (self, func: callable):
-			assert self.handler == None
+			assert self.handler is None
 			self.handler = func
 
 	class Thread (threading.Thread):
@@ -527,7 +527,7 @@ class EventSource:
 	@typecheck
 	def set_listener (self, listener: SnapshotManager):
 		with self.__lock:
-			assert self.__listener == None # TODO: report an error if not
+			assert self.__listener is None  # TODO: report an error if not
 
 			self.__listener = listener
 
@@ -577,7 +577,7 @@ class Event:
 
 	def match (self, *k, **kw) -> "optional (EventMatch)":
 		result = self.__match_func (*k, **kw)
-		assert result == None or isinstance (result, EventMatch)
+		assert result is None or isinstance (result, EventMatch)
 		return result
 
 class EventMatch:
@@ -603,11 +603,11 @@ class EventMatch:
 		#TODO: support any callable object
 		#TODO: support *k and **kw
 
-		assert self.__branch != None	# FIXME: not sure about this one
+		assert self.__branch is not None  # FIXME: not sure about this one
 
 		func = self.__branch.handler
 
-		if func == None:
+		if func is None:
 			# no handler set
 			# -> just return
 			return None
@@ -638,7 +638,7 @@ class Timer (EventSource, logger.LoggedObject, named.NamedObject):
 		self.__clock = None
 		self.__running = False
 
-		if duration != None:
+		if duration is not None:
 			self.start (duration)
 
 	def __str__ (self):

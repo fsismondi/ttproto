@@ -243,7 +243,7 @@ class TextRecordValue (Value):
 	@typecheck
 	def __init_fields (cls, fields: optional (list_of (tuple))):
 		# check the validity of the fields
-		if fields != None:
+		if fields is not None:
 			for f in fields:
 				assert 3 <= len(f) <= 4
 				assert type (f[0]) == str
@@ -417,7 +417,7 @@ class TextRecordValue (Value):
 	def _repr (self):
 		result = []
 		for field, data in zip (self.__cls_fields, self.__datas):
-			if data != None:
+			if data is not None:
 				result.append ("%s=%s" % (field.alias, repr (data)))
 		return "%s(%s)" % (type (self).__name__, ", ".join (result))
 
@@ -466,7 +466,7 @@ class TextRecordValue (Value):
 		index = self.get_field_id (index)
 		while seq:
 			v = seq.__datas [index]
-			if v != None:
+			if v is not None:
 				yield v
 			seq = seq.get_parent()
 

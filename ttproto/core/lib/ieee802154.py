@@ -173,15 +173,15 @@ class Ieee802154 (
 		values = self.DataList (self._fill_default_values())
 
 		# dst addr mode
-		if self["dam"] == None and not isinstance (values["dst"], Omit):
+		if self["dam"] is None and not isinstance (values["dst"], Omit):
 			values["dam"] = 3 if isinstance (values["dst"], Eui64Address) else 2
 		# dst pan id
-		if self["dpid"] == None and values["dam"]:
+		if self["dpid"] is None and values["dam"]:
 			# set it to 0x0000 by default
 			values["dpid"] = 0
 
 		# src addr mode
-		if self["sam"] == None and not isinstance (values["src"], Omit):
+		if self["sam"] is None and not isinstance (values["src"], Omit):
 			values["sam"] = 3 if isinstance (values["src"], Eui64Address) else 2
 
 		# intra_pan

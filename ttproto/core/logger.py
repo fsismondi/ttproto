@@ -61,7 +61,7 @@ class LogEvent:
 		for i in range (0, len (k)):
 			t = self.__types[i]
 
-			if k[i] == None and self.__optional[i]:
+			if k[i] is None and self.__optional[i]:
 				continue
 
 			if not isinstance (k[i], t):
@@ -152,7 +152,7 @@ class ConsoleLogger (Logger):
 	@typecheck
 	def log_event (self, event: LogEvent):
 		with self.__lock:
-			if self.__origin == None:
+			if self.__origin is None:
 				self.__origin = event.get_timestamp() // 1000 * 1000
 				print ("clock origin: %d (%s)" % (self.__origin, time.ctime (self.__origin)))
 			br = "\n" if type(event).__name__ in self.__linebreak else ""

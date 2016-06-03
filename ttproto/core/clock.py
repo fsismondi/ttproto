@@ -270,7 +270,7 @@ class SimulatedClock (EventQueueClock):
 	def _time (self):
 		assert self._lock.locked()
 
-		if self.__current_time == None:
+		if self.__current_time is None:
 			return 0 # FIXME: should have a better way to do it
 			raise exceptions.Error ("Simulated clock not yet started")
 		else:
@@ -297,7 +297,7 @@ class SimulatedClock (EventQueueClock):
 				if self.__killed:
 					return
 
-				if self.__current_time == None:
+				if self.__current_time is None:
 					# clock not yet started
 					# -> wait for the signal
 					continue
@@ -324,7 +324,7 @@ class SimulatedClock (EventQueueClock):
 						finally:
 							self._lock.acquire()
 
-						if self.__current_time == None:
+						if self.__current_time is None:
 							break
 
 					elif snapshot.SnapshotManager.all_tracked_threads_blocked():
