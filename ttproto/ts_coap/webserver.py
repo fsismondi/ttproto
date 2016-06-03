@@ -763,7 +763,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # TODO: Maybe change it to get many of them
             verdict = {
                 '_type': 'verdict',
-                'verdict': analysis_results[0][1],
+                'verdict': analysis_results[0][2],
                 'description': test_case['objective'],
                 'review_frames': []
             }

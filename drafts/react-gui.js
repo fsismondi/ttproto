@@ -1,7 +1,7 @@
 // ############### Some parameters ###############
 
 // Some constant values
-var baseUrl = 'http://127.0.0.1:2080';
+var baseUrl = 'http://127.0.0.1';
 var acceptedActions = ['analyse', 'dissect'];
 
 // Urls of the API
@@ -239,11 +239,9 @@ var FormBloc = React.createClass({
 			contentType: false,
 			data: output,
 			success: function(input) {
-				console.log(input);
 				checkError('POST request on ' + url, input);
 				this.tokenManager(input);
 				this.props.frameUpdated(input);
-				console.log(input);
 			}.bind(this),
 			error: function(xhr, status, err) {
 				console.error(url, status, err.toString());
