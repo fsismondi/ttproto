@@ -315,6 +315,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the id
             testcase_id = params['testcase_id'][0]
+            if not type(testcase_id) == str:
+                api_error('The param testcase_id is expected to be a string')
+                return
 
             # FIXME: The method throw an ImportError when it found the TC
             # It seems that it's trying to import a module with its name
@@ -324,23 +327,17 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 test_cases = analysis.get_implemented_testcases(testcase_id)
             except FileNotFoundError:
-                api_error(
-                    'No test case with the id %s' % testcase_id
-                )
+                api_error('No test case with the id %s' % testcase_id)
                 return
 
             # FIXME: Don't forget to remove this block when the bug is fixed
             except ImportError:
                 os.chdir('../../..')
-                api_error(
-                    'TC %s found but a bug is to fix' % testcase_id
-                )
+                api_error('TC %s found but a bug is to fix' % testcase_id)
                 return
 
             if (len(test_cases) != 1):
-                api_error(
-                    'TC %s is not unique' % testcase_id
-                )
+                api_error('TC %s is not unique' % testcase_id)
                 return
 
             # The result to return
@@ -698,11 +695,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
-            timestamp=''
+            timestamp = time.strftime("%y%m%d_%H%M%S")
             if (pcap_file):
 
                 # Path to save the file
-                timestamp = time.strftime("%y%m%d_%H%M%S")
                 pcap_path = os.path.join(
                     TMPDIR,
                     "%s_%04d.dump" % (timestamp, job_id)
@@ -731,10 +727,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # Get the test case and its informations
-            testcase_id = str(form.getvalue('testcase_id'))
-            assert type(testcase_id)==str
-            #if not testcase_id or testcase_id == '':
-            #    testcase_id = ''
+            testcase_id = form.getvalue('testcase_id')
+            if not type(testcase_id) == str:
+                api_error('The value of the testcase_id should be a string from text input')
+                return
 
             # Try to get the test case the common way
             try:
