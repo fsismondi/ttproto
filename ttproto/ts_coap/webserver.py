@@ -81,6 +81,8 @@ PROTOCOLS['CoAP'] = OrderedDict()
 PROTOCOLS['CoAP']['class'] = coap.CoAP
 PROTOCOLS['CoAP']['description'] = 'CoAP protocol'
 
+TEST_CASES = OrderedDict()
+
 
 def prepare_changelog():
     global CHANGELOG
@@ -152,6 +154,57 @@ def html_changelog(g):
         g.span("%s - %s\n\n" % (ver, date), style="color:#808080")
 
         g.pre("\t%s\n\n" % "\n\t".join(body.splitlines()))
+
+
+# Function to get the test cases from files if not initialized
+# Or directly from the global storage variable
+# Can retrieve a single test case if wanted
+# But doesn't use the analysis function, cf the remark
+#
+# /param testcase_id The id of the single test case if one wanted
+#
+# /remark If we ask for only one test case directly from the analysis function
+# It does return an ImportError when it found the TC, it seems that it's trying
+# to import a module with its name  cf analysis:220
+def get_test_cases(testcase_id=None):
+
+    # Get the global variable to store the test cases
+    global TEST_CASES
+
+    # If empty for the moment
+    if len(TEST_CASES) == 0:
+
+        # Own function to clean the datas received
+        raw_test_cases = analysis.get_implemented_testcases()
+
+        # Build the clean results list
+        for raw_tc in raw_test_cases:
+
+            tc_basic = OrderedDict()
+            tc_basic['_type'] = 'tc_basic'
+            tc_basic['id'] = raw_tc[0]
+            tc_basic['objective'] = raw_tc[1]
+
+            tc_implementation = OrderedDict()
+            tc_implementation['_type'] = 'tc_implementation'
+            tc_implementation['implementation'] = raw_tc[2]
+
+            # Tuple, basic + implementation
+            TEST_CASES[raw_tc[0]] = {
+                'tc_basic': tc_basic,
+                'tc_implementation': tc_implementation
+            }
+
+    # If only one asked
+    if testcase_id is not None:
+        if testcase_id in TEST_CASES:
+            return TEST_CASES[testcase_id]
+        else:
+            return None
+
+    # If everyone asked
+    else:
+        return TEST_CASES
 
 
 class UTF8Wrapper(io.TextIOBase):
@@ -298,7 +351,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 if any((
                     len(params) != 1,
                     'testcase_id' not in params,
-                    len(params['testcase_id']) != 1
+                    len(params['testcase_id']) != 1,
+                    not type(params['testcase_id'][0]) == str
                 )):
                     raise
 
@@ -309,48 +363,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
-            # Get the id
-            testcase_id = params['testcase_id'][0]
-            if not type(testcase_id) == str:
-                self.api_error('The param testcase_id is expected to be a string')
-                return
-
-            # FIXME: The method throw an ImportError when it found the TC
-            # It seems that it's trying to import a module with its name
-            # CF analysis:220
-
-            # Try to get the test case
-            try:
-                test_cases = analysis.get_implemented_testcases(testcase_id)
-            except FileNotFoundError:
-                self.api_error('No test case with the id %s' % testcase_id)
-                return
-
-            # FIXME: Don't forget to remove this block when the bug is fixed
-            except ImportError:
-                os.chdir('../../..')
-                self.api_error('TC %s found but a bug is to fix' % testcase_id)
-                return
-
-            if (len(test_cases) != 1):
-                self.api_error('TC %s is not unique' % testcase_id)
+            # Get the test case
+            test_case = get_test_cases(params['testcase_id'][0])
+            if test_case is None or len(test_case) == 0:
+                self.api_error('Test case %s not found' % params['testcase_id'][0])
                 return
 
             # The result to return
             json_result = OrderedDict()
             json_result['_type'] = 'response'
             json_result['ok'] = True
-
-            tc_basic = OrderedDict()
-            tc_basic['_type'] = 'tc_basic'
-            tc_basic['id'] = test_cases[0][0]
-            tc_basic['objective'] = test_cases[0][1]
-
-            tc_implementation = OrderedDict()
-            tc_implementation['_type'] = 'tc_implementation'
-            tc_implementation['implementation'] = test_cases[0][2]
-
-            json_result['content'] = [tc_basic, tc_implementation]
+            json_result['content'] = [
+                test_case['tc_basic'],
+                test_case['tc_implementation']
+            ]
 
             # Here the process from ttproto core
             print(json.dumps(json_result))
@@ -369,19 +395,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Bind the stdout to the http output
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
-            # Own function to clean the datas received
-            raw_test_cases = analysis.get_implemented_testcases()
-            clean_test_cases = []  # Dict of (tc_id, tc_desc)
-
-            # Build the clean results list
-            for raw_tc in raw_test_cases:
-
-                tc_basic = OrderedDict()
-                tc_basic['_type'] = 'tc_basic'
-                tc_basic['id'] = raw_tc[0]
-                tc_basic['objective'] = raw_tc[1]
-
-                clean_test_cases.append(tc_basic)
+            # Get the list of test cases
+            test_cases = get_test_cases()
+            clean_test_cases = []
+            for tc in test_cases:
+                clean_test_cases.append(test_cases[tc]['tc_basic'])
 
             # If no test case found
             if len(clean_test_cases) == 0:
@@ -695,31 +713,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('The value of the testcase_id should be a string from text input')
                 return
 
-            # Try to get the test case the common way
-            try:
-                test_case = analysis.get_implemented_testcases(testcase_id)
-            except FileNotFoundError:
-                self.api_error(
-                    'No test case with the id %s' % testcase_id
-                )
-                return
-
-            # FIXME: Don't forget to remove this block when the bug is fixed
-            except ImportError:
-                os.chdir('../../..')
-                # self.api_error(
-                #     'TC %s found but a bug is to fix' % testcase_id
-                # )
-                test_cases = analysis.get_implemented_testcases()
-                for tc in test_cases:
-                    if tc[0] == testcase_id:
-                        test_case = OrderedDict()
-                        test_case['_type'] = 'tc_basic'
-                        test_case['id'] = tc[0]
-                        test_case['objective'] = tc[1]
+            # Try to get the test case
+            test_case = get_test_cases(testcase_id)
 
             # If no TC found
-            if not test_case:
+            if test_case is None:
                 self.api_error('Test case %s not found' % testcase_id)
                 return
 
@@ -788,7 +786,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             verdict = OrderedDict()
             verdict['_type'] = 'verdict'
             verdict['verdict'] = analysis_results[0][2]
-            verdict['description'] = test_case['objective']
+            verdict['description'] = test_case['tc_basic']['objective']
             verdict['review_frames'] = []
 
             token_res = OrderedDict()
@@ -799,7 +797,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             json_result = OrderedDict()
             json_result['_type'] = 'response'
             json_result['ok'] = True
-            json_result['content'] = [token_res, test_case, verdict]
+            json_result['content'] = [
+                token_res,
+                test_case['tc_basic'],
+                verdict
+            ]
 
             # Here we will analyse the pcap file and get the results as json
             print(json.dumps(json_result))
@@ -865,12 +867,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # Check the protocol_selection value
-            print(form)
-            print(form.getvalue('protocol_selection'))
             protocol_selection = form.getvalue('protocol_selection')
-            print(protocol_selection)
-            print(type(protocol_selection) == str)
-            print(PROTOCOLS[protocol_selection])
             if not type(protocol_selection) == str:
                 self.api_error('Expected protocol_selection post value to be a text (eq string)')
                 return
