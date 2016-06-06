@@ -759,8 +759,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                 'client'
                             )
 
+            # Error for some test cases that the analysis doesn't manage to get
+            if type(analysis_results) is str:
+                api_error(
+                    'Problem with test case %s, error message:\n%s'
+                    %
+                    (
+                        testcase_id,
+                        analysis_results
+                    )
+                )
+                return
+
             # Only take the first
-            # TODO: Maybe change it to get many of them
             verdict = {
                 '_type': 'verdict',
                 'verdict': analysis_results[0][2],
@@ -1189,8 +1200,6 @@ def reopen_log_file(signum, frame):
     global log_file
     log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
 
-    # ttproto API part
-    cgitb.enable(display=0, logdir=LOGDIR)
 
 # reopen_log_file(None, None)
 #
