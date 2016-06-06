@@ -51,6 +51,7 @@ import requests
 import email.feedparser
 import email.message
 from . import analysis
+from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
 from ttproto.core.lib.inet import coap
@@ -62,6 +63,16 @@ TMPDIR = "tmp"
 LOGDIR = "log"
 
 CHANGELOG = []
+PROTOCOLS = {
+    'None': {
+        'class': None,
+        'description': 'No particular protocol'
+    },
+    'CoAP': {
+        'class': coap.CoAP,
+        'description': 'CoAP protocol'
+    }
+}
 
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
@@ -76,11 +87,12 @@ def api_error(message):
     """
         Function for generating a json error
     """
-    print(json.dumps({
-        '_type': 'response',
-        'ok': False,
-        'error': message
-    }))
+    self.log_message("%s error: %s", self.path, message)
+    to_dump = OrderedDict()
+    to_dump['_type'] = 'response'
+    to_dump['ok'] = False
+    to_dump['error'] = message
+    print(json.dumps(to_dump))
 
 # ######################## End of API part ######################### #
 
@@ -332,21 +344,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # The result to return
-            json_result = {
-                '_type': 'response',
-                'ok': True,
-                'content': [
-                    {
-                        '_type': 'tc_basic',
-                        'id': test_cases[0][0],
-                        'objective': test_cases[0][1]
-                    },
-                    {
-                        '_type': 'tc_implementation',
-                        'implementation': test_cases[0][2]
-                    }
-                ]
-            }
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+
+            tc_basic = OrderedDict()
+            tc_basic['_type'] = 'tc_basic'
+            tc_basic['id'] = test_cases[0][0]
+            tc_basic['objective'] = test_cases[0][1]
+
+            tc_implementation = OrderedDict()
+            tc_implementation['_type'] = 'tc_implementation'
+            tc_implementation['implementation'] = test_cases[0][2]
+
+            json_result['content'] = [tc_basic, tc_implementation]
 
             # Here the process from ttproto core
             print(json.dumps(json_result))
@@ -368,19 +379,27 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Own function to clean the datas received
             raw_test_cases = analysis.get_implemented_testcases()
             clean_test_cases = []  # Dict of (tc_id, tc_desc)
+
+            # Build the clean results list
             for raw_tc in raw_test_cases:
-                clean_test_cases.append({
-                    '_type': 'tc_basic',
-                    'id': raw_tc[0],
-                    'objective': raw_tc[1]
-                })
+
+                tc_basic = OrderedDict()
+                tc_basic['_type'] = 'tc_basic'
+                tc_basic['id'] = raw_tc[0]
+                tc_basic['objective'] = raw_tc[1]
+
+                clean_test_cases.append(tc_basic)
+
+            # If no test case found
+            if len(clean_test_cases) == 0:
+                api_error('No test cases found')
+                return
 
             # The result to return
-            json_result = {
-                '_type': 'response',
-                'ok': True,
-                'content': clean_test_cases
-            }
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+            json_result['content'] = clean_test_cases
 
             # Just give the json representation of the test cases list
             print(json.dumps(json_result))
@@ -400,22 +419,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
             # The result to return
-            json_result = {
-                '_type': 'response',
-                'ok': True,
-                'content': [
-                    {
-                        '_type': 'protocol',
-                        'name': 'None',
-                        'description': 'No particular protocol'
-                    },
-                    {
-                        '_type': 'protocol',
-                        'name': 'CoAP',
-                        'description': 'CoAP protocol'
-                    }
-                ]
-            }
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+            json_result['content'] = []
+
+            # Get protocols from the list
+            for prot_name in PROTOCOLS:
+                prot = OrderedDict()
+                prot['_type'] = 'protocol'
+                prot['name'] = prot_name
+                prot['description'] = PROTOCOLS[prot_name]['description']
+                json_result['content'].append(prot)
+
+            # Maybe it will be good to get those from a file/db in the future
 
             # Just give the json representation of the test cases list
             print(json.dumps(json_result))
@@ -469,31 +486,31 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             frame_id = int(params['frame_id'][0])
             token = params['token'][0]
 
-            # Here the process from ttproto core
-            json_result = {
-                '_type': 'response',
-                'ok': True,
-                'content': [
-                    {
-                        '_type': 'token',
-                        'value': token
-                    },
-                    {
-                        '_type': 'frame',
-                        'id': '',
-                        'timestamp': '',
-                        'error': '',
-                        'protocol_stack': [
-                            {
-                                '_type': 'protocol',
-                                'protocol': 'proto name',
-                                'field_1_name': 'sth',
-                                'field_2_name': 'sth_else'
-                            }
-                        ]
-                    }
-                ]
-            }
+            # The result to return
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+
+            token_res = OrderedDict()
+            token_res['_type'] = 'token'
+            token_res['value'] = token
+
+            # TODO: Here get the frame from the db
+            frame = OrderedDict()
+            frame['_type'] = 'frame'
+            frame['id'] = ''
+            frame['timestamp'] = ''
+            frame['error'] = ''
+
+            protocol_stack = OrderedDict()
+            protocol_stack['_type'] = 'protocol'
+            protocol_stack['protocol'] = 'proto name'
+            protocol_stack['field_1_name'] = 'sth'
+            protocol_stack['field_2_name'] = 'sth_else'
+
+            frame['protocol_stack'] = [protocol_stack]
+
+            json_result['content'] = [token_res, frame]
 
             # Dump the json result
             print(json.dumps(json_result))
