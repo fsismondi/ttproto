@@ -63,16 +63,6 @@ TMPDIR = "tmp"
 LOGDIR = "log"
 
 CHANGELOG = []
-PROTOCOLS = {
-    'None': {
-        'class': None,
-        'description': 'No particular protocol'
-    },
-    'CoAP': {
-        'class': coap.CoAP,
-        'description': 'CoAP protocol'
-    }
-}
 
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
@@ -80,21 +70,16 @@ API_URL = 'http://127.0.0.1:2080'
 
 CHANGELOG_FIRST_COMMIT = "iot2-beta"
 
+# The different implemented protocols
+PROTOCOLS = OrderedDict()
 
-# ########################## ttproto API ########################### #
+PROTOCOLS['None'] = OrderedDict()
+PROTOCOLS['None']['class'] = None
+PROTOCOLS['None']['description'] = 'No particular protocol'
 
-def api_error(message):
-    """
-        Function for generating a json error
-    """
-    self.log_message("%s error: %s", self.path, message)
-    to_dump = OrderedDict()
-    to_dump['_type'] = 'response'
-    to_dump['ok'] = False
-    to_dump['error'] = message
-    print(json.dumps(to_dump))
-
-# ######################## End of API part ######################### #
+PROTOCOLS['CoAP'] = OrderedDict()
+PROTOCOLS['CoAP']['class'] = coap.CoAP
+PROTOCOLS['CoAP']['description'] = 'CoAP protocol'
 
 
 def prepare_changelog():
@@ -186,6 +171,17 @@ class BytesFeedParser(email.feedparser.FeedParser):
 
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
+
+    def api_error(self, message):
+        """
+            Function for generating a json error
+        """
+        self.log_message("%s error: %s", self.path, message)
+        to_dump = OrderedDict()
+        to_dump['_type'] = 'response'
+        to_dump['ok'] = False
+        to_dump['error'] = message
+        print(json.dumps(to_dump))
 
     def log_message(self, format, *args, append=""):
         global log_file
@@ -308,15 +304,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Catch errors (key mostly) or if wrong parameter
             except:
-                api_error(
-                    'Incorrects parameters expected \'?testcase_id=[string]\''
+                self.api_error(
+                    'Incorrects parameters expected \'?testcase_id=\{string\}\''
                 )
                 return
 
             # Get the id
             testcase_id = params['testcase_id'][0]
             if not type(testcase_id) == str:
-                api_error('The param testcase_id is expected to be a string')
+                self.api_error('The param testcase_id is expected to be a string')
                 return
 
             # FIXME: The method throw an ImportError when it found the TC
@@ -327,17 +323,17 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 test_cases = analysis.get_implemented_testcases(testcase_id)
             except FileNotFoundError:
-                api_error('No test case with the id %s' % testcase_id)
+                self.api_error('No test case with the id %s' % testcase_id)
                 return
 
             # FIXME: Don't forget to remove this block when the bug is fixed
             except ImportError:
                 os.chdir('../../..')
-                api_error('TC %s found but a bug is to fix' % testcase_id)
+                self.api_error('TC %s found but a bug is to fix' % testcase_id)
                 return
 
             if (len(test_cases) != 1):
-                api_error('TC %s is not unique' % testcase_id)
+                self.api_error('TC %s is not unique' % testcase_id)
                 return
 
             # The result to return
@@ -389,7 +385,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # If no test case found
             if len(clean_test_cases) == 0:
-                api_error('No test cases found')
+                self.api_error('No test cases found')
                 return
 
             # The result to return
@@ -474,8 +470,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Catch errors (key mostly) or if wrong parameter
             except:
-                api_error(
-                    'Incorrects parameters expected \'?frame_id=[integer]&token=[string]\''
+                self.api_error(
+                    'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
                 )
                 return
 
@@ -653,14 +649,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the content type
             content_type = cgi.parse_header(self.headers['Content-Type'])
-            content_type = content_type[0]
 
             # Check headers
             if any((
-                content_type is None,
-                content_type != 'multipart/form-data'
+                len(content_type) == 0,
+                content_type[0] is None,
+                content_type[0] != 'multipart/form-data'
             )):
-                api_error(
+                self.api_error(
                     'POST format of \'multipart/form-data\' expected'
                 )
                 return
@@ -672,7 +668,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 keep_blank_values=True,
                 environ={
                     'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': content_type
+                    'CONTENT_TYPE': content_type[0]
                 })
 
             # Check that we have the two values
@@ -688,15 +684,49 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     'token' in form
                 ))
             )):
-                api_error(
-                    'Expected POST=([pcap_file|token], testcase_id)'
+                self.api_error(
+                    'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
                 )
+                return
+
+            # Get the test case and its informations
+            testcase_id = form.getvalue('testcase_id')
+            if not type(testcase_id) == str:
+                self.api_error('The value of the testcase_id should be a string from text input')
+                return
+
+            # Try to get the test case the common way
+            try:
+                test_case = analysis.get_implemented_testcases(testcase_id)
+            except FileNotFoundError:
+                self.api_error(
+                    'No test case with the id %s' % testcase_id
+                )
+                return
+
+            # FIXME: Don't forget to remove this block when the bug is fixed
+            except ImportError:
+                os.chdir('../../..')
+                # self.api_error(
+                #     'TC %s found but a bug is to fix' % testcase_id
+                # )
+                test_cases = analysis.get_implemented_testcases()
+                for tc in test_cases:
+                    if tc[0] == testcase_id:
+                        test_case = OrderedDict()
+                        test_case['_type'] = 'tc_basic'
+                        test_case['id'] = tc[0]
+                        test_case['objective'] = tc[1]
+
+            # If no TC found
+            if not test_case:
+                self.api_error('Test case %s not found' % testcase_id)
                 return
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
             timestamp = time.strftime("%y%m%d_%H%M%S")
-            if (pcap_file):
+            if pcap_file and form['pcap_file'].file:
 
                 # Path to save the file
                 pcap_path = os.path.join(
@@ -705,8 +735,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
 
                 # Write the pcap file to a temporary destination
-                with open(pcap_path, 'wb') as f:
-                    f.write(pcap_file)
+                try:
+                    with open(pcap_path, 'wb') as f:
+                        f.write(pcap_file)
+                except:
+                    self.api_error('Couldn\'t write the temporary file')
+                    return
+            else:
+                self.api_error('Expected \'pcap_file\' to be a file')
+                return
 
             # Get the token
             token = form.getvalue('token')
@@ -726,43 +763,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 token = base64.urlsafe_b64encode(token.digest()).decode()
 
-            # Get the test case and its informations
-            testcase_id = form.getvalue('testcase_id')
-            if not type(testcase_id) == str:
-                api_error('The value of the testcase_id should be a string from text input')
-                return
-
-            # Try to get the test case the common way
-            try:
-                test_case = analysis.get_implemented_testcases(testcase_id)
-            except FileNotFoundError:
-                api_error(
-                    'No test case with the id %s' % testcase_id
-                )
-                return
-
-            # FIXME: Don't forget to remove this block when the bug is fixed
-            except ImportError:
-                os.chdir('../../..')
-                # api_error(
-                #     'TC %s found but a bug is to fix' % testcase_id
-                # )
-                test_cases = analysis.get_implemented_testcases()
-                for tc in test_cases:
-                    if tc[0] == testcase_id:
-                        test_case = {
-                            '_type': 'tc_basic',
-                            'id': tc[0],
-                            'objective': tc[1]
-                        }
-
-            # print(test_case)
-            # if (len(test_case) != 1):
-            #     api_error(
-            #         'TC %s is not unique' % testcase_id
-            #     )
-            #     return
-
             # Get the result of the analysis
             analysis_results = analysis.analyse_file_rest_api(
                                 pcap_path,
@@ -774,7 +774,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Error for some test cases that the analysis doesn't manage to get
             if type(analysis_results) is str:
-                api_error(
+                self.api_error(
                     'Problem with test case %s, error message:\n%s'
                     %
                     (
@@ -785,26 +785,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # Only take the first
-            verdict = {
-                '_type': 'verdict',
-                'verdict': analysis_results[0][2],
-                'description': test_case['objective'],
-                'review_frames': []
-            }
+            verdict = OrderedDict()
+            verdict['_type'] = 'verdict'
+            verdict['verdict'] = analysis_results[0][2]
+            verdict['description'] = test_case['objective']
+            verdict['review_frames'] = []
+
+            token_res = OrderedDict()
+            token_res['_type'] = 'token'
+            token_res['value'] = token
 
             # Prepare the result to return
-            json_result = {
-                '_type': 'response',
-                'ok': True,
-                'content': [
-                    {
-                        '_type': 'token',
-                        'value': token
-                    },
-                    test_case,
-                    verdict
-                ]
-            }
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+            json_result['content'] = [token_res, test_case, verdict]
 
             # Here we will analyse the pcap file and get the results as json
             print(json.dumps(json_result))
@@ -830,14 +825,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the content type
             content_type = cgi.parse_header(self.headers['Content-Type'])
-            content_type = content_type[0]
 
             # Check headers
             if any((
-                content_type is None,
-                content_type != 'multipart/form-data'
+                len(content_type) == 0,
+                content_type[0] is None,
+                content_type[0] != 'multipart/form-data'
             )):
-                api_error(
+                self.api_error(
                     'POST format of \'multipart/form-data\' expected'
                 )
                 return
@@ -848,7 +843,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 headers=self.headers,
                 environ={
                     'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': content_type
+                    'CONTENT_TYPE': content_type[0]
                 })
 
             # Check the parameters passed
@@ -864,28 +859,50 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )),
                 len(form) == 2 and 'protocol_selection' not in form
             )):
-                api_error(
-                    'Expected POST=([pcap_file|token], protocol_selection?)'
+                self.api_error(
+                    'Expected POST=([pcap_file=\{file\}|token=\{text\}], (protocol_selection=\{text\})?)'
                 )
                 return
 
             # Check the protocol_selection value
+            print(form)
+            print(form.getvalue('protocol_selection'))
             protocol_selection = form.getvalue('protocol_selection')
+            print(protocol_selection)
+            print(type(protocol_selection) == str)
+            print(PROTOCOLS[protocol_selection])
+            if not type(protocol_selection) == str:
+                self.api_error('Expected protocol_selection post value to be a text (eq string)')
+                return
+
+            # In function of the protocol asked
+            try:
+                prot = PROTOCOLS[protocol_selection]
+            except KeyError:
+                self.api_error('Unknown protocol %s' % protocol_selection)
+                return
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
-            if (pcap_file):
+            timestamp = time.strftime("%y%m%d_%H%M%S")
+            if pcap_file and form['pcap_file'].file:
 
                 # Path to save the file
-                timestamp = time.strftime("%y%m%d_%H%M%S")
                 pcap_path = os.path.join(
                     TMPDIR,
                     "%s_%04d.dump" % (timestamp, job_id)
                 )
 
                 # Write the pcap file to a temporary destination
-                with open(pcap_path, 'wb') as f:
-                    f.write(pcap_file)
+                try:
+                    with open(pcap_path, 'wb') as f:
+                        f.write(pcap_file)
+                except:
+                    self.api_error('Couldn\'t write the temporary file')
+                    return
+            else:
+                self.api_error('Expected \'pcap_file\' to be a file')
+                return
 
             # Get the token
             token = form.getvalue('token')
@@ -905,174 +922,178 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 token = base64.urlsafe_b64encode(token.digest()).decode()
 
-            # In function of the protocol asked
-            # TODO: For the moment only one protocol, but later use a dict
-            protocol = None
-            if protocol_selection == 'CoAP':
-                protocol = coap.CoAP
-
             # Prepare the result to return
-            json_result = {
-                '_type': 'response',
-                'ok': True,
-                'content': [
-                    {
-                        '_type': 'token',
-                        'value': token
-                    },
-                    {
-                        '_type': 'frame',
-                        'id': 1,
-                        'timestamp': 1456858700.521622,
-                        'error': None,
-                        'protocol_stack': [
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'Ethernet',
-                                'DestinationAddress': '18:1e:78:4e:03:10',
-                                'SourceAddress': 'ac:bc:32:cd:f3:8b',
-                                'Type': '0x0800',
-                                'Trailer': 'b'''
-                            },
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'IPv4',
-                                'Version': '4',
-                                'HeaderLength': '5',
-                                'TypeOfService': '0x00',
-                                'TotalLength': '41',
-                                'Identification': '0x5948',
-                                'Reserved': '0',
-                                'DontFragment': '0',
-                                'MoreFragments': '0',
-                                'FragmentOffset': '0',
-                                'TimeToLive': '64',
-                                'Protocol': '17',
-                                'HeaderChecksum': '0xceee',
-                                'SourceAddress': '192.168.1.17',
-                                'DestinationAddress': '129.132.15.80',
-                                'Options': 'b'''
-                            },
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'UDP',
-                                'SourcePort': '65236',
-                                'DestinationPort': '5683',
-                                'Length': '21',
-                                'Checksum': '0x16b8'
-                            },
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'CoAP',
-                                'Version': '1',
-                                'Type': '1',
-                                'TokenLength': '2',
-                                'Code': '1',
-                                'MessageID': '0x3bf1',
-                                'Token': 'b\'b\\xda\'',
-                                'Payload': 'b''',
-                                'Options': [
-                                    {
-                                        '_type': 'option',
-                                        'Option': 'CoAPOptionUriPath',
-                                        'Delta': '11',
-                                        'Length': '4',
-                                        'Value': 'test'
-                                    },
-                                    {
-                                        '_type': 'option',
-                                        'Option': 'CoAPOptionBlock2',
-                                        'Delta': '12',
-                                        'Length': '1',
-                                        'Number': '0',
-                                        'M': '0',
-                                        'SizeExponent': '2'
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        '_type': 'frame',
-                        'id': 2,
-                        'timestamp': 1456858706.951686,
-                        'error': None,
-                        'protocol_stack': [
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'Ethernet',
-                                'DestinationAddress': 'ac:bc:32:cd:f3:8b',
-                                'SourceAddress': '18:1e:78:4e:03:11',
-                                'Type': '0x0800',
-                                'Trailer': 'b'''
-                            },
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'IPv4',
-                                'Version': '4',
-                                'HeaderLength': '5',
-                                'TypeOfService': '0x00',
-                                'TotalLength': '90',
-                                'Identification': '0x0000',
-                                'Reserved': '0',
-                                'DontFragment': '1',
-                                'MoreFragments': '0',
-                                'FragmentOffset': '0',
-                                'TimeToLive': '43',
-                                'Protocol': '17',
-                                'HeaderChecksum': '0xfd05',
-                                'SourceAddress': '129.132.15.80',
-                                'DestinationAddress': '192.168.1.17',
-                                'Options': 'b'''
-                            },
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'UDP',
-                                'SourcePort': '5683',
-                                'DestinationPort': '65236',
-                                'Length': '70',
-                                'Checksum': '0x1469'
-                            },
-                            {
-                                '_type': 'protocol',
-                                'Protocol': 'CoAP',
-                                'Version': '1',
-                                'Type': '1',
-                                'TokenLength': '2',
-                                'Code': '69',
-                                'MessageID': '0xa312',
-                                'Token': 'b\'b\\xda\'',
-                                'Payload': 'b\'Type: 1 (NON)\\nCode: 1 (GET)\\nMID: 15345\\nToken: 62da\'',
-                                'Options': [
-                                    {
-                                        '_type': 'option',
-                                        'Option': 'CoAPOptionContentFormat',
-                                        'Delta': '12',
-                                        'Length': '0',
-                                        'Value': '0'
-                                    },
-                                    {
-                                        '_type': 'option',
-                                        'Option': 'CoAPOptionMaxAge',
-                                        'Delta': '2',
-                                        'Length': '1',
-                                        'Value': '30'
-                                    },
-                                    {
-                                        '_type': 'option',
-                                        'Option': 'CoAPOptionBlock2',
-                                        'Delta': '9',
-                                        'Length': '1',
-                                        'Number': '0',
-                                        'M': '0',
-                                        'SizeExponent': '2'
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            }
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = 'True'
+
+            token_res = OrderedDict()
+            token_res['_type'] = 'token'
+            token_res['value'] = token
+
+            json_result['content'] = [token_res]
+
+            # json_result = {
+            #     '_type': 'response',
+            #     'ok': True,
+            #     'content': [
+            #         {
+            #             '_type': 'token',
+            #             'value': token
+            #         },
+            #         {
+            #             '_type': 'frame',
+            #             'id': 1,
+            #             'timestamp': 1456858700.521622,
+            #             'error': None,
+            #             'protocol_stack': [
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'Ethernet',
+            #                     'DestinationAddress': '18:1e:78:4e:03:10',
+            #                     'SourceAddress': 'ac:bc:32:cd:f3:8b',
+            #                     'Type': '0x0800',
+            #                     'Trailer': 'b'''
+            #                 },
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'IPv4',
+            #                     'Version': '4',
+            #                     'HeaderLength': '5',
+            #                     'TypeOfService': '0x00',
+            #                     'TotalLength': '41',
+            #                     'Identification': '0x5948',
+            #                     'Reserved': '0',
+            #                     'DontFragment': '0',
+            #                     'MoreFragments': '0',
+            #                     'FragmentOffset': '0',
+            #                     'TimeToLive': '64',
+            #                     'Protocol': '17',
+            #                     'HeaderChecksum': '0xceee',
+            #                     'SourceAddress': '192.168.1.17',
+            #                     'DestinationAddress': '129.132.15.80',
+            #                     'Options': 'b'''
+            #                 },
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'UDP',
+            #                     'SourcePort': '65236',
+            #                     'DestinationPort': '5683',
+            #                     'Length': '21',
+            #                     'Checksum': '0x16b8'
+            #                 },
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'CoAP',
+            #                     'Version': '1',
+            #                     'Type': '1',
+            #                     'TokenLength': '2',
+            #                     'Code': '1',
+            #                     'MessageID': '0x3bf1',
+            #                     'Token': 'b\'b\\xda\'',
+            #                     'Payload': 'b''',
+            #                     'Options': [
+            #                         {
+            #                             '_type': 'option',
+            #                             'Option': 'CoAPOptionUriPath',
+            #                             'Delta': '11',
+            #                             'Length': '4',
+            #                             'Value': 'test'
+            #                         },
+            #                         {
+            #                             '_type': 'option',
+            #                             'Option': 'CoAPOptionBlock2',
+            #                             'Delta': '12',
+            #                             'Length': '1',
+            #                             'Number': '0',
+            #                             'M': '0',
+            #                             'SizeExponent': '2'
+            #                         }
+            #                     ]
+            #                 }
+            #             ]
+            #         },
+            #         {
+            #             '_type': 'frame',
+            #             'id': 2,
+            #             'timestamp': 1456858706.951686,
+            #             'error': None,
+            #             'protocol_stack': [
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'Ethernet',
+            #                     'DestinationAddress': 'ac:bc:32:cd:f3:8b',
+            #                     'SourceAddress': '18:1e:78:4e:03:11',
+            #                     'Type': '0x0800',
+            #                     'Trailer': 'b'''
+            #                 },
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'IPv4',
+            #                     'Version': '4',
+            #                     'HeaderLength': '5',
+            #                     'TypeOfService': '0x00',
+            #                     'TotalLength': '90',
+            #                     'Identification': '0x0000',
+            #                     'Reserved': '0',
+            #                     'DontFragment': '1',
+            #                     'MoreFragments': '0',
+            #                     'FragmentOffset': '0',
+            #                     'TimeToLive': '43',
+            #                     'Protocol': '17',
+            #                     'HeaderChecksum': '0xfd05',
+            #                     'SourceAddress': '129.132.15.80',
+            #                     'DestinationAddress': '192.168.1.17',
+            #                     'Options': 'b'''
+            #                 },
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'UDP',
+            #                     'SourcePort': '5683',
+            #                     'DestinationPort': '65236',
+            #                     'Length': '70',
+            #                     'Checksum': '0x1469'
+            #                 },
+            #                 {
+            #                     '_type': 'protocol',
+            #                     'Protocol': 'CoAP',
+            #                     'Version': '1',
+            #                     'Type': '1',
+            #                     'TokenLength': '2',
+            #                     'Code': '69',
+            #                     'MessageID': '0xa312',
+            #                     'Token': 'b\'b\\xda\'',
+            #                     'Payload': 'b\'Type: 1 (NON)\\nCode: 1 (GET)\\nMID: 15345\\nToken: 62da\'',
+            #                     'Options': [
+            #                         {
+            #                             '_type': 'option',
+            #                             'Option': 'CoAPOptionContentFormat',
+            #                             'Delta': '12',
+            #                             'Length': '0',
+            #                             'Value': '0'
+            #                         },
+            #                         {
+            #                             '_type': 'option',
+            #                             'Option': 'CoAPOptionMaxAge',
+            #                             'Delta': '2',
+            #                             'Length': '1',
+            #                             'Value': '30'
+            #                         },
+            #                         {
+            #                             '_type': 'option',
+            #                             'Option': 'CoAPOptionBlock2',
+            #                             'Delta': '9',
+            #                             'Length': '1',
+            #                             'Number': '0',
+            #                             'M': '0',
+            #                             'SizeExponent': '2'
+            #                         }
+            #                     ]
+            #                 }
+            #             ]
+            #         }
+            #     ]
+            # }
 
             # Here we will analyse the pcap file and get the results as json
             print(json.dumps(json_result))
