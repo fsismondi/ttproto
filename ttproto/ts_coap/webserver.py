@@ -43,7 +43,6 @@ import signal
 import select
 import subprocess
 import cgi
-import cgitb
 import json
 import hashlib
 import base64
@@ -58,17 +57,20 @@ from ttproto.core.lib.inet import coap
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 
 
+# List to generate the changelog page
+CHANGELOG = []
+CHANGELOG_FIRST_COMMIT = "iot2-beta"
+
+
+# ########################## ttproto API ########################### #
+# Directories
 DATADIR = "data"
 TMPDIR = "tmp"
 LOGDIR = "log"
 
-CHANGELOG = []
-
+# Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
-API_URL = 'http://127.0.0.1:2080'
-
-CHANGELOG_FIRST_COMMIT = "iot2-beta"
 
 # The different implemented protocols
 PROTOCOLS = OrderedDict()
@@ -81,7 +83,10 @@ PROTOCOLS['CoAP'] = OrderedDict()
 PROTOCOLS['CoAP']['class'] = coap.CoAP
 PROTOCOLS['CoAP']['description'] = 'CoAP protocol'
 
+# The cache for the test cases
 TEST_CASES = OrderedDict()
+
+# ######################## End of API part ######################### #
 
 
 def prepare_changelog():
@@ -140,8 +145,6 @@ def prepare_changelog():
         )]
 
 
-# prepare_changelog()
-
 def html_changelog(g):
 
     ctl = XMLGeneratorControl(g)
@@ -155,6 +158,8 @@ def html_changelog(g):
 
         g.pre("\t%s\n\n" % "\n\t".join(body.splitlines()))
 
+
+# ########################## ttproto API ########################### #
 
 # Function to get the test cases from files if not initialized
 # Or directly from the global storage variable
@@ -206,6 +211,8 @@ def get_test_cases(testcase_id=None):
     else:
         return TEST_CASES
 
+# ######################## End of API part ######################### #
+
 
 class UTF8Wrapper(io.TextIOBase):
     def __init__(self, raw_stream):
@@ -225,9 +232,11 @@ class BytesFeedParser(email.feedparser.FeedParser):
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
 
+    # ########################## ttproto API ########################### #
     def api_error(self, message):
         """
             Function for generating a json error
+            The error message is logged at the same time
         """
         self.log_message("%s error: %s", self.path, message)
         to_dump = OrderedDict()
@@ -235,6 +244,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         to_dump['ok'] = False
         to_dump['error'] = message
         print(json.dumps(to_dump))
+
+    # ######################## End of API part ######################### #
 
     def log_message(self, format, *args, append=""):
         global log_file
@@ -327,6 +338,40 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # ##### End of remarks
 
+        # GET handler for the get_testcases uri
+        # It will give to the gui the list of the test cases
+        #
+        elif url.path == '/api/v1/testcase_getList':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Get the list of test cases
+            test_cases = get_test_cases()
+            clean_test_cases = []
+            for tc in test_cases:
+                clean_test_cases.append(test_cases[tc]['tc_basic'])
+
+            # If no test case found
+            if len(clean_test_cases) == 0:
+                self.api_error('No test cases found')
+                return
+
+            # The result to return
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+            json_result['content'] = clean_test_cases
+
+            # Just give the json representation of the test cases list
+            print(json.dumps(json_result))
+            return
+
         # GET handler for the get_testcase_implementation uri
         # It will allow developpers to get the implementation script of a TC
         #
@@ -379,40 +424,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             ]
 
             # Here the process from ttproto core
-            print(json.dumps(json_result))
-            return
-
-        # GET handler for the get_testcases uri
-        # It will give to the gui the list of the test cases
-        #
-        elif url.path == '/api/v1/testcase_getList':
-
-            # Send the header
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
-            self.end_headers()
-
-            # Bind the stdout to the http output
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-
-            # Get the list of test cases
-            test_cases = get_test_cases()
-            clean_test_cases = []
-            for tc in test_cases:
-                clean_test_cases.append(test_cases[tc]['tc_basic'])
-
-            # If no test case found
-            if len(clean_test_cases) == 0:
-                self.api_error('No test cases found')
-                return
-
-            # The result to return
-            json_result = OrderedDict()
-            json_result['_type'] = 'response'
-            json_result['ok'] = True
-            json_result['content'] = clean_test_cases
-
-            # Just give the json representation of the test cases list
             print(json.dumps(json_result))
             return
 
