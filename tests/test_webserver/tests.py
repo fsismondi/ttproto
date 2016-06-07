@@ -6,7 +6,6 @@ import threading
 import requests
 import base64
 import hashlib
-from collections import OrderedDict
 
 from ttproto.ts_coap import webserver
 from ttproto.ts_coap.webserver import *
@@ -34,6 +33,7 @@ class WebserverTestCase(unittest.TestCase):
     UNKNOWN_TEST_CASE = 'UNKNOWN_TEST_CASE'
     DUMMY_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k='
     DUMMY_FRAME_ID = 5
+    JOKER_PROTOCOL_NAME = 'None'
 
     # Structure definition of packets
     STRUCT_RESPONSE_OK = {
@@ -67,8 +67,8 @@ class WebserverTestCase(unittest.TestCase):
     STRUCT_FRAME = {
         '_type': str,
         'id': int,
-        'timestamp': str,
-        'error': str,
+        'timestamp': float,
+        'error': (type(None), str),
         'protocol_stack': list
     }
     STRUCT_VERDICT = {
@@ -138,6 +138,13 @@ class WebserverTestCase(unittest.TestCase):
             'application/json;charset=utf-8'
         )
 
+    def check_request_not_found_header(self, response):
+        # Check the object type
+        self.assertIsInstance(response, requests.models.Response)
+
+        # Check the response code
+        self.assertEqual(response.status_code, 404)
+
     def check_correct_response(self, el):
         # Check the structure
         self.check_correct_structure(el, self.STRUCT_RESPONSE_OK)
@@ -194,7 +201,7 @@ class WebserverTestCase(unittest.TestCase):
 
         # Check its minimum fields
         self.assertIn('_type', el)
-        self.assertIn('protocol', el)
+        self.assertIn('Protocol', el)
         self.assertEqual(el['_type'], 'protocol')
 
         # Check that it has more values than that
@@ -235,17 +242,13 @@ class WebserverTestCase(unittest.TestCase):
         test_cases = get_test_cases()
         self.assertIsInstance(test_cases, dict)
         self.assertGreater(len(test_cases), 0)
-
-        # To remove if the type of it is changed
-        self.assertIsInstance(test_cases, OrderedDict)
+        self.assertIsInstance(test_cases, dict)
 
     def test_get_test_cases_all_selected_with_none_value(self):
         test_cases = get_test_cases(None)
         self.assertIsInstance(test_cases, dict)
         self.assertGreater(len(test_cases), 0)
-
-        # To remove if the type of it is changed
-        self.assertIsInstance(test_cases, OrderedDict)
+        self.assertIsInstance(test_cases, dict)
 
     def test_get_test_cases_only_one_existing_test_case(self):
         test_case = get_test_cases(self.EXISTING_TEST_CASE)
@@ -679,6 +682,15 @@ class WebserverTestCase(unittest.TestCase):
 
     # -------------------------------------------------------------------------------
 
+    # ##### do_GET handler
+    def test_do_get_handler_not_found(self):
+
+        # Execute a request on an unknown path
+        resp = requests.get(self.TAT_API_URL + '/api/v1/unknow_path')
+        self.check_request_not_found_header(resp)
+
+    # -------------------------------------------------------------------------------
+
     # ##### testcase_analyse
 
     def test_testcase_analyse_from_pcap(self):
@@ -937,6 +949,481 @@ class WebserverTestCase(unittest.TestCase):
             resp['error'],
             'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
         )
+
+    def test_testcase_analyse_with_get_parameters(self):
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/testcase_analyse',
+            data=datas,
+            params=datas
+        )
+
+        # Check headers
+        self.check_request_not_found_header(resp)
+
+    def test_testcase_analyse_pcap_file_not_a_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE,
+            'pcap_file': pcap_path
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/testcase_analyse',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+        )
+
+    def test_testcase_analyse_pcap_file_in_file_but_not_a_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/testcase_analyse',
+            data=datas,
+            files={'pcap_file': pcap_path}
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
+        )
+
+    def test_testcase_analyse_unknown_testcase_id(self):
+
+        # Prepare POST parameters
+        datas = {
+            'testcase_id': self.UNKNOWN_TEST_CASE
+        }
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/testcase_analyse',
+            data=datas,
+            files=files
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Test case %s not found' % self.UNKNOWN_TEST_CASE
+        )
+
+    # TODO
+    # More test cases when the token and db managment are done
+    # Check if we retrieve results correctly from a token
+
+    # -------------------------------------------------------------------------------
+
+    # ##### frames_dissect
+    def test_frames_dissect(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data={'protocol_selection': self.JOKER_PROTOCOL_NAME},
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token
+        self.assertGreaterEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+
+        # And many frames
+        for i in range(1, len(resp['content'])):
+            self.check_frame(resp['content'][i])
+
+    def test_frames_dissect_from_token(self):
+
+        # TODO
+        # FIXME: When the token managment is done, we will be able
+        # to provide a valid token and get back and expected result
+        pass
+
+    def test_frames_dissect_no_post_datas(self):
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data={}
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Non empty POST datas and format of \'multipart/form-data\' expected'
+        )
+
+    def test_frames_dissect_only_protocol_selection(self):
+
+        # Prepare POST parameters
+        datas = {'protocol_selection': self.JOKER_PROTOCOL_NAME}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+        )
+
+    def test_frames_dissect_only_pcap_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data={},
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file=\{file\}|token=\{text\}], protocol_selection=\{text\})'
+        )
+
+    def test_frames_dissect_only_token(self):
+
+        # Prepare POST parameters
+        datas = {'token': self.DUMMY_TOKEN}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+        )
+
+    def test_frames_dissect_both_token_and_pcap_file(self):
+
+        # Prepare POST parameters
+        datas = {'token': self.DUMMY_TOKEN}
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas,
+            files=files
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file=\{file\}|token=\{text\}], protocol_selection=\{text\})'
+        )
+
+    def test_frames_dissect_all_the_three(self):
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas,
+            files=files
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file=\{file\}|token=\{text\}], protocol_selection=\{text\})'
+        )
+
+    def test_frames_dissect_with_get_parameters(self):
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas,
+            params=datas
+        )
+
+        # Check headers
+        self.check_request_not_found_header(resp)
+
+    def test_frames_dissect_pcap_file_not_a_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'pcap_file': pcap_path
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+        )
+
+    def test_frames_dissect_pcap_file_in_file_but_not_a_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.DUMMY_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas,
+            files={'pcap_file': pcap_path}
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file=\{file\}|token=\{text\}], protocol_selection=\{text\})'
+        )
+
+    def test_frames_dissect_unknown_protocol_selection(self):
+
+        # Prepare POST parameters
+        datas = {
+            'protocol_selection': 'unknown_protocol_selection'
+        }
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.PCAP_FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/frames_dissect',
+            data=datas,
+            files=files
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Unknown protocol unknown_protocol_selection'
+        )
+
+    # -------------------------------------------------------------------------------
+
+    # ##### do_POST handler
+    def test_do_post_handler_not_found(self):
+
+        # Execute a request on an unknown path
+        resp = requests.post(self.TAT_API_URL + '/api/v1/unknow_path')
+        self.check_request_not_found_header(resp)
 
 
 # #################### Main run the testes #########################

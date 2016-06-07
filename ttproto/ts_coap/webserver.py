@@ -521,14 +521,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             frame = OrderedDict()
             frame['_type'] = 'frame'
             frame['id'] = 5
-            frame['timestamp'] = time.strftime("%y%m%d_%H%M%S")
+            frame['timestamp'] = time.time()
             frame['error'] = ''
 
             protocol_stack = OrderedDict()
             protocol_stack['_type'] = 'protocol'
-            protocol_stack['protocol'] = 'proto name'
-            protocol_stack['field_1_name'] = 'sth'
-            protocol_stack['field_2_name'] = 'sth_else'
+            protocol_stack['Protocol'] = 'proto name'
+            protocol_stack['Field_1_name'] = 'sth'
+            protocol_stack['Field_2_name'] = 'sth_else'
 
             frame['protocol_stack'] = [protocol_stack]
 
@@ -843,7 +843,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
             # Get the content type
-            content_type = cgi.parse_header(self.headers['Content-Type'])
+            try:
+                content_type = cgi.parse_header(self.headers['Content-Type'])
+            except TypeError:
+                self.api_error(
+                    'Non empty POST datas and format of \'multipart/form-data\' expected'
+                )
+                return
 
             # Check headers
             if any((
@@ -852,7 +858,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type[0] != 'multipart/form-data'
             )):
                 self.api_error(
-                    'POST format of \'multipart/form-data\' expected'
+                    'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
                 )
                 return
 
@@ -866,8 +872,26 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 })
 
             # Check the parameters passed
+            # if any((
+            #     len(form) not in [1, 2],
+            #     all((  # None of the two required => Error
+            #         'pcap_file' not in form,
+            #         'token' not in form
+            #     )),
+            #     all((  # Both of them => Error
+            #         'pcap_file' in form,
+            #         'token' in form
+            #     )),
+            #     len(form) == 2 and 'protocol_selection' not in form
+            # )):
+            #     self.api_error(
+            #         'Expected POST=([pcap_file=\{file\}|token=\{text\}], (protocol_selection=\{text\})?)'
+            #     )
+            #     return
+
+            # Check the parameters passed
             if any((
-                len(form) not in [1, 2],
+                len(form) != 2,
                 all((  # None of the two required => Error
                     'pcap_file' not in form,
                     'token' not in form
@@ -876,10 +900,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     'pcap_file' in form,
                     'token' in form
                 )),
-                len(form) == 2 and 'protocol_selection' not in form
+                'protocol_selection' not in form
             )):
                 self.api_error(
-                    'Expected POST=([pcap_file=\{file\}|token=\{text\}], (protocol_selection=\{text\})?)'
+                    'Expected POST=([pcap_file=\{file\}|token=\{text\}], protocol_selection=\{text\})'
                 )
                 return
 
@@ -939,13 +963,33 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Prepare the result to return
             json_result = OrderedDict()
             json_result['_type'] = 'response'
-            json_result['ok'] = 'True'
+            json_result['ok'] = True
 
             token_res = OrderedDict()
             token_res['_type'] = 'token'
             token_res['value'] = token
 
-            json_result['content'] = [token_res]
+            # FIXME
+            # Normally, we got this result from analysis functions
+            first_protocol = OrderedDict()
+            first_protocol['_type'] = 'protocol'
+            first_protocol['Protocol'] = 'Ethernet'
+            first_protocol['DestinationAddress'] = '18:1e:78:4e:03:10'
+            first_protocol['SourceAddress'] = 'ac:bc:32:cd:f3:8b'
+            first_protocol['Type'] = '0x0800'
+            first_protocol['Trailer'] = 'b'''
+
+            dummy_frame = OrderedDict()
+            dummy_frame['_type'] = 'frame'
+            dummy_frame['id'] = 1
+            dummy_frame['timestamp'] = 1456858700.521622
+            dummy_frame['error'] = None
+            dummy_frame['protocol_stack'] = [first_protocol]
+
+            json_result['content'] = [
+                token_res,
+                dummy_frame
+            ]
 
             # json_result = {
             #     '_type': 'response',
