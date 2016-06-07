@@ -404,7 +404,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects parameters expected \'?testcase_id=\{string\}\''
+                    'Incorrects GET parameters, expected \'?testcase_id=\{string\}\''
                 )
                 return
 
@@ -520,8 +520,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # TODO: Here get the frame from the db
             frame = OrderedDict()
             frame['_type'] = 'frame'
-            frame['id'] = ''
-            frame['timestamp'] = ''
+            frame['id'] = 5
+            frame['timestamp'] = time.strftime("%y%m%d_%H%M%S")
             frame['error'] = ''
 
             protocol_stack = OrderedDict()
