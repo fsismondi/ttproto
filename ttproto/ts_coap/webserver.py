@@ -677,7 +677,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
             # Get the content type
-            content_type = cgi.parse_header(self.headers['Content-Type'])
+            try:
+                content_type = cgi.parse_header(self.headers['Content-Type'])
+            except TypeError:
+                self.api_error(
+                    'Non empty POST datas and format of \'multipart/form-data\' expected'
+                )
+                return
 
             # Check headers
             if any((
@@ -686,7 +692,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type[0] != 'multipart/form-data'
             )):
                 self.api_error(
-                    'POST format of \'multipart/form-data\' expected'
+                    'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
                 )
                 return
 
