@@ -17,7 +17,7 @@ class WebserverTestCase(unittest.TestCase):
         Mostly of the API calls
     """
 
-    # #################### Tests parameters #########################.
+    # #################### Tests parameters #########################
 
     # Webserver binding
     SERVER_ADDRESS = '0.0.0.0'
@@ -499,7 +499,6 @@ class WebserverTestCase(unittest.TestCase):
         self.assertGreater(len(resp['content']), 0)
         for content in resp['content']:
             self.check_protocol(content)
-    #
 
     # -------------------------------------------------------------------------------
 
@@ -901,6 +900,9 @@ class WebserverTestCase(unittest.TestCase):
             files=files
         )
 
+        # Close the file
+        files['pcap_file'].close()
+
         # Check headers
         self.check_correct_response_header(resp)
 
@@ -936,6 +938,9 @@ class WebserverTestCase(unittest.TestCase):
             data=datas,
             files=files
         )
+
+        # Close the file
+        files['pcap_file'].close()
 
         # Check headers
         self.check_correct_response_header(resp)
@@ -1059,6 +1064,9 @@ class WebserverTestCase(unittest.TestCase):
             data=datas,
             files=files
         )
+
+        # Close the file
+        files['pcap_file'].close()
 
         # Check headers
         self.check_correct_response_header(resp)
@@ -1244,6 +1252,9 @@ class WebserverTestCase(unittest.TestCase):
             files=files
         )
 
+        # Close the file
+        files['pcap_file'].close()
+
         # Check headers
         self.check_correct_response_header(resp)
 
@@ -1279,6 +1290,9 @@ class WebserverTestCase(unittest.TestCase):
             data=datas,
             files=files
         )
+
+        # Close the file
+        files['pcap_file'].close()
 
         # Check headers
         self.check_correct_response_header(resp)
@@ -1402,6 +1416,9 @@ class WebserverTestCase(unittest.TestCase):
             data=datas,
             files=files
         )
+
+        # Close the file
+        files['pcap_file'].close()
 
         # Check headers
         self.check_correct_response_header(resp)
