@@ -466,7 +466,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # /param frame_id => The id of the wanted frame
         # /param token => The token of the corresponding pcap file
         #
-        # /remark Maybe it will be better to give an id to testes, store them
+        # /remark Maybe it will be better to give an id to tests, store them
         #         into databases and then add another param representing the
         #         id of the test.
         #         More than that, it will allow users to retrieve a passed test

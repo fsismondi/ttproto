@@ -1,4 +1,4 @@
-// ############### JSON examples for testes ###############
+// ############### JSON examples for tests ###############
 var data = [
 	[
 		{

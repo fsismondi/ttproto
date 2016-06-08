@@ -79,10 +79,41 @@ class WebserverTestCase(unittest.TestCase):
     }
 
     # #################### Init and deinit functions #########################
+    # def setUp(self):
+    #     """
+    #         Initialize the server on which we'll run the tests
+    #         It creates a thread on which we run the server
+    #     """
+    #     # Put the needed log file for the webserver (it's required)
+    #     webserver.log_file = open(
+    #         os.path.join(LOGDIR, 'unit-tests-webserver.log'),
+    #         'a'
+    #     )
+
+    #     # Create the server instance
+    #     self.server = http.server.HTTPServer(
+    #         (
+    #             self.SERVER_ADDRESS,
+    #             self.SERVER_PORT
+    #         ),
+    #         RequestHandler)
+
+    #     # Make a thread to handle server requests, the main one will do tests
+    #     thread = threading.Thread(target=self.server.serve_forever)
+    #     thread.start()
+
+    # def tearDown(self):
+    #     """
+    #         Close the server
+    #     """
+    #     self.server.shutdown()
+    #     self.server.server_close()
+    #     webserver.log_file.close()
+
     @classmethod
     def setUpClass(cls):
         """
-            Initialize the server on which we'll run the testes
+            Initialize the server on which we'll run the tests
             It creates a thread on which we run the server
         """
         # Put the needed log file for the webserver (it's required)
@@ -99,7 +130,7 @@ class WebserverTestCase(unittest.TestCase):
             ),
             RequestHandler)
 
-        # Make a thread to handle server requests, the main one will do testes
+        # Make a thread to handle server requests, the main one will do tests
         thread = threading.Thread(target=cls.server.serve_forever)
         thread.start()
 
@@ -110,6 +141,7 @@ class WebserverTestCase(unittest.TestCase):
         """
         cls.server.shutdown()
         cls.server.server_close()
+        webserver.log_file.close()
 
     # #################### Utilities functions #########################
 
@@ -1443,6 +1475,6 @@ class WebserverTestCase(unittest.TestCase):
         self.check_request_not_found_header(resp)
 
 
-# #################### Main run the testes #########################
+# #################### Main run the tests #########################
 if __name__ == '__main__':
     unittest.main()
