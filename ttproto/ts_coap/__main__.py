@@ -33,7 +33,7 @@ reopen_log_file(None, None)
 # -> reopen the log file upon SIGHUP
 signal.signal(signal.SIGHUP, reopen_log_file)
 
-server = http.server.HTTPServer(("0.0.0.0", 80), RequestHandler)
+server = http.server.HTTPServer(("0.0.0.0", 2080), RequestHandler)
 print('Server is ready')
 while not __shutdown:
     try:
