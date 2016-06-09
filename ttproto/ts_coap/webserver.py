@@ -338,10 +338,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # ##### End of remarks
 
-        # GET handler for the get_testcases uri
+        # GET handler for the analyzer_getTestCases uri
         # It will give to the gui the list of the test cases
         #
-        elif url.path == '/api/v1/testcase_getList':
+        elif url.path == '/api/v1/analyzer_getTestCases':
 
             # Send the header
             self.send_response(200)
@@ -372,7 +372,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # GET handler for the get_testcase_implementation uri
+        # GET handler for the testcase_getTestcaseImplementation uri
         # It will allow developpers to get the implementation script of a TC
         #
         # /param testcase_id => The unique id of the test case
@@ -427,10 +427,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # GET handler for the get_protocols uri
+        # GET handler for the analyzer_getProtocols uri
         # It will give to the gui the list of the protocols implemented
         #
-        elif url.path == '/api/v1/frames_getProtocols':
+        elif url.path == '/api/v1/analyzer_getProtocols':
 
             # Send the header
             self.send_response(200)
@@ -449,7 +449,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get protocols from the list
             for prot_name in PROTOCOLS:
                 prot = OrderedDict()
-                prot['_type'] = 'protocol'
+                prot['_type'] = 'implemented_protocol'
                 prot['name'] = prot_name
                 prot['description'] = PROTOCOLS[prot_name]['description']
                 json_result['content'].append(prot)
@@ -460,19 +460,122 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # GET handler for the get_frame uri
+        # GET handler for the analyzer_getFrames uri
         # It will allow a user to get a single frame from the previous pcap
+        # if no frame_id provided, otherwise it will return all the frames
         #
-        # /param frame_id => The id of the wanted frame
         # /param token => The token of the corresponding pcap file
+        # /param protocol_selection => The protocol we want to filter on
+        # /param frame_id (optional) => The id of the wanted frame
         #
-        # /remark Maybe it will be better to give an id to tests, store them
-        #         into databases and then add another param representing the
-        #         id of the test.
-        #         More than that, it will allow users to retrieve a passed test
-        #         and share it.
+        elif url.path == '/api/v1/analyzer_getFrames':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Get the parameters
+            params = parse_qs(url.query)
+            try:
+
+                # Correct execution
+                if any((
+                    len(params) != 2,
+                    'frame_id' not in params,
+                    'token' not in params,
+                    len(params['frame_id']) != 1,
+                    not params['frame_id'][0].isdigit(),
+                    len(params['token']) != 1
+                )):
+                    raise
+
+            # Catch errors (key mostly) or if wrong parameter
+            except:
+                self.api_error(
+                    'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
+                )
+                return
+
+            # Format the id before passing it to the process function
+            frame_id = int(params['frame_id'][0])
+            token = params['token'][0]
+
+            # The result to return
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+
+            token_res = OrderedDict()
+            token_res['_type'] = 'token'
+            token_res['value'] = token
+
+            # TODO: Here get the frame from the db
+            frame = OrderedDict()
+            frame['_type'] = 'frame'
+            frame['id'] = 5
+            frame['timestamp'] = time.time()
+            frame['error'] = ''
+
+            protocol_stack = OrderedDict()
+            protocol_stack['_type'] = 'protocol'
+            protocol_stack['Protocol'] = 'proto name'
+            protocol_stack['Field_1_name'] = 'sth'
+            protocol_stack['Field_2_name'] = 'sth_else'
+
+            frame['protocol_stack'] = [protocol_stack]
+
+            json_result['content'] = [token_res, frame]
+
+            # Dump the json result
+            print(json.dumps(json_result))
+            return
+
+        # GET handler for the dissector_getProtocols uri
+        # It will give to the gui the list of the protocols implemented
         #
-        elif url.path == '/api/v1/get_frame':
+        elif url.path == '/api/v1/dissector_getProtocols':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # The result to return
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+            json_result['content'] = []
+
+            # Get protocols from the list
+            for prot_name in PROTOCOLS:
+                prot = OrderedDict()
+                prot['_type'] = 'implemented_protocol'
+                prot['name'] = prot_name
+                prot['description'] = PROTOCOLS[prot_name]['description']
+                json_result['content'].append(prot)
+
+            # Maybe it will be good to get those from a file/db in the future
+
+            # Just give the json representation of the test cases list
+            print(json.dumps(json_result))
+            return
+
+        # GET handler for the dissector_getFrames uri
+        # It will allow a user to get a single frame from the previous pcap
+        # if no frame_id provided, otherwise it will return all the frames
+        #
+        # /param token => The token of the corresponding pcap file
+        # /param protocol_selection => The protocol we want to filter on
+        # /param frame_id (optional) => The id of the wanted frame
+        #
+        elif url.path == '/api/v1/dissector_getFrames':
 
             # Send the header
             self.send_response(200)
@@ -658,15 +761,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         # ########################## ttproto API ########################### #
 
-        # POST handler for the testcase_analyse uri
+        # POST handler for the analyser_testCaseAnalyse uri
         # It will allow users to analyse a pcap file corresponding to a TC
         #
         # \param pcap_file => The pcap file that we want to analyse
-        # \param testcase_id => The id of the corresponding test case
         # \param token => The token previously provided
+        # \param testcase_id => The id of the corresponding test case
         # The pcap_file or the token is required, having both is also forbidden
         #
-        if self.path == '/api/v1/testcase_analyse':
+        if self.path == '/api/v1/analyser_testCaseAnalyse':
 
             # Send the header
             self.send_response(200)
@@ -824,15 +927,37 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # POST handler for the frames_dissect uri
+        # POST handler for the analyzer_allMightyAnalyse uri
+        # It will allow users to analyse a pcap file without giving
+        # a corresponding test case
+        #
+        # \param pcap_file => The pcap file that we want to analyse
+        # \param token => The token previously provided
+        # The pcap_file or the token is required, having both is also forbidden
+        #
+        if self.path == '/api/v1/analyzer_allMightyAnalyse':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Not implemented for the moment
+            self.api_error(
+                "This method is not implemented yet, please come back later"
+            )
+            return
+
+        # POST handler for the dissector_dissectFile uri
         # It will allow users to analyse a pcap file corresponding to a TC
         #
         # \param pcap_file => The pcap file that we want to dissect
-        # \param token => The token previously provided
-        # \param protocol_selection => The protocol name (optional)
-        # The pcap_file or the token is required, having both is also forbidden
+        # \param protocol_selection => The protocol name
         #
-        elif self.path == '/api/v1/frames_dissect':
+        elif self.path == '/api/v1/dissector_dissectFile':
 
             # Send the header
             self.send_response(200)

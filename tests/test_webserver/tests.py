@@ -68,7 +68,7 @@ class WebserverTestCase(unittest.TestCase):
         '_type': str,
         'id': int,
         'timestamp': float,
-        'error': (type(None), str),
+        'error': str,
         'protocol_stack': list
     }
     STRUCT_VERDICT = {
