@@ -72,6 +72,9 @@ LOGDIR = "log"
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 
+# Magic header to identify a pcap file
+PCAP_MAGIC_HEADER = b'\xd4\xc3\xb2\xa1'
+
 # The different implemented protocols
 PROTOCOLS = OrderedDict()
 
@@ -227,6 +230,15 @@ def correct_get_param(par, is_number=False):
                 not par[0].isdigit() or int(par[0]) > 0
             )
         )
+    ))
+
+
+def valid_pcap_file(bytes_data):
+    return all((
+        bytes_data,
+        type(bytes_data) == bytes,
+        len(bytes_data) > 52,  # file header + (src, dest) adresses
+        bytes_data[:4] == PCAP_MAGIC_HEADER
     ))
 
 # ######################## End of API part ######################### #
@@ -1054,15 +1066,28 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('Unknown protocol %s' % protocol_selection)
                 return
 
+            # Generate the token
+            token = hashlib.sha1(
+                str.encode((
+                    "%s%s%04d%s" %
+                    (
+                        HASH_PREFIX,
+                        time.time(),
+                        job_id,
+                        HASH_SUFFIX
+                    )
+                ), encoding='utf-8')
+            )
+            token = base64.urlsafe_b64encode(token.digest()).decode()
+
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
-            timestamp = time.strftime("%y%m%d_%H%M%S")
-            if pcap_file and form['pcap_file'].file:
+            if valid_pcap_file(pcap_file):
 
                 # Path to save the file
                 pcap_path = os.path.join(
                     TMPDIR,
-                    "%s_%04d.dump" % (timestamp, job_id)
+                    token + '.dump'
                 )
 
                 # Write the pcap file to a temporary destination
@@ -1073,22 +1098,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     self.api_error('Couldn\'t write the temporary file')
                     return
             else:
-                self.api_error('Expected \'pcap_file\' to be a file')
+                self.api_error(
+                    'Expected \'pcap_file\' to be a non empty pcap file'
+                )
                 return
-
-            # Generate the token
-            token = hashlib.sha1(
-                str.encode((
-                    "%s%s%04d%s" %
-                    (
-                        HASH_PREFIX,
-                        timestamp,
-                        job_id,
-                        HASH_SUFFIX
-                    )
-                ), encoding='utf-8')
-            )
-            token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # Prepare the result to return
             json_result = OrderedDict()
@@ -1099,34 +1112,30 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             token_res['_type'] = 'token'
             token_res['value'] = token
 
-            # FIXME
-            # Normally, we got this result from analysis functions
-            first_protocol = OrderedDict()
-            first_protocol['_type'] = 'protocol'
-            first_protocol['Protocol'] = 'Ethernet'
-            first_protocol['DestinationAddress'] = '18:1e:78:4e:03:10'
-            first_protocol['SourceAddress'] = 'ac:bc:32:cd:f3:8b'
-            first_protocol['Type'] = '0x0800'
-            first_protocol['Trailer'] = 'b'''
-
-            dummy_frame = OrderedDict()
-            dummy_frame['_type'] = 'frame'
-            dummy_frame['id'] = 1
-            dummy_frame['timestamp'] = 1456858700.521622
-            dummy_frame['error'] = None
-            dummy_frame['protocol_stack'] = [first_protocol]
-
-            # Try to get the dissection from analysis tool
+            # Get the dissection from analysis tool
             try:
-                dissection = analysis.own_function_for_dissection(pcap_path)
+                dissection = analysis.pcap_to_list(pcap_path)
             except:
                 self.api_error('Couldn\'t read the temporary file')
                 return
 
-            json_result['content'] = [
-                token_res,
-                dissection
-            ]
+            # Save the json dissection result into a file
+            json_save = os.path.join(
+                TMPDIR,
+                token + '.json'
+            )
+            try:
+                with open(json_save, 'w') as f:
+                    json.dump(dissection, f)
+            except:
+                self.api_error('Couldn\'t write the json file')
+                return
+
+            # Add the token to the results
+            dissection.insert(0, token_res)
+
+            # The json result to return
+            json_result['content'] = dissection
 
             # Here we will analyze the pcap file and get the results as json
             print(json.dumps(json_result))
