@@ -759,17 +759,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 return
 
-            # Check headers
-            if any((
-                len(content_type) == 0,
-                content_type[0] is None,
-                content_type[0] != 'multipart/form-data'
-            )):
-                self.api_error(
-                    'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
-                )
-                return
-
             # Get post values
             form = cgi.FieldStorage(
                 fp=self.rfile,
@@ -812,15 +801,56 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('Test case %s not found' % testcase_id)
                 return
 
-            # Get the pcap file
-            pcap_file = form.getvalue('pcap_file')
-            timestamp = time.strftime("%y%m%d_%H%M%S")
-            if pcap_file and form['pcap_file'].file:
+            # Get the token
+            token = form.getvalue('token')
+
+            # Get analysis results from the token
+            if token:
+
+                # Just get the path
+                pcap_path = os.path.join(
+                    TMPDIR,
+                    token + '.dump'
+                )
+
+            # Get analysis results from the pcap file
+            else:
+
+                # Check headers
+                if any((
+                    len(content_type) == 0,
+                    content_type[0] is None,
+                    content_type[0] != 'multipart/form-data'
+                )):
+                    self.api_error(
+                        'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+                    )
+                    return
+
+                # Generate a token because there is none
+                token = hashlib.sha1(
+                    str.encode((
+                        "%s%s%04d%s" %
+                        (
+                            HASH_PREFIX,
+                            time.time(),
+                            job_id,
+                            HASH_SUFFIX
+                        )
+                    ), encoding='utf-8')
+                )
+                token = base64.urlsafe_b64encode(token.digest()).decode()
+
+                # Get and check the pcap file entered
+                pcap_file = form.getvalue('pcap_file')
+                if not valid_pcap_file(pcap_file):
+                    self.api_error('Expected \'pcap_file\' to be a file')
+                    return
 
                 # Path to save the file
                 pcap_path = os.path.join(
                     TMPDIR,
-                    "%s_%04d.dump" % (timestamp, job_id)
+                    token + '.dump'
                 )
 
                 # Write the pcap file to a temporary destination
@@ -830,27 +860,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 except:
                     self.api_error('Couldn\'t write the temporary file')
                     return
-            else:
-                self.api_error('Expected \'pcap_file\' to be a file')
-                return
-
-            # Get the token
-            token = form.getvalue('token')
-
-            # Generate the token if none given
-            if not token:
-                token = hashlib.sha1(
-                    str.encode((
-                        "%s%s%04d%s" %
-                        (
-                            HASH_PREFIX,
-                            timestamp,
-                            job_id,
-                            HASH_SUFFIX
-                        )
-                    ), encoding='utf-8')
-                )
-                token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # Get the result of the analysis
             analysis_results = analysis.analyse_file_rest_api(
@@ -906,7 +915,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # \param token => The token previously provided
         # The pcap_file or the token is required, having both is also forbidden
         #
-        if self.path == '/api/v1/analyzer_allMightyAnalyze':
+        elif self.path == '/api/v1/analyzer_allMightyAnalyze':
 
             # Send the header
             self.send_response(200)

@@ -1497,394 +1497,382 @@ class WebserverTestCase(unittest.TestCase):
     # -------------------------------------------------------------------------------
 
     # ##### analyzer_testCaseAnalyze
-    # def test_analyzer_test_case_analyze_from_pcap(self):
-
-    #     # Prepare POST parameters
-    #     datas = {'testcase_id': self.EXISTING_TEST_CASE}
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-    #     files = {'pcap_file': open(pcap_path, 'rb')}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas,
-    #         files=files
-    #     )
-
-    #     # Close the file
-    #     files['pcap_file'].close()
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_correct_response(resp)
-
-    #     # Check the response contains a token and a frame
-    #     self.assertEqual(len(resp['content']), 3)
-    #     self.check_token(resp['content'][0])
-    #     self.check_tc_basic(resp['content'][1])
-    #     self.check_verdict(resp['content'][2])
-
-    #     # Check that the descriptions are correct
-    #     self.assertEqual(
-    #         resp['content'][1]['objective'],
-    #         resp['content'][2]['description']
-    #     )
-
-    #     # Check that the verdict is correct too
-    #     self.assertEqual(resp['content'][2]['verdict'], 'pass')
-
-    # def test_analyzer_test_case_analyze_from_token(self):
-
-    #     # TODO
-    #     # FIXME: When the token managment is done, we will be able
-    #     # to provide a valid token and get back and expected result
-
-    #     # Prepare POST parameters
-    #     # datas = {
-    #     #     'testcase_id': self.EXISTING_TEST_CASE,
-    #     #     'token': self.WRONG_TOKEN
-    #     # }
-
-    #     # # Execute the request
-    #     # resp = requests.post(
-    #     #     self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #     #     data=datas
-    #     # )
-
-    #     # # Check headers
-    #     # self.check_correct_response_header(resp)
-
-    #     # # Check data headers
-    #     # resp = resp.json()
-    #     # self.check_correct_response(resp)
-
-    #     # # Check the response contains a token and a frame
-    #     # self.assertEqual(len(resp['content']), 3)
-    #     # self.check_token(resp['content'][0])
-    #     # self.check_tc_basic(resp['content'][1])
-    #     # self.check_verdict(resp['content'][2])
-
-    #     # # Check that the descriptions are correct
-    #     # self.assertEqual(
-    #     #     resp['content'][1]['objective'],
-    #     #     resp['content'][2]['description']
-    #     # )
-
-    #     # # Check that the verdict is correct too
-    #     # self.assertEqual(resp['content'][2]['verdict'], 'pass')
-    #     pass
-
-    # def test_analyzer_test_case_analyze_no_post_datas(self):
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data={}
-    #     )
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Non empty POST datas and format of \'multipart/form-data\' expected'
-    #     )
-
-    # def test_analyzer_test_case_analyze_only_testcase_id(self):
-
-    #     # Prepare POST parameters
-    #     datas = {'testcase_id': self.EXISTING_TEST_CASE}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas
-    #     )
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
-    #     )
-
-    # def test_analyzer_test_case_analyze_only_pcap_file(self):
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-    #     files = {'pcap_file': open(pcap_path, 'rb')}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data={},
-    #         files=files
-    #     )
-
-    #     # Close the file
-    #     files['pcap_file'].close()
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
-    #     )
-
-    # def test_analyzer_test_case_analyze_only_token(self):
-
-    #     # Prepare POST parameters
-    #     datas = {'token': self.WRONG_TOKEN}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas
-    #     )
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
-    #     )
-
-    # def test_analyzer_test_case_analyze_both_token_and_pcap_file(self):
-
-    #     # Prepare POST parameters
-    #     datas = {'token': self.WRONG_TOKEN}
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-    #     files = {'pcap_file': open(pcap_path, 'rb')}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas,
-    #         files=files
-    #     )
-
-    #     # Close the file
-    #     files['pcap_file'].close()
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
-    #     )
-
-    # def test_analyzer_test_case_analyze_all_the_three(self):
-
-    #     # Prepare POST parameters
-    #     datas = {
-    #         'token': self.WRONG_TOKEN,
-    #         'testcase_id': self.EXISTING_TEST_CASE
-    #     }
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-    #     files = {'pcap_file': open(pcap_path, 'rb')}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas,
-    #         files=files
-    #     )
-
-    #     # Close the file
-    #     files['pcap_file'].close()
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
-    #     )
-
-    # def test_analyzer_test_case_analyze_with_get_parameters(self):
-
-    #     # Prepare POST parameters
-    #     datas = {
-    #         'token': self.WRONG_TOKEN,
-    #         'testcase_id': self.EXISTING_TEST_CASE
-    #     }
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas,
-    #         params=datas
-    #     )
-
-    #     # Check headers
-    #     self.check_request_not_found_header(resp)
-
-    # def test_analyzer_test_case_analyze_pcap_file_not_a_file(self):
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-
-    #     # Prepare POST parameters
-    #     datas = {
-    #         'token': self.WRONG_TOKEN,
-    #         'testcase_id': self.EXISTING_TEST_CASE,
-    #         'pcap_file': pcap_path
-    #     }
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas
-    #     )
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
-    #     )
-
-    # def test_analyzer_test_case_analyze_pcap_file_in_file_but_not_a_file(self):
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-
-    #     # Prepare POST parameters
-    #     datas = {
-    #         'token': self.WRONG_TOKEN,
-    #         'testcase_id': self.EXISTING_TEST_CASE
-    #     }
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas,
-    #         files={'pcap_file': pcap_path}
-    #     )
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
-    #     )
-
-    # def test_analyzer_test_case_analyze_unknown_testcase_id(self):
-
-    #     # Prepare POST parameters
-    #     datas = {
-    #         'testcase_id': self.UNKNOWN_TEST_CASE
-    #     }
-
-    #     # Get the path of the pcap file
-    #     pcap_path = "%s/%s/%s.pcap" % (
-    #         self.FILES_DIR,
-    #         self.EXISTING_TEST_CASE,
-    #         'pass'
-    #     )
-    #     files = {'pcap_file': open(pcap_path, 'rb')}
-
-    #     # Execute the request
-    #     resp = requests.post(
-    #         self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
-    #         data=datas,
-    #         files=files
-    #     )
-
-    #     # Close the file
-    #     files['pcap_file'].close()
-
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
-
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
-
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Test case %s not found' % self.UNKNOWN_TEST_CASE
-    #     )
+    def test_analyzer_test_case_analyze_from_pcap(self):
+
+        # Prepare POST parameters
+        datas = {'testcase_id': self.EXISTING_TEST_CASE}
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 3)
+        self.check_token(resp['content'][0])
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
+
+        # Check that the verdict is correct too
+        self.assertEqual(resp['content'][2]['verdict'], 'pass')
+
+    def test_analyzer_test_case_analyze_from_token(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare POST parameters
+        datas = {
+            'testcase_id': self.EXISTING_TEST_CASE,
+            'token': CORRECT_TOKEN
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 3)
+        self.check_token(resp['content'][0])
+        self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
+
+        # Check that the verdict is correct too
+        self.assertEqual(resp['content'][2]['verdict'], 'pass')
+
+    def test_analyzer_test_case_analyze_no_post_datas(self):
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data={}
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Non empty POST datas and format of \'multipart/form-data\' expected'
+        )
+
+    def test_analyzer_test_case_analyze_only_testcase_id(self):
+
+        # Prepare POST parameters
+        datas = {'testcase_id': self.EXISTING_TEST_CASE}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_only_pcap_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data={},
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_only_token(self):
+
+        # Prepare POST parameters
+        datas = {'token': self.WRONG_TOKEN}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_both_token_and_pcap_file(self):
+
+        # Prepare POST parameters
+        datas = {'token': self.WRONG_TOKEN}
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_all_the_three(self):
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.WRONG_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_with_get_parameters(self):
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.WRONG_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            params=datas
+        )
+
+        # Check headers
+        self.check_request_not_found_header(resp)
+
+    def test_analyzer_test_case_analyze_pcap_file_not_a_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.WRONG_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE,
+            'pcap_file': pcap_path
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_pcap_file_in_file_but_not_a_file(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'token': self.WRONG_TOKEN,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files={'pcap_file': pcap_path}
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
+        )
+
+    def test_analyzer_test_case_analyze_unknown_testcase_id(self):
+
+        # Prepare POST parameters
+        datas = {
+            'testcase_id': self.UNKNOWN_TEST_CASE
+        }
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files=files
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Test case %s not found' % self.UNKNOWN_TEST_CASE
+        )
 
     # TODO
     # More test cases when the token and db managment are done
