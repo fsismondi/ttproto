@@ -211,6 +211,24 @@ def get_test_cases(testcase_id=None):
     else:
         return TEST_CASES
 
+
+# Function to check if a get parameter is correct
+#
+# /param par The get parameter to check (care it's a list)
+# /param is_number If we expect it to be a number
+#
+def correct_get_param(par, is_number=False):
+    return all((
+        len(par) == 1,
+        type(par[0]) == str,
+        par[0] != '',
+        not (
+            is_number and (
+                not par[0].isdigit() or int(par[0]) > 0
+            )
+        )
+    ))
+
 # ######################## End of API part ######################### #
 
 
@@ -372,12 +390,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # GET handler for the testcase_getTestcaseImplementation uri
+        # GET handler for the analyzer_getTestcaseImplementation uri
         # It will allow developpers to get the implementation script of a TC
         #
         # /param testcase_id => The unique id of the test case
         #
-        elif url.path == '/api/v1/testcase_getTestcaseImplementation':
+        elif url.path == '/api/v1/analyzer_getTestcaseImplementation':
 
             # Send the header
             self.send_response(200)
@@ -396,8 +414,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 if any((
                     len(params) != 1,
                     'testcase_id' not in params,
-                    len(params['testcase_id']) != 1,
-                    not type(params['testcase_id'][0]) == str
+                    not correct_get_param(params['testcase_id'])
                 )):
                     raise
 
@@ -589,27 +606,44 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             params = parse_qs(url.query)
             try:
 
-                # Correct execution
-                if any((
-                    len(params) != 2,
-                    'frame_id' not in params,
-                    'token' not in params,
-                    len(params['frame_id']) != 1,
-                    not params['frame_id'][0].isdigit(),
-                    len(params['token']) != 1
-                )):
+                # Only token and protocol_selection
+                if len(params) == 2:
+                    if any((
+                        'token' not in params,
+                        'protocol_selection' not in params,
+                        not correct_get_param(params['token']),
+                        not correct_get_param(params['protocol_selection'])
+                    )):
+                        raise
+
+                # token, protocol_selection and frame_id
+                elif len(params) == 3:
+                    if any((
+                        'token' not in params,
+                        'protocol_selection' not in params,
+                        'frame_id' not in params,
+                        not correct_get_param(params['token']),
+                        not correct_get_param(params['frame_id'], is_number=True),
+                        not correct_get_param(params['protocol_selection'])
+                    )):
+                        raise
+
+                # Wrong number of parameters
+                else:
                     raise
 
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
+                    'Incorrects parameters expected \'?token=\{string\}&protocol_selection=\{string\}(&frame_id=\{integer\})?\''
                 )
                 return
 
             # Format the id before passing it to the process function
-            frame_id = int(params['frame_id'][0])
+            if len(params) == 3:
+                frame_id = int(params['frame_id'][0])
             token = params['token'][0]
+            protocol_selection = params['protocol_selection'][0]
 
             # The result to return
             json_result = OrderedDict()
@@ -761,15 +795,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         # ########################## ttproto API ########################### #
 
-        # POST handler for the analyser_testCaseAnalyse uri
-        # It will allow users to analyse a pcap file corresponding to a TC
+        # POST handler for the analyzer_testCaseAnalyze uri
+        # It will allow users to analyze a pcap file corresponding to a TC
         #
-        # \param pcap_file => The pcap file that we want to analyse
+        # \param pcap_file => The pcap file that we want to analyze
         # \param token => The token previously provided
         # \param testcase_id => The id of the corresponding test case
         # The pcap_file or the token is required, having both is also forbidden
         #
-        if self.path == '/api/v1/analyser_testCaseAnalyse':
+        if self.path == '/api/v1/analyzer_testCaseAnalyze':
 
             # Send the header
             self.send_response(200)
@@ -923,19 +957,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 verdict
             ]
 
-            # Here we will analyse the pcap file and get the results as json
+            # Here we will analyze the pcap file and get the results as json
             print(json.dumps(json_result))
             return
 
-        # POST handler for the analyzer_allMightyAnalyse uri
-        # It will allow users to analyse a pcap file without giving
+        # POST handler for the analyzer_allMightyAnalyze uri
+        # It will allow users to analyze a pcap file without giving
         # a corresponding test case
         #
-        # \param pcap_file => The pcap file that we want to analyse
+        # \param pcap_file => The pcap file that we want to analyze
         # \param token => The token previously provided
         # The pcap_file or the token is required, having both is also forbidden
         #
-        if self.path == '/api/v1/analyzer_allMightyAnalyse':
+        if self.path == '/api/v1/analyzer_allMightyAnalyze':
 
             # Send the header
             self.send_response(200)
@@ -952,7 +986,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         # POST handler for the dissector_dissectFile uri
-        # It will allow users to analyse a pcap file corresponding to a TC
+        # It will allow users to analyze a pcap file corresponding to a TC
         #
         # \param pcap_file => The pcap file that we want to dissect
         # \param protocol_selection => The protocol name
@@ -997,38 +1031,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 })
 
             # Check the parameters passed
-            # if any((
-            #     len(form) not in [1, 2],
-            #     all((  # None of the two required => Error
-            #         'pcap_file' not in form,
-            #         'token' not in form
-            #     )),
-            #     all((  # Both of them => Error
-            #         'pcap_file' in form,
-            #         'token' in form
-            #     )),
-            #     len(form) == 2 and 'protocol_selection' not in form
-            # )):
-            #     self.api_error(
-            #         'Expected POST=([pcap_file=\{file\}|token=\{text\}], (protocol_selection=\{text\})?)'
-            #     )
-            #     return
-
-            # Check the parameters passed
             if any((
                 len(form) != 2,
-                all((  # None of the two required => Error
-                    'pcap_file' not in form,
-                    'token' not in form
-                )),
-                all((  # Both of them => Error
-                    'pcap_file' in form,
-                    'token' in form
-                )),
+                'pcap_file' not in form,
                 'protocol_selection' not in form
             )):
                 self.api_error(
-                    'Expected POST=([pcap_file=\{file\}|token=\{text\}], protocol_selection=\{text\})'
+                    'Expected POST=(pcap_file=\{file\}, protocol_selection=\{text\})'
                 )
                 return
 
@@ -1067,23 +1076,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('Expected \'pcap_file\' to be a file')
                 return
 
-            # Get the token
-            token = form.getvalue('token')
-
-            # Generate the token if none given
-            if not token:
-                token = hashlib.sha1(
-                    str.encode((
-                        "%s%s%04d%s" %
-                        (
-                            HASH_PREFIX,
-                            timestamp,
-                            job_id,
-                            HASH_SUFFIX
-                        )
-                    ), encoding='utf-8')
-                )
-                token = base64.urlsafe_b64encode(token.digest()).decode()
+            # Generate the token
+            token = hashlib.sha1(
+                str.encode((
+                    "%s%s%04d%s" %
+                    (
+                        HASH_PREFIX,
+                        timestamp,
+                        job_id,
+                        HASH_SUFFIX
+                    )
+                ), encoding='utf-8')
+            )
+            token = base64.urlsafe_b64encode(token.digest()).decode()
 
             # Prepare the result to return
             json_result = OrderedDict()
@@ -1278,7 +1283,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             #     ]
             # }
 
-            # Here we will analyse the pcap file and get the results as json
+            # Here we will analyze the pcap file and get the results as json
             print(json.dumps(json_result))
             return
 
