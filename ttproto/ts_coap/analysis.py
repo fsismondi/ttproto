@@ -736,14 +736,79 @@ def pcap_to_list(pcap_file, add_header=True, protocol_selection=None):
             else:
                 if add_header:
                     header = OrderedDict()
-                    header[".type"] = "frame"
-                    header[".id"] = f.id
-                    header[".timestamp"] = f.ts
-                    header[".error"] = f.exc
+                    header["_type"] = "frame"
+                    header["id"] = f.id
+                    header["timestamp"] = f.ts
+                    header["error"] = f.exc
                     lst.append(header)
+                    protocol_stack = OrderedDict()
                 value_to_list(lst, f.msg.get_value(),  None,  None)
                 parent_lst.append(lst)
     return parent_lst
+
+
+def own_value_to_list(l: list, value: Value, extra_data=None, layer_dict:dict=None, is_option=False):
+
+    # points to packet
+    if isinstance(value, PacketValue):
+
+        od = OrderedDict()
+
+        if is_option:
+            od['_type'] = 'protocol_option'
+            od['Option'] = value.get_variant().__name__
+        else:
+            od['_type'] = 'protocol'
+            od['Protocol'] = value.get_variant().__name__
+
+        l.append(od)
+
+        i = 0
+        for f in value.get_variant().fields():
+            own_value_to_list(l, value[i], f.name, od)
+            i += 1
+
+    # TODO test this
+    elif isinstance(value, ListValue):
+        prot_options = []
+        for i in range(0, len(value)):
+            own_value_to_list(prot_options, value[i], is_option=True)
+        layer_dict['Options'] = prot_options
+
+    # it's a field
+    else:
+        layer_dict[extra_data] = str(value)
+
+
+def own_function_for_dissection(pcap_file, protocol_selection=None):
+
+    if protocol_selection:
+        assert issubclass(protocol_selection, PacketValue)
+
+    frame_list = []
+
+    # for speeding up the process
+    with Data.disable_name_resolution():
+
+        frames = Frame.create_list(PcapReader(pcap_file))
+
+        for f in frames:
+
+            # if we are filtering and frame doesnt contain protocol
+            # then skip frame
+            # TODO make this generic for any type of protocol
+            if protocol_selection and not f.coap:
+                pass
+            else:
+                frame = OrderedDict()
+                frame['_type'] = 'frame'
+                frame['id'] = f.id
+                frame['timestamp'] = f.ts
+                frame['error'] = f.exc
+                frame['protocol_stack'] = []
+                own_value_to_list(frame['protocol_stack'], f.msg.get_value())
+                frame_list.append(frame)
+    return frame_list
 
 
 ################################################################################
