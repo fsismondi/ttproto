@@ -31,9 +31,13 @@ class WebserverTestCase(unittest.TestCase):
     # Some dummy values
     EXISTING_TEST_CASE = 'TD_COAP_CORE_01'
     UNKNOWN_TEST_CASE = 'UNKNOWN_TEST_CASE'
-    DUMMY_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k='
-    DUMMY_FRAME_ID = 5
+    WRONG_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k='
+    WRONG_FRAME_ID = 500
     JOKER_PROTOCOL_NAME = 'None'
+
+    # Put some test parameters passed from one function to another
+    CORRECT_TOKEN = None
+    CORRECT_FRAME_ID = None
 
     # Structure definition of packets
     STRUCT_RESPONSE_OK = {
@@ -116,6 +120,7 @@ class WebserverTestCase(unittest.TestCase):
             Initialize the server on which we'll run the tests
             It creates a thread on which we run the server
         """
+
         # Put the needed log file for the webserver (it's required)
         webserver.log_file = open(
             os.path.join(LOGDIR, 'unit-tests-webserver.log'),
@@ -368,7 +373,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id=\{string\}\''
+            'Incorrects GET parameters, expected \'?testcase_id={string}\''
         )
 
     def test_analyzer_get_testcase_implementation_wrong_params(self):
@@ -392,7 +397,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id=\{string\}\''
+            'Incorrects GET parameters, expected \'?testcase_id={string}\''
         )
 
     def test_analyzer_get_testcase_implementation_more_params(self):
@@ -419,7 +424,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id=\{string\}\''
+            'Incorrects GET parameters, expected \'?testcase_id={string}\''
         )
 
     def test_analyzer_get_testcase_implementation_post_data_instead_of_get(self):
@@ -443,7 +448,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id=\{string\}\''
+            'Incorrects GET parameters, expected \'?testcase_id={string}\''
         )
 
     def test_analyzer_get_testcase_implementation_post_and_get_data(self):
@@ -518,182 +523,945 @@ class WebserverTestCase(unittest.TestCase):
 
     # -------------------------------------------------------------------------------
 
-    # ##### get_frame
-    # def test_get_frame(self):
+    # ##### analyzer_getFrames
+    def test_analyzer_get_frames(self):
 
-    #     # Prepare GET parameters
-    #     params = {
-    #         'token': self.DUMMY_TOKEN,
-    #         'frame_id': self.DUMMY_FRAME_ID
-    #     }
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
 
-    #     # Execute the request
-    #     resp = requests.get(
-    #         self.TAT_API_URL + '/api/v1/get_frame',
-    #         params=params
-    #     )
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_correct_response(resp)
+        # Check headers
+        self.check_correct_response_header(resp)
 
-    #     # Check the response contains a token and a frame
-    #     self.assertEqual(len(resp['content']), 2)
-    #     self.check_token(resp['content'][0])
-    #     self.check_frame(resp['content'][1])
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
 
-    # def test_get_frame_no_params(self):
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+        self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
+        self.check_frame(resp['content'][1])
+        self.assertEqual(resp['content'][1]['id'], CORRECT_FRAME_ID)
 
-    #     # Execute the request
-    #     resp = requests.get(self.TAT_API_URL + '/api/v1/get_frame')
+    def test_analyzer_get_frames_no_params(self):
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+        # Execute the request
+        resp = requests.get(self.TAT_API_URL + '/api/v1/analyzer_getFrames')
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
+        # Check headers
+        self.check_correct_response_header(resp)
 
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
-    #     )
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
 
-    # def test_get_frame_only_token(self):
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
 
-    #     # Prepare GET parameters
-    #     params = {'token': self.DUMMY_TOKEN}
+    def test_analyzer_get_frames_only_token(self):
 
-    #     # Execute the request
-    #     resp = requests.get(
-    #         self.TAT_API_URL + '/api/v1/get_frame',
-    #         params=params
-    #     )
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+        # Prepare GET parameters
+        params = {'token': CORRECT_TOKEN}
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
 
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
-    #     )
+        # Check headers
+        self.check_correct_response_header(resp)
 
-    # def test_get_frame_only_frame_id(self):
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
 
-    #     # Prepare GET parameters
-    #     params = {'frame_id': self.DUMMY_FRAME_ID}
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
 
-    #     # Execute the request
-    #     resp = requests.get(
-    #         self.TAT_API_URL + '/api/v1/get_frame',
-    #         params=params
-    #     )
+    def test_analyzer_get_frames_only_frame_id(self):
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+        # Check params that we normally should get from last dissect
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_FRAME_ID)
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
+        # Prepare GET parameters
+        params = {'frame_id': CORRECT_FRAME_ID}
 
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
-    #     )
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
 
-    # def test_get_frame_frame_id_not_integer(self):
+        # Check headers
+        self.check_correct_response_header(resp)
 
-    #     # Prepare GET parameters
-    #     params = {
-    #         'token': self.DUMMY_TOKEN,
-    #         'frame_id': 'definitively_not_an_integer'
-    #     }
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
 
-    #     # Execute the request
-    #     resp = requests.get(
-    #         self.TAT_API_URL + '/api/v1/get_frame',
-    #         params=params
-    #     )
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+    def test_analyzer_get_frames_only_protocol_selection(self):
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
+        # Prepare GET parameters
+        params = {'protocol_selection': self.JOKER_PROTOCOL_NAME}
 
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
-    #     )
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
 
-    # def test_get_frame_more_params(self):
+        # Check headers
+        self.check_correct_response_header(resp)
 
-    #     # Prepare GET parameters
-    #     params = {
-    #         'token': self.DUMMY_TOKEN,
-    #         'frame_id': self.DUMMY_FRAME_ID,
-    #         'testcase_id': self.EXISTING_TEST_CASE
-    #     }
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
 
-    #     # Execute the request
-    #     resp = requests.get(
-    #         self.TAT_API_URL + '/api/v1/get_frame',
-    #         params=params
-    #     )
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+    def test_analyzer_get_frames_only_token_and_protocol_selection(self):
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_error_response(resp)
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
 
-    #     # Check the content is an error message
-    #     self.assertEqual(
-    #         resp['error'],
-    #         'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
-    #     )
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
 
-    # def test_get_frame_more_params_post_and_get_data(self):
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
 
-    #     # Prepare GET parameters
-    #     params = {
-    #         'token': self.DUMMY_TOKEN,
-    #         'frame_id': self.DUMMY_FRAME_ID
-    #     }
+        # Check headers
+        self.check_correct_response_header(resp)
 
-    #     # Execute the request with the params as POST and not GET params
-    #     resp = requests.get(
-    #         self.TAT_API_URL + '/api/v1/get_frame',
-    #         data=params,
-    #         params=params
-    #     )
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
 
-    #     # Check headers
-    #     self.check_correct_response_header(resp)
+        # Check the response contains a token and a frame
+        self.assertGreaterEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+        self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
 
-    #     # Check data headers
-    #     resp = resp.json()
-    #     self.check_correct_response(resp)
+        # Check each following frames
+        for i in range(1, len(resp['content'])):
+            self.check_frame(resp['content'][i])
 
-    #     # It passes but in practice there is no POST values into a GET request
+    def test_analyzer_get_frames_token_and_frame_id(self):
 
-    #     # Check the response contains a token and a frame
-    #     self.assertEqual(len(resp['content']), 2)
-    #     self.check_token(resp['content'][0])
-    #     self.check_frame(resp['content'][1])
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': CORRECT_FRAME_ID
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_analyzer_get_frames_protocol_selection_and_frame_id(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_analyzer_get_frames_frame_id_not_integer(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': 'definitively_not_an_integer'
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_analyzer_get_frames_frame_id_negative(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': -42
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_analyzer_get_frames_more_params(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': CORRECT_FRAME_ID,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_analyzer_get_frames_post_and_get_data(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': CORRECT_FRAME_ID
+        }
+
+        # Execute the request with the params as POST and not GET params
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            data=params,
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # It passes but in practice there is no POST values into a GET request
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+        self.check_frame(resp['content'][1])
+
+    def test_analyzer_get_frames_wrong_token(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': self.WRONG_TOKEN,
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Session identified by token %s not found' % self.WRONG_TOKEN
+        )
+
+    def test_analyzer_get_frames_wrong_frame_id(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': self.WRONG_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'No frame with id=%u found' % self.WRONG_FRAME_ID
+        )
+
+    def test_analyzer_get_frames_wrong_protocol_selection(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': 'WrongProtocolSelection'
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/analyzer_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Unknown %s protocol' % 'WrongProtocolSelection'
+        )
+
+    # TODO
+    # After the protocol selection is implemented, check that we only receive
+    # frames of this protocol and not others anymore
+
+    # -------------------------------------------------------------------------------
+
+    # ##### dissector_getFrames
+    def test_dissector_get_frames(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+        self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
+        self.check_frame(resp['content'][1])
+        self.assertEqual(resp['content'][1]['id'], CORRECT_FRAME_ID)
+
+    def test_dissector_get_frames_no_params(self):
+
+        # Execute the request
+        resp = requests.get(self.TAT_API_URL + '/api/v1/dissector_getFrames')
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_only_token(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {'token': CORRECT_TOKEN}
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_only_frame_id(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {'frame_id': CORRECT_FRAME_ID}
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_only_protocol_selection(self):
+
+        # Prepare GET parameters
+        params = {'protocol_selection': self.JOKER_PROTOCOL_NAME}
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_only_token_and_protocol_selection(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token and a frame
+        self.assertGreaterEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+        self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
+
+        # Check each following frames
+        for i in range(1, len(resp['content'])):
+            self.check_frame(resp['content'][i])
+
+    def test_dissector_get_frames_token_and_frame_id(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': CORRECT_FRAME_ID
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_protocol_selection_and_frame_id(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_frame_id_not_integer(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': 'definitively_not_an_integer'
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_frame_id_negative(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': -42
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_more_params(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': CORRECT_FRAME_ID,
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+        )
+
+    def test_dissector_get_frames_post_and_get_data(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME,
+            'frame_id': CORRECT_FRAME_ID
+        }
+
+        # Execute the request with the params as POST and not GET params
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            data=params,
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # It passes but in practice there is no POST values into a GET request
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 2)
+        self.check_token(resp['content'][0])
+        self.check_frame(resp['content'][1])
+
+    def test_dissector_get_frames_wrong_token(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': self.WRONG_TOKEN,
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Session identified by token %s not found' % self.WRONG_TOKEN
+        )
+
+    def test_dissector_get_frames_wrong_frame_id(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        self.assertIsNotNone(CORRECT_TOKEN)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': self.WRONG_FRAME_ID,
+            'protocol_selection': self.JOKER_PROTOCOL_NAME
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'No frame with id=%u found' % self.WRONG_FRAME_ID
+        )
+
+    def test_dissector_get_frames_wrong_protocol_selection(self):
+
+        # Check params that we normally should get from last dissect
+        global CORRECT_TOKEN
+        global CORRECT_FRAME_ID
+        self.assertIsNotNone(CORRECT_TOKEN)
+        self.assertIsNotNone(CORRECT_FRAME_ID)
+
+        # Prepare GET parameters
+        params = {
+            'token': CORRECT_TOKEN,
+            'frame_id': CORRECT_FRAME_ID,
+            'protocol_selection': 'WrongProtocolSelection'
+        }
+
+        # Execute the request
+        resp = requests.get(
+            self.TAT_API_URL + '/api/v1/dissector_getFrames',
+            params=params
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            'Unknown %s protocol' % 'WrongProtocolSelection'
+        )
+
+    # TODO
+    # After the protocol selection is implemented, check that we only receive
+    # frames of this protocol and not others anymore
 
     # -------------------------------------------------------------------------------
 
@@ -783,7 +1551,7 @@ class WebserverTestCase(unittest.TestCase):
     #     # Prepare POST parameters
     #     # datas = {
     #     #     'testcase_id': self.EXISTING_TEST_CASE,
-    #     #     'token': self.DUMMY_TOKEN
+    #     #     'token': self.WRONG_TOKEN
     #     # }
 
     #     # # Execute the request
@@ -890,13 +1658,13 @@ class WebserverTestCase(unittest.TestCase):
     #     # Check the content is an error message
     #     self.assertEqual(
     #         resp['error'],
-    #         'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
+    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
     #     )
 
     # def test_analyzer_test_case_analyze_only_token(self):
 
     #     # Prepare POST parameters
-    #     datas = {'token': self.DUMMY_TOKEN}
+    #     datas = {'token': self.WRONG_TOKEN}
 
     #     # Execute the request
     #     resp = requests.post(
@@ -920,7 +1688,7 @@ class WebserverTestCase(unittest.TestCase):
     # def test_analyzer_test_case_analyze_both_token_and_pcap_file(self):
 
     #     # Prepare POST parameters
-    #     datas = {'token': self.DUMMY_TOKEN}
+    #     datas = {'token': self.WRONG_TOKEN}
 
     #     # Get the path of the pcap file
     #     pcap_path = "%s/%s/%s.pcap" % (
@@ -950,14 +1718,14 @@ class WebserverTestCase(unittest.TestCase):
     #     # Check the content is an error message
     #     self.assertEqual(
     #         resp['error'],
-    #         'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
+    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
     #     )
 
     # def test_analyzer_test_case_analyze_all_the_three(self):
 
     #     # Prepare POST parameters
     #     datas = {
-    #         'token': self.DUMMY_TOKEN,
+    #         'token': self.WRONG_TOKEN,
     #         'testcase_id': self.EXISTING_TEST_CASE
     #     }
 
@@ -989,14 +1757,14 @@ class WebserverTestCase(unittest.TestCase):
     #     # Check the content is an error message
     #     self.assertEqual(
     #         resp['error'],
-    #         'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
+    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
     #     )
 
     # def test_analyzer_test_case_analyze_with_get_parameters(self):
 
     #     # Prepare POST parameters
     #     datas = {
-    #         'token': self.DUMMY_TOKEN,
+    #         'token': self.WRONG_TOKEN,
     #         'testcase_id': self.EXISTING_TEST_CASE
     #     }
 
@@ -1021,7 +1789,7 @@ class WebserverTestCase(unittest.TestCase):
 
     #     # Prepare POST parameters
     #     datas = {
-    #         'token': self.DUMMY_TOKEN,
+    #         'token': self.WRONG_TOKEN,
     #         'testcase_id': self.EXISTING_TEST_CASE,
     #         'pcap_file': pcap_path
     #     }
@@ -1056,7 +1824,7 @@ class WebserverTestCase(unittest.TestCase):
 
     #     # Prepare POST parameters
     #     datas = {
-    #         'token': self.DUMMY_TOKEN,
+    #         'token': self.WRONG_TOKEN,
     #         'testcase_id': self.EXISTING_TEST_CASE
     #     }
 
@@ -1077,7 +1845,7 @@ class WebserverTestCase(unittest.TestCase):
     #     # Check the content is an error message
     #     self.assertEqual(
     #         resp['error'],
-    #         'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
+    #         'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
     #     )
 
     # def test_analyzer_test_case_analyze_unknown_testcase_id(self):
@@ -1125,7 +1893,10 @@ class WebserverTestCase(unittest.TestCase):
     # -------------------------------------------------------------------------------
 
     # ##### dissector_dissectFile
-    def test_dissector_dissect_file(self):
+
+    # The a is a little hack for this function to be the first tested
+    # in order to get a valid token for the following test suite
+    def test_01_dissector_dissect_file(self):
 
         # Get the path of the pcap file
         pcap_path = "%s/%s/%s.pcap" % (
@@ -1156,9 +1927,17 @@ class WebserverTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(resp['content']), 2)
         self.check_token(resp['content'][0])
 
+        # Get the token then
+        global CORRECT_TOKEN
+        CORRECT_TOKEN = resp['content'][0]['value']
+
         # And many frames
         for i in range(1, len(resp['content'])):
             self.check_frame(resp['content'][i])
+
+        # Get the last frame_id
+        global CORRECT_FRAME_ID
+        CORRECT_FRAME_ID = resp['content'][i]['id']
 
     def test_dissector_dissect_file_no_post_datas(self):
 
@@ -1235,7 +2014,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Expected POST=(pcap_file=\{file\}, protocol_selection=\{text\})'
+            'Expected POST=(pcap_file={file}, protocol_selection={text})'
         )
 
     def test_dissector_dissect_file_with_get_parameters(self):

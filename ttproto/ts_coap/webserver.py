@@ -227,7 +227,7 @@ def correct_get_param(par, is_number=False):
         par[0] != '',
         not (
             is_number and (
-                not par[0].isdigit() or int(par[0]) > 0
+                not par[0].isdigit() or int(par[0]) <= 0
             )
         )
     ))
@@ -433,7 +433,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects GET parameters, expected \'?testcase_id=\{string\}\''
+                    'Incorrects GET parameters, expected \'?testcase_id={string}\''
                 )
                 return
 
@@ -459,7 +459,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # GET handler for the analyzer_getProtocols uri
         # It will give to the gui the list of the protocols implemented
         #
-        elif url.path == '/api/v1/analyzer_getProtocols':
+        elif url.path in (
+            '/api/v1/analyzer_getProtocols',
+            '/api/v1/dissector_getProtocols'
+        ):
 
             # Send the header
             self.send_response(200)
@@ -489,7 +492,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # GET handler for the analyzer_getFrames uri
+        # GET handler for the analyzer_getFrames and dissector_getFrames uri
         # It will allow a user to get a single frame from the previous pcap
         # if no frame_id provided, otherwise it will return all the frames
         #
@@ -497,114 +500,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # /param protocol_selection => The protocol we want to filter on
         # /param frame_id (optional) => The id of the wanted frame
         #
-        elif url.path == '/api/v1/analyzer_getFrames':
-
-            # Send the header
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
-            self.end_headers()
-
-            # Bind the stdout to the http output
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-
-            # Get the parameters
-            params = parse_qs(url.query)
-            try:
-
-                # Correct execution
-                if any((
-                    len(params) != 2,
-                    'frame_id' not in params,
-                    'token' not in params,
-                    len(params['frame_id']) != 1,
-                    not params['frame_id'][0].isdigit(),
-                    len(params['token']) != 1
-                )):
-                    raise
-
-            # Catch errors (key mostly) or if wrong parameter
-            except:
-                self.api_error(
-                    'Incorrects parameters expected \'?frame_id=\{integer\}&token=\{string\}\''
-                )
-                return
-
-            # Format the id before passing it to the process function
-            frame_id = int(params['frame_id'][0])
-            token = params['token'][0]
-
-            # The result to return
-            json_result = OrderedDict()
-            json_result['_type'] = 'response'
-            json_result['ok'] = True
-
-            token_res = OrderedDict()
-            token_res['_type'] = 'token'
-            token_res['value'] = token
-
-            # TODO: Here get the frame from the db
-            frame = OrderedDict()
-            frame['_type'] = 'frame'
-            frame['id'] = 5
-            frame['timestamp'] = time.time()
-            frame['error'] = ''
-
-            protocol_stack = OrderedDict()
-            protocol_stack['_type'] = 'protocol'
-            protocol_stack['Protocol'] = 'proto name'
-            protocol_stack['Field_1_name'] = 'sth'
-            protocol_stack['Field_2_name'] = 'sth_else'
-
-            frame['protocol_stack'] = [protocol_stack]
-
-            json_result['content'] = [token_res, frame]
-
-            # Dump the json result
-            print(json.dumps(json_result))
-            return
-
-        # GET handler for the dissector_getProtocols uri
-        # It will give to the gui the list of the protocols implemented
+        # /remark We redirect to the same function but later those two
+        # may diverge
         #
-        elif url.path == '/api/v1/dissector_getProtocols':
-
-            # Send the header
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
-            self.end_headers()
-
-            # Bind the stdout to the http output
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-
-            # The result to return
-            json_result = OrderedDict()
-            json_result['_type'] = 'response'
-            json_result['ok'] = True
-            json_result['content'] = []
-
-            # Get protocols from the list
-            for prot_name in PROTOCOLS:
-                prot = OrderedDict()
-                prot['_type'] = 'implemented_protocol'
-                prot['name'] = prot_name
-                prot['description'] = PROTOCOLS[prot_name]['description']
-                json_result['content'].append(prot)
-
-            # Maybe it will be good to get those from a file/db in the future
-
-            # Just give the json representation of the test cases list
-            print(json.dumps(json_result))
-            return
-
-        # GET handler for the dissector_getFrames uri
-        # It will allow a user to get a single frame from the previous pcap
-        # if no frame_id provided, otherwise it will return all the frames
-        #
-        # /param token => The token of the corresponding pcap file
-        # /param protocol_selection => The protocol we want to filter on
-        # /param frame_id (optional) => The id of the wanted frame
-        #
-        elif url.path == '/api/v1/dissector_getFrames':
+        elif url.path in (
+            '/api/v1/analyzer_getFrames',
+            '/api/v1/dissector_getFrames'
+        ):
 
             # Send the header
             self.send_response(200)
@@ -647,15 +549,51 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects parameters expected \'?token=\{string\}&protocol_selection=\{string\}(&frame_id=\{integer\})?\''
+                    'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
                 )
                 return
 
             # Format the id before passing it to the process function
-            if len(params) == 3:
-                frame_id = int(params['frame_id'][0])
             token = params['token'][0]
             protocol_selection = params['protocol_selection'][0]
+
+            # Check the protocol
+            if protocol_selection not in PROTOCOLS.keys():
+                self.api_error(
+                    'Unknown %s protocol' % protocol_selection
+                )
+                return
+
+            # Create the frames object
+            frames = []
+
+            # Get the json file
+            try:
+                json_path = os.path.join(
+                    TMPDIR,
+                    "%s.json" % token
+                )
+                with open(json_path, 'r') as json_fp:
+                    frames = json.load(json_fp)
+            except:
+                self.api_error(
+                    'Session identified by token %s not found' % token
+                )
+                return
+
+            # If a single file asked
+            if len(params) == 3:
+                frame_id = int(params['frame_id'][0])
+                for frame in frames:
+                    if frame['id'] == frame_id:
+                        frames = [frame]
+
+                # If no frame with this id
+                if len(frames) != 1:
+                    self.api_error(
+                        'No frame with id=%u found' % frame_id
+                    )
+                    return
 
             # The result to return
             json_result = OrderedDict()
@@ -666,22 +604,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             token_res['_type'] = 'token'
             token_res['value'] = token
 
-            # TODO: Here get the frame from the db
-            frame = OrderedDict()
-            frame['_type'] = 'frame'
-            frame['id'] = 5
-            frame['timestamp'] = time.time()
-            frame['error'] = ''
+            frames.insert(0, token_res)
 
-            protocol_stack = OrderedDict()
-            protocol_stack['_type'] = 'protocol'
-            protocol_stack['Protocol'] = 'proto name'
-            protocol_stack['Field_1_name'] = 'sth'
-            protocol_stack['Field_2_name'] = 'sth_else'
-
-            frame['protocol_stack'] = [protocol_stack]
-
-            json_result['content'] = [token_res, frame]
+            json_result['content'] = frames
 
             # Dump the json result
             print(json.dumps(json_result))
@@ -869,7 +794,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 ))
             )):
                 self.api_error(
-                    'Expected POST=([pcap_file=\{file\}|token=\{text\}], testcase_id=\{text\})'
+                    'Expected POST=([pcap_file={file}|token={text}], testcase_id={text})'
                 )
                 return
 
@@ -1049,7 +974,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 'protocol_selection' not in form
             )):
                 self.api_error(
-                    'Expected POST=(pcap_file=\{file\}, protocol_selection=\{text\})'
+                    'Expected POST=(pcap_file={file}, protocol_selection={text})'
                 )
                 return
 

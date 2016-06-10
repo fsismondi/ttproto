@@ -677,6 +677,8 @@ def dissect_pcap_to_json(filename, protocol_selection=None):
 
     # TODO implement protocol selection
 
+    # REMARK The json.dumps is done into webserver so we just use pcap_to_list
+
     return json.dumps(pcap_to_list( filename, True, protocol_selection),indent=2 )
 
 
