@@ -141,7 +141,7 @@ class ICMPv6 (
 	@typecheck
 	def find_type (self: is_flat_value, type_: is_type) -> optional (Value):
 		result = super().find_type (type_)
-		if result != None:
+		if result is not None:
 			return result
 
 		# try in the option list
@@ -150,7 +150,7 @@ class ICMPv6 (
 		except exceptions.UnknownField:
 			return None
 
-		return None if options == None else options.find_type (type_)
+		return None if options is None else options.find_type (type_)
 
 """
 defined in [RFC4861]:

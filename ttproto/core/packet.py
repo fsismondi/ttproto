@@ -439,8 +439,8 @@ class PacketValue(Value):
                 return data
 
             self.set_type(packet_type)
-            self.__func = convert_func if convert_func != None else identity
-            if value != None:
+            self.__func = convert_func if convert_func is not None else identity
+            if value is not None:
                 self.extend(value)
 
         def set_type(self, packet_type):
@@ -487,7 +487,7 @@ class PacketValue(Value):
             return self * nb
 
         def __resolve_item(self, item: either(int, str, slice)):
-            if item == None:
+            if item is None:
                 return None
             elif isinstance(item, str):
                 item = self.__type.get_field_id(item)
@@ -697,10 +697,10 @@ class PacketValue(Value):
 
         assert "variant_descriptions" not in classdict  # obsolete, use the descriptions meta-parameter instead
 
-        if variant_of == None:
+        if variant_of is None:
             # root class definition
-            assert fields != None
-            assert prune == None
+            assert fields is not None
+            assert prune is None
 
             result = type(name, (cls,), classdict)
 
@@ -721,7 +721,7 @@ class PacketValue(Value):
         result.__cls_variant = result
         result.__cls_variant_id = id
 
-        if id != None:
+        if id is not None:
             assert id not in result.__cls_variants_bidict  # there should not be an existing variant with the same id
 
             result.__cls_variants_bidict[id] = result
@@ -756,7 +756,7 @@ class PacketValue(Value):
     @typecheck
     def __init_fields(cls, fields: optional(list_of(tuple)), prune: optional(int) = None):
         # check the validity of the fields
-        if fields != None:
+        if fields is not None:
             for f in fields:
                 assert 3 <= len(f) <= 4
                 assert type(f[0]) == str
@@ -765,7 +765,7 @@ class PacketValue(Value):
 
         cls.__cls_payload_id = None
 
-        if cls.__cls_base_variant == None:
+        if cls.__cls_base_variant is None:
             # root variant
             cls.__cls_prune = 0
             cls.__cls_fields = []
@@ -773,7 +773,7 @@ class PacketValue(Value):
             # derived variant
             base_length = cls.__cls_base_variant.get_length()
 
-            if prune == None:
+            if prune is None:
                 cls.__cls_prune = base_length
             else:
                 assert -base_length <= prune <= base_length
@@ -785,7 +785,7 @@ class PacketValue(Value):
             # keep the base payload id if not pruned
             base_pid = cls.__cls_base_variant.get_payload_id()
 
-            if base_pid != None and base_pid < cls.__cls_prune:
+            if base_pid is not None and base_pid < cls.__cls_prune:
                 cls.__cls_payload_id = base_pid
 
             # copy the fields from the base class
@@ -800,7 +800,7 @@ class PacketValue(Value):
                         assert name != previous_field.alias
 
                 if f[0] == "Payload":
-                    assert cls.__cls_payload_id == None
+                    assert cls.__cls_payload_id is None
                     cls.__cls_payload_id = len(cls.__cls_fields)
 
                 cls.__cls_fields.append(PacketValue.Field(*f))
@@ -904,13 +904,13 @@ class PacketValue(Value):
         """Get a textual description of the given variant id"""
 
         field_id = cls.get_variant_field_id()
-        txt = cls.get_description_for_value(field_id, variant_id) if field_id != None else None
+        txt = cls.get_description_for_value(field_id, variant_id) if field_id is not None else None
 
         if txt:
             return "%s %s" % (cls.get_root_variant().__name__, txt)
         elif variant_id in cls.__cls_variants_bidict:
             return cls.__cls_variants_bidict[variant_id].__name__
-        elif variant_id != None:
+        elif variant_id is not None:
             return "%s Type %d" % (cls.get_root_variant().__name__, variant_id)
         else:
             return cls.get_root_variant().__name__
@@ -1058,7 +1058,7 @@ class PacketValue(Value):
             assert issubclass(index, Value)
             assert self.is_flat()  # this makes things less complex (i don't think it will be necessary to support the general case)
             result = self.find_type(index)
-            if result == None:
+            if result is None:
                 raise KeyError
             return result
 
@@ -1079,9 +1079,9 @@ class PacketValue(Value):
 		"""
 
         pid = self.get_payload_id()
-        if pid != None:
+        if pid is not None:
             payload = self[pid]
-            if payload != None:
+            if payload is not None:
                 type_ = get_type(type_)
                 return payload if isinstance(payload, type_) else payload.find_type(type_)
         return None
@@ -1106,7 +1106,7 @@ class PacketValue(Value):
 			self(Payload=self["Payload"].pack(data))
 		"""
         pid = self.get_payload_id()
-        if pid == None:
+        if pid is None:
             raise Error("Cannot pack a message into %s (no Payload field)" % type(self).__name__)
 
         new_seq = self()
@@ -1135,14 +1135,14 @@ class PacketValue(Value):
     def _repr(self):
         result = []
         for field, data in zip(self.__cls_fields, self.__datas):
-            if data != None:
+            if data is not None:
                 result.append("%s=%s" % (field.alias, repr(data)))
         return "%s(%s)" % (type(self).__name__, ", ".join(result))
 
     @typecheck
     def _is_flat(self) -> bool:
         for v in self.__datas:
-            if v != None and not v.is_flat():
+            if v is not None and not v.is_flat():
                 return False
         return True
 
@@ -1168,7 +1168,7 @@ class PacketValue(Value):
         index = self.get_field_id(index)
         while seq:
             v = seq.__datas[index]
-            if v != None:
+            if v is not None:
                 yield v
             seq = seq.get_parent()
 
@@ -1182,7 +1182,7 @@ class PacketValue(Value):
             for v in seq_values:
                 candidates.extend(v.get_datas(i))
             new_v = Data.flatten(*candidates)
-            if new_v != None:
+            if new_v is not None:
                 new_v.freeze()
             result.__datas[i] = new_v
 
@@ -1194,7 +1194,7 @@ class PacketValue(Value):
         assert value.is_flat()
 
         if value.get_variant() != self.get_variant():
-            if mismatch_list != None:
+            if mismatch_list is not None:
                 mismatch_list.append(VariantMismatch(value, self))
             # TODO: should compare the n first field
 
@@ -1203,11 +1203,11 @@ class PacketValue(Value):
         result = True
         i = 0
         for pattern in self.__datas:
-            if pattern != None:
+            if pattern is not None:
 
                 if not pattern.match(value.__datas[i], mismatch_list):
                     result = False
-                    if mismatch_list == None:
+                    if mismatch_list is None:
                         # no need to continue
                         break
             i += 1
@@ -1265,10 +1265,10 @@ class PacketValue(Value):
 
             # fill the field value (and use the default if not specified)
 
-            if v == None:
+            if v is None:
                 v = f.tag.get_default_value()
 
-                if v == None:
+                if v is None:
                     raise Error("field '%s' in '%s' must have a value" % (f.name, type(self).__name__))
                 else:
                     v = f.store_data(v)
@@ -1324,8 +1324,8 @@ class PacketValue(Value):
 
         # TODO: maybe move this into InetPacketValue
         variant_fid = self.get_variant_field_id()
-        value = None if variant_fid == None else self[variant_fid]
-        desc.info = type(self).__name__ if value == None else self.get_variant_description(value)
+        value = None if variant_fid is None else self[variant_fid]
+        desc.info = type(self).__name__ if value is None else self.get_variant_description(value)
 
         return True
 
@@ -1339,7 +1339,7 @@ class PacketValue(Value):
 		"""
 
         pid = self.get_payload_id()
-        if pid != None:
+        if pid is not None:
             pl = self[pid]
             if pl:
                 return pl.describe(desc)

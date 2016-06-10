@@ -593,7 +593,7 @@ class HTMLLogger(logger.Logger):
 
                 txt = str(value)
 
-                if description != None:
+                if description is not None:
                     txt = "%s (%s)" % (txt, description)
 
                 if data_span != 1:

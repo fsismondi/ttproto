@@ -47,7 +47,7 @@ class DebugContext:
 	def __exit__ (self, *ei):
 		DebugContext.__depth -= 1
 		print (" " * DebugContext.__depth, "[Leave %s]" % self.__txt,
-			"" if ei[0] == None else "raised '%s'" % ei[1]
+			"" if ei[0] is None else "raised '%s'" % ei[1]
 		)
 	
 
