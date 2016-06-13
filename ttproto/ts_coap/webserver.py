@@ -71,6 +71,7 @@ LOGDIR = "log"
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
+TOKEN_LENGTH = 28
 
 # Magic header to identify a pcap file
 PCAP_MAGIC_HEADER = b'\xd4\xc3\xb2\xa1'
@@ -220,6 +221,8 @@ def get_test_cases(testcase_id=None):
 # /param par The get parameter to check (care it's a list)
 # /param is_number If we expect it to be a number
 #
+# /return boolean telling if the get parameter is correct or not
+#
 def correct_get_param(par, is_number=False):
     return all((
         len(par) == 1,
@@ -233,6 +236,12 @@ def correct_get_param(par, is_number=False):
     ))
 
 
+# Function to check if a pcap file get parameter is a valid one
+#
+# /param bytes_data The pcap file, normally as bytes, but can be wrong
+#
+# /return boolean telling if the data entered is a pcap file
+#
 def valid_pcap_file(bytes_data):
     return all((
         bytes_data,
@@ -240,6 +249,46 @@ def valid_pcap_file(bytes_data):
         len(bytes_data) > 52,  # file header + (src, dest) adresses
         bytes_data[:4] == PCAP_MAGIC_HEADER
     ))
+
+
+# Function to get a token, if there's a valid one entered just return it
+# otherwise generate a new one
+#
+# /param tok The token if there's already one
+#
+# /return str A token, the same if there's already one, a new one otherwise
+#
+def get_token(tok=None):
+
+    # If the token is already a correct one
+    try:
+        if all((
+            tok,
+            type(tok) == str,
+            len(tok) == 28,
+            base64.urlsafe_b64decode(tok + '=')  # Add '=' only for checking
+        )):
+            return tok
+    except:  # If the decode throw an error => Wrong base64
+        pass
+
+    # Generate a token because there is none
+    token = hashlib.sha1(
+        str.encode((
+            "%s%s%04d%s" %
+            (
+                HASH_PREFIX,
+                time.time(),
+                job_id,
+                HASH_SUFFIX
+            )
+        ), encoding='utf-8')
+    )
+    token = base64.urlsafe_b64encode(token.digest()).decode()
+
+    # Remove the '=' at the end of it, it is used by base64 for padding
+    return token.replace('=', '')
+
 
 # ######################## End of API part ######################### #
 
@@ -433,7 +482,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects GET parameters, expected \'?testcase_id={string}\''
+                    "Incorrects GET parameters, expected '?testcase_id={string}'"
                 )
                 return
 
@@ -549,7 +598,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+                    "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
                 )
                 return
 
@@ -755,18 +804,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type = cgi.parse_header(self.headers['Content-Type'])
             except TypeError:
                 self.api_error(
-                    'Non empty POST datas and format of \'multipart/form-data\' expected'
-                )
-                return
-
-            # Check headers
-            if any((
-                len(content_type) == 0,
-                content_type[0] is None,
-                content_type[0] != 'multipart/form-data'
-            )):
-                self.api_error(
-                    'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+                    "Non empty POST datas and format of 'multipart/form-data' expected"
                 )
                 return
 
@@ -812,15 +850,45 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('Test case %s not found' % testcase_id)
                 return
 
-            # Get the pcap file
-            pcap_file = form.getvalue('pcap_file')
-            timestamp = time.strftime("%y%m%d_%H%M%S")
-            if pcap_file and form['pcap_file'].file:
+            # Get the token
+            token = form.getvalue('token')
+
+            # Get analysis results from the token
+            if token:
+
+                # Just get the path
+                pcap_path = os.path.join(
+                    TMPDIR,
+                    token + '.dump'
+                )
+
+            # Get analysis results from the pcap file
+            else:
+
+                # Check headers
+                if any((
+                    len(content_type) == 0,
+                    content_type[0] is None,
+                    content_type[0] != 'multipart/form-data'
+                )):
+                    self.api_error(
+                        "POST format of 'multipart/form-data' expected, no file input 'pcap_file' found"
+                    )
+                    return
+
+                # Get the same token or generate a new one
+                token = get_token(token)
+
+                # Get and check the pcap file entered
+                pcap_file = form.getvalue('pcap_file')
+                if not valid_pcap_file(pcap_file):
+                    self.api_error("Expected 'pcap_file' to be a file")
+                    return
 
                 # Path to save the file
                 pcap_path = os.path.join(
                     TMPDIR,
-                    "%s_%04d.dump" % (timestamp, job_id)
+                    token + '.dump'
                 )
 
                 # Write the pcap file to a temporary destination
@@ -828,29 +896,27 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     with open(pcap_path, 'wb') as f:
                         f.write(pcap_file)
                 except:
-                    self.api_error('Couldn\'t write the temporary file')
+                    self.api_error("Couldn't write the temporary file")
                     return
-            else:
-                self.api_error('Expected \'pcap_file\' to be a file')
-                return
 
-            # Get the token
-            token = form.getvalue('token')
+                # Get the dissection from analysis tool
+                try:
+                    dissection = analysis.pcap_to_list(pcap_path)
+                except:
+                    self.api_error("Couldn't read the temporary file")
+                    return
 
-            # Generate the token if none given
-            if not token:
-                token = hashlib.sha1(
-                    str.encode((
-                        "%s%s%04d%s" %
-                        (
-                            HASH_PREFIX,
-                            timestamp,
-                            job_id,
-                            HASH_SUFFIX
-                        )
-                    ), encoding='utf-8')
+                # Save the json dissection result into a file
+                json_save = os.path.join(
+                    TMPDIR,
+                    token + '.json'
                 )
-                token = base64.urlsafe_b64encode(token.digest()).decode()
+                try:
+                    with open(json_save, 'w') as f:
+                        json.dump(dissection, f)
+                except:
+                    self.api_error("Couldn't write the json file")
+                    return
 
             # Get the result of the analysis
             analysis_results = analysis.analyse_file_rest_api(
@@ -906,7 +972,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # \param token => The token previously provided
         # The pcap_file or the token is required, having both is also forbidden
         #
-        if self.path == '/api/v1/analyzer_allMightyAnalyze':
+        elif self.path == '/api/v1/analyzer_allMightyAnalyze':
 
             # Send the header
             self.send_response(200)
@@ -943,7 +1009,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type = cgi.parse_header(self.headers['Content-Type'])
             except TypeError:
                 self.api_error(
-                    'Non empty POST datas and format of \'multipart/form-data\' expected'
+                    "Non empty POST datas and format of 'multipart/form-data' expected"
                 )
                 return
 
@@ -954,7 +1020,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type[0] != 'multipart/form-data'
             )):
                 self.api_error(
-                    'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+                    "POST format of 'multipart/form-data' expected, no file input 'pcap_file' found"
                 )
                 return
 
@@ -991,19 +1057,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('Unknown protocol %s' % protocol_selection)
                 return
 
-            # Generate the token
-            token = hashlib.sha1(
-                str.encode((
-                    "%s%s%04d%s" %
-                    (
-                        HASH_PREFIX,
-                        time.time(),
-                        job_id,
-                        HASH_SUFFIX
-                    )
-                ), encoding='utf-8')
-            )
-            token = base64.urlsafe_b64encode(token.digest()).decode()
+            # Generate a new token
+            token = get_token()
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
@@ -1020,11 +1075,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     with open(pcap_path, 'wb') as f:
                         f.write(pcap_file)
                 except:
-                    self.api_error('Couldn\'t write the temporary file')
+                    self.api_error("Couldn't write the temporary file")
                     return
             else:
                 self.api_error(
-                    'Expected \'pcap_file\' to be a non empty pcap file'
+                    "Expected 'pcap_file' to be a non empty pcap file"
                 )
                 return
 
@@ -1041,7 +1096,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 dissection = analysis.pcap_to_list(pcap_path)
             except:
-                self.api_error('Couldn\'t read the temporary file')
+                self.api_error("Couldn't read the temporary file")
                 return
 
             # Save the json dissection result into a file
@@ -1053,7 +1108,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(json_save, 'w') as f:
                     json.dump(dissection, f)
             except:
-                self.api_error('Couldn\'t write the json file')
+                self.api_error("Couldn't write the json file")
                 return
 
             # Add the token to the results
