@@ -31,7 +31,7 @@ class WebserverTestCase(unittest.TestCase):
     # Some dummy values
     EXISTING_TEST_CASE = 'TD_COAP_CORE_01'
     UNKNOWN_TEST_CASE = 'UNKNOWN_TEST_CASE'
-    WRONG_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k='
+    WRONG_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k'
     WRONG_FRAME_ID = 500
     JOKER_PROTOCOL_NAME = 'None'
 
@@ -228,7 +228,8 @@ class WebserverTestCase(unittest.TestCase):
         self.assertEqual(el['_type'], 'token')
 
         # Check that the value is a correct hash
-        decoded = base64.urlsafe_b64decode(el['value'])
+        # Add '=' only for checking
+        decoded = base64.urlsafe_b64decode(el['value'] + '=')
         self.assertEqual(len(decoded), hashlib.sha1().digest_size)
 
     def check_protocol(self, el):
@@ -373,7 +374,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id={string}\''
+            "Incorrects GET parameters, expected '?testcase_id={string}'"
         )
 
     def test_analyzer_get_testcase_implementation_wrong_params(self):
@@ -397,7 +398,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id={string}\''
+            "Incorrects GET parameters, expected '?testcase_id={string}'"
         )
 
     def test_analyzer_get_testcase_implementation_more_params(self):
@@ -424,7 +425,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id={string}\''
+            "Incorrects GET parameters, expected '?testcase_id={string}'"
         )
 
     def test_analyzer_get_testcase_implementation_post_data_instead_of_get(self):
@@ -448,7 +449,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects GET parameters, expected \'?testcase_id={string}\''
+            "Incorrects GET parameters, expected '?testcase_id={string}'"
         )
 
     def test_analyzer_get_testcase_implementation_post_and_get_data(self):
@@ -574,7 +575,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_only_token(self):
@@ -602,7 +603,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_only_frame_id(self):
@@ -630,7 +631,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_only_protocol_selection(self):
@@ -654,7 +655,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_only_token_and_protocol_selection(self):
@@ -721,7 +722,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_protocol_selection_and_frame_id(self):
@@ -752,7 +753,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_frame_id_not_integer(self):
@@ -784,7 +785,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_frame_id_negative(self):
@@ -816,7 +817,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_more_params(self):
@@ -851,7 +852,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_analyzer_get_frames_post_and_get_data(self):
@@ -1045,7 +1046,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_only_token(self):
@@ -1073,7 +1074,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_only_frame_id(self):
@@ -1101,7 +1102,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_only_protocol_selection(self):
@@ -1125,7 +1126,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_only_token_and_protocol_selection(self):
@@ -1192,7 +1193,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_protocol_selection_and_frame_id(self):
@@ -1223,7 +1224,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_frame_id_not_integer(self):
@@ -1255,7 +1256,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_frame_id_negative(self):
@@ -1287,7 +1288,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_more_params(self):
@@ -1322,7 +1323,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+            "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
         )
 
     def test_dissector_get_frames_post_and_get_data(self):
@@ -1589,7 +1590,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Non empty POST datas and format of \'multipart/form-data\' expected'
+            "Non empty POST datas and format of 'multipart/form-data' expected"
         )
 
     def test_analyzer_test_case_analyze_only_testcase_id(self):
@@ -1874,9 +1875,77 @@ class WebserverTestCase(unittest.TestCase):
             'Test case %s not found' % self.UNKNOWN_TEST_CASE
         )
 
-    # TODO
-    # More test cases when the token and db managment are done
-    # Check if we retrieve results correctly from a token
+    def test_analyzer_test_case_analyze_pcap_then_token(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files=files
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 3)
+        self.check_token(resp['content'][0])
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
+
+        # Check that the verdict is correct too
+        self.assertEqual(resp['content'][2]['verdict'], 'pass')
+
+        # Then do the same request with the token
+        datas = {
+            'testcase_id': self.EXISTING_TEST_CASE,
+            'token': resp['content'][0]['value']
+        }
+
+        # Execute the request
+        resp_token = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas
+        )
+
+        # Close the file
+        files['pcap_file'].close()
+
+        # Check headers
+        self.check_correct_response_header(resp_token)
+
+        # Check data headers
+        resp_token = resp_token.json()
+        self.check_correct_response(resp_token)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp_token['content']), 3)
+        self.check_token(resp_token['content'][0])
+        self.check_tc_basic(resp_token['content'][1])
+        self.check_verdict(resp_token['content'][2])
+
+        # Check that the verdict is correct too
+        self.assertEqual(resp_token['content'][2]['verdict'], 'pass')
+
+        # Check both of the responses
+        self.assertEqual(resp, resp_token)
 
     # -------------------------------------------------------------------------------
 
@@ -1945,7 +2014,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Non empty POST datas and format of \'multipart/form-data\' expected'
+            "Non empty POST datas and format of 'multipart/form-data' expected"
         )
 
     def test_dissector_dissect_file_only_protocol_selection(self):
@@ -1969,7 +2038,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+            "POST format of 'multipart/form-data' expected, no file input 'pcap_file' found"
         )
 
     def test_dissector_dissect_file_only_pcap_file(self):
@@ -2061,7 +2130,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+            "POST format of 'multipart/form-data' expected, no file input 'pcap_file' found"
         )
 
     def test_dissector_dissect_file_pcap_file_in_file_but_not_a_file(self):
@@ -2095,7 +2164,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Expected \'pcap_file\' to be a non empty pcap file'
+            "Expected 'pcap_file' to be a non empty pcap file"
         )
 
     def test_dissector_dissect_file_pcap_file_in_file_but_not_a_pcap_file(self):
@@ -2129,7 +2198,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Expected \'pcap_file\' to be a non empty pcap file'
+            "Expected 'pcap_file' to be a non empty pcap file"
         )
 
     def test_dissector_dissect_file_empty_pcap_file(self):
@@ -2163,7 +2232,7 @@ class WebserverTestCase(unittest.TestCase):
         # Check the content is an error message
         self.assertEqual(
             resp['error'],
-            'Expected \'pcap_file\' to be a non empty pcap file'
+            "Expected 'pcap_file' to be a non empty pcap file"
         )
 
     def test_dissector_dissect_file_unknown_protocol_selection(self):
