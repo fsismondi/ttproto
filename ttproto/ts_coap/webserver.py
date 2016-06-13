@@ -287,10 +287,7 @@ def get_token(tok=None):
     token = base64.urlsafe_b64encode(token.digest()).decode()
 
     # Remove the '=' at the end of it, it is used by base64 for padding
-    token = token.replace('=', '')
-
-    # In the end, return the token
-    return token
+    return token.replace('=', '')
 
 
 # ######################## End of API part ######################### #
@@ -485,7 +482,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects GET parameters, expected \'?testcase_id={string}\''
+                    "Incorrects GET parameters, expected '?testcase_id={string}'"
                 )
                 return
 
@@ -601,7 +598,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Catch errors (key mostly) or if wrong parameter
             except:
                 self.api_error(
-                    'Incorrects parameters expected \'?token={string}&protocol_selection={string}(&frame_id={integer})?\''
+                    "Incorrects parameters expected '?token={string}&protocol_selection={string}(&frame_id={integer})?'"
                 )
                 return
 
@@ -807,7 +804,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type = cgi.parse_header(self.headers['Content-Type'])
             except TypeError:
                 self.api_error(
-                    'Non empty POST datas and format of \'multipart/form-data\' expected'
+                    "Non empty POST datas and format of 'multipart/form-data' expected"
                 )
                 return
 
@@ -875,7 +872,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     content_type[0] != 'multipart/form-data'
                 )):
                     self.api_error(
-                        'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+                        "POST format of 'multipart/form-data' expected, no file input 'pcap_file' found"
                     )
                     return
 
@@ -885,7 +882,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # Get and check the pcap file entered
                 pcap_file = form.getvalue('pcap_file')
                 if not valid_pcap_file(pcap_file):
-                    self.api_error('Expected \'pcap_file\' to be a file')
+                    self.api_error("Expected 'pcap_file' to be a file")
                     return
 
                 # Path to save the file
@@ -899,7 +896,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     with open(pcap_path, 'wb') as f:
                         f.write(pcap_file)
                 except:
-                    self.api_error('Couldn\'t write the temporary file')
+                    self.api_error("Couldn't write the temporary file")
                     return
 
             # Get the result of the analysis
@@ -993,7 +990,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type = cgi.parse_header(self.headers['Content-Type'])
             except TypeError:
                 self.api_error(
-                    'Non empty POST datas and format of \'multipart/form-data\' expected'
+                    "Non empty POST datas and format of 'multipart/form-data' expected"
                 )
                 return
 
@@ -1004,7 +1001,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 content_type[0] != 'multipart/form-data'
             )):
                 self.api_error(
-                    'POST format of \'multipart/form-data\' expected, no file input \'pcap_file\' found'
+                    "POST format of 'multipart/form-data' expected, no file input 'pcap_file' found"
                 )
                 return
 
@@ -1059,11 +1056,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     with open(pcap_path, 'wb') as f:
                         f.write(pcap_file)
                 except:
-                    self.api_error('Couldn\'t write the temporary file')
+                    self.api_error("Couldn't write the temporary file")
                     return
             else:
                 self.api_error(
-                    'Expected \'pcap_file\' to be a non empty pcap file'
+                    "Expected 'pcap_file' to be a non empty pcap file"
                 )
                 return
 
@@ -1080,7 +1077,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 dissection = analysis.pcap_to_list(pcap_path)
             except:
-                self.api_error('Couldn\'t read the temporary file')
+                self.api_error("Couldn't read the temporary file")
                 return
 
             # Save the json dissection result into a file
@@ -1092,7 +1089,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 with open(json_save, 'w') as f:
                     json.dump(dissection, f)
             except:
-                self.api_error('Couldn\'t write the json file')
+                self.api_error("Couldn't write the json file")
                 return
 
             # Add the token to the results
