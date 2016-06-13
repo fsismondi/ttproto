@@ -899,6 +899,25 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     self.api_error("Couldn't write the temporary file")
                     return
 
+                # Get the dissection from analysis tool
+                try:
+                    dissection = analysis.pcap_to_list(pcap_path)
+                except:
+                    self.api_error("Couldn't read the temporary file")
+                    return
+
+                # Save the json dissection result into a file
+                json_save = os.path.join(
+                    TMPDIR,
+                    token + '.json'
+                )
+                try:
+                    with open(json_save, 'w') as f:
+                        json.dump(dissection, f)
+                except:
+                    self.api_error("Couldn't write the json file")
+                    return
+
             # Get the result of the analysis
             analysis_results = analysis.analyse_file_rest_api(
                                 pcap_path,
