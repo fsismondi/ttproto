@@ -71,6 +71,7 @@ LOGDIR = "log"
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
+TOKEN_LENGTH = 28
 
 # Magic header to identify a pcap file
 PCAP_MAGIC_HEADER = b'\xd4\xc3\xb2\xa1'
@@ -220,6 +221,8 @@ def get_test_cases(testcase_id=None):
 # /param par The get parameter to check (care it's a list)
 # /param is_number If we expect it to be a number
 #
+# /return boolean telling if the get parameter is correct or not
+#
 def correct_get_param(par, is_number=False):
     return all((
         len(par) == 1,
@@ -233,6 +236,12 @@ def correct_get_param(par, is_number=False):
     ))
 
 
+# Function to check if a pcap file get parameter is a valid one
+#
+# /param bytes_data The pcap file, normally as bytes, but can be wrong
+#
+# /return boolean telling if the data entered is a pcap file
+#
 def valid_pcap_file(bytes_data):
     return all((
         bytes_data,
@@ -240,6 +249,49 @@ def valid_pcap_file(bytes_data):
         len(bytes_data) > 52,  # file header + (src, dest) adresses
         bytes_data[:4] == PCAP_MAGIC_HEADER
     ))
+
+
+# Function to get a token, if there's a valid one entered just return it
+# otherwise generate a new one
+#
+# /param tok The token if there's already one
+#
+# /return str A token, the same if there's already one, a new one otherwise
+#
+def get_token(tok=None):
+
+    # If the token is already a correct one
+    try:
+        if all((
+            tok,
+            type(tok) == str,
+            len(tok) == 28,
+            base64.urlsafe_b64decode(tok + '=')  # Add '=' only for checking
+        )):
+            return tok
+    except:  # If the decode throw an error => Wrong base64
+        pass
+
+    # Generate a token because there is none
+    token = hashlib.sha1(
+        str.encode((
+            "%s%s%04d%s" %
+            (
+                HASH_PREFIX,
+                time.time(),
+                job_id,
+                HASH_SUFFIX
+            )
+        ), encoding='utf-8')
+    )
+    token = base64.urlsafe_b64encode(token.digest()).decode()
+
+    # Remove the '=' at the end of it, it is used by base64 for padding
+    token = token.replace('=', '')
+
+    # In the end, return the token
+    return token
+
 
 # ######################## End of API part ######################### #
 
@@ -827,19 +879,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     )
                     return
 
-                # Generate a token because there is none
-                token = hashlib.sha1(
-                    str.encode((
-                        "%s%s%04d%s" %
-                        (
-                            HASH_PREFIX,
-                            time.time(),
-                            job_id,
-                            HASH_SUFFIX
-                        )
-                    ), encoding='utf-8')
-                )
-                token = base64.urlsafe_b64encode(token.digest()).decode()
+                # Get the same token or generate a new one
+                token = get_token(token)
 
                 # Get and check the pcap file entered
                 pcap_file = form.getvalue('pcap_file')
@@ -1000,19 +1041,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.api_error('Unknown protocol %s' % protocol_selection)
                 return
 
-            # Generate the token
-            token = hashlib.sha1(
-                str.encode((
-                    "%s%s%04d%s" %
-                    (
-                        HASH_PREFIX,
-                        time.time(),
-                        job_id,
-                        HASH_SUFFIX
-                    )
-                ), encoding='utf-8')
-            )
-            token = base64.urlsafe_b64encode(token.digest()).decode()
+            # Generate a new token
+            token = get_token()
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')

@@ -31,7 +31,7 @@ class WebserverTestCase(unittest.TestCase):
     # Some dummy values
     EXISTING_TEST_CASE = 'TD_COAP_CORE_01'
     UNKNOWN_TEST_CASE = 'UNKNOWN_TEST_CASE'
-    WRONG_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k='
+    WRONG_TOKEN = 'ayVMgJQiQICOCqBKE7pV7qVzU6k'
     WRONG_FRAME_ID = 500
     JOKER_PROTOCOL_NAME = 'None'
 
@@ -228,7 +228,8 @@ class WebserverTestCase(unittest.TestCase):
         self.assertEqual(el['_type'], 'token')
 
         # Check that the value is a correct hash
-        decoded = base64.urlsafe_b64decode(el['value'])
+        # Add '=' only for checking
+        decoded = base64.urlsafe_b64decode(el['value'] + '=')
         self.assertEqual(len(decoded), hashlib.sha1().digest_size)
 
     def check_protocol(self, el):
@@ -1874,9 +1875,74 @@ class WebserverTestCase(unittest.TestCase):
             'Test case %s not found' % self.UNKNOWN_TEST_CASE
         )
 
-    # TODO
-    # More test cases when the token and db managment are done
-    # Check if we retrieve results correctly from a token
+    def test_analyzer_test_case_analyze_pcap_then_token(self):
+
+        # Get the path of the pcap file
+        pcap_path = "%s/%s/%s.pcap" % (
+            self.FILES_DIR,
+            self.EXISTING_TEST_CASE,
+            'pass'
+        )
+
+        # Prepare POST parameters
+        datas = {
+            'testcase_id': self.EXISTING_TEST_CASE
+        }
+        files = {'pcap_file': open(pcap_path, 'rb')}
+
+        # Execute the request
+        resp = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas,
+            files=files
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp)
+
+        # Check data headers
+        resp = resp.json()
+        self.check_correct_response(resp)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp['content']), 3)
+        self.check_token(resp['content'][0])
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
+
+        # Check that the verdict is correct too
+        self.assertEqual(resp['content'][2]['verdict'], 'pass')
+
+        # Then do the same request with the token
+        datas = {
+            'testcase_id': self.EXISTING_TEST_CASE,
+            'token': resp['content'][0]['value']
+        }
+
+        # Execute the request
+        resp_token = requests.post(
+            self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
+            data=datas
+        )
+
+        # Check headers
+        self.check_correct_response_header(resp_token)
+
+        # Check data headers
+        resp_token = resp_token.json()
+        self.check_correct_response(resp_token)
+
+        # Check the response contains a token and a frame
+        self.assertEqual(len(resp_token['content']), 3)
+        self.check_token(resp_token['content'][0])
+        self.check_tc_basic(resp_token['content'][1])
+        self.check_verdict(resp_token['content'][2])
+
+        # Check that the verdict is correct too
+        self.assertEqual(resp_token['content'][2]['verdict'], 'pass')
+
+        # Check both of the responses
+        self.assertEqual(resp, resp_token)
 
     # -------------------------------------------------------------------------------
 
