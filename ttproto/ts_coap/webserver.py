@@ -1250,3 +1250,8 @@ for d in TMPDIR, DATADIR, LOGDIR:
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
+
+def reopen_log_file(signum, frame):
+    global log_file
+    log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
