@@ -901,7 +901,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
                 # Get the dissection from analysis tool
                 try:
-                    dissection = analysis.pcap_to_list(pcap_path)
+                    dissection = analysis.dissect_pcap_to_list(pcap_path)
                 except:
                     self.api_error("Couldn't read the temporary file")
                     return
@@ -1094,7 +1094,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the dissection from analysis tool
             try:
-                dissection = analysis.pcap_to_list(pcap_path)
+                dissection = analysis.dissect_pcap_to_list(pcap_path)
             except:
                 self.api_error("Couldn't read the temporary file")
                 return
@@ -1250,28 +1250,3 @@ for d in TMPDIR, DATADIR, LOGDIR:
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-
-
-def reopen_log_file(signum, frame):
-    global log_file
-    log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
-
-
-# reopen_log_file(None, None)
-#
-# # log rotation
-# # -> reopen the log file upon SIGHUP
-# signal.signal(signal.SIGHUP, reopen_log_file)
-#
-# server=http.server.HTTPServer(("0.0.0.0", 2080), RequestHandler)
-# while not __shutdown:
-#     try:
-#         l = log_file
-#         server.handle_request()
-#     except select.error:
-#         # do not abort when we receive a signal
-#         if l == log_file:
-#             raise
-#
-#     if len(sys.argv) > 1:
-#         break
