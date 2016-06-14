@@ -170,7 +170,7 @@ class IPv6Prefix (Template):
 	def __init__ (self, addr, length: optional(int) = None):
 		Template.__init__ (self, IPv6Address)
 
-		if length == None:
+		if length is None:
 			if isinstance (addr, str) and "/" in addr:
 				# address in the format "<addr>/<prefix>"
 				addr, length = addr.split("/")
@@ -202,7 +202,7 @@ class IPv6Prefix (Template):
 	def _match (self, addr, difference_list = None):
 		if self == IPv6Prefix (addr, self.__len):
 			return True
-		elif difference_list != None:
+		elif difference_list is not None:
 			difference_list.append (ValueMismatch (addr, self))
 		return False
 

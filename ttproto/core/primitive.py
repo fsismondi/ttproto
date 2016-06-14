@@ -112,7 +112,7 @@ class PrimitiveValue (Value):
 		if self == value:
 			return True
 
-		if mismatch_list != None:
+		if mismatch_list is not None:
 			mismatch_list.append (ValueMismatch (value, self))
 
 		return False

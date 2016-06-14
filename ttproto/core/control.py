@@ -99,7 +99,7 @@ class Verdict:
 
 	def __init__ (self, initial_value = None):
 		self.__value = 0
-		if initial_value != None:
+		if initial_value is not None:
 			self.update (initial_value)
 
 	@typecheck
@@ -424,7 +424,7 @@ class TestSession (logger.LoggedObject):
 
 		"""
 		logger.LoggedObject.__init__(self)
-		if testcase_list == None:
+		if testcase_list is None:
 			self.__tc_list = list (all_testcases)
 			self.__description = "all testcases"
 
@@ -682,7 +682,7 @@ class SUTAction (snapshot.EventSource, logger.LoggedObject):
 
 	@typecheck
 	def match_done (self) -> optional (snapshot.EventMatch):
-		if self.__snapshot_status != True:
+		if not self.__snapshot_status:
 			return None
 
 		with self.lock:

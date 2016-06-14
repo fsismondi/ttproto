@@ -51,7 +51,7 @@ class Scheduler (snapshot.EventSource):
 	def __init__ (self, clk: optional (clock.Clock) = None):
 		super().__init__()
 
-		self.__clock = clk if clk != None else clock.Clock.get_instance()
+		self.__clock = clk if clk is not None else clock.Clock.get_instance()
 		self.event = snapshot.Event (self, "event")
 
 		self.__events = []
@@ -74,7 +74,7 @@ class Scheduler (snapshot.EventSource):
 	@typecheck
 	def __unschedule_event (self, process, name: str):
 		ev = self.__find_event (process, name)
-		if ev != None:
+		if ev is not None:
 			self.__clock.unschedule_events (ev)
 			self.__events.remove (ev)
 			try:
@@ -84,7 +84,7 @@ class Scheduler (snapshot.EventSource):
 	
 	@typecheck
 	def __prepare_schedule_event (self, process, name: optional(str) = None):
-		if name != None:
+		if name is not None:
 			self.__unschedule_event (process, name)
 
 		ev = self.Event (process, name)

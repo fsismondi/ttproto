@@ -175,7 +175,7 @@ class CoAPTestcase(object):
         return True
 
     def setverdict (self, v, text = ""):
-        if self.verdict == None and v == "inconc" and not self.force:
+        if self.verdict is None and v == "inconc" and not self.force:
             raise self.Stop()
 
         if self.__verdicts.index (v) > self.__verdicts.index (self.verdict):
@@ -217,29 +217,29 @@ class CoAPTestcase(object):
         src = self.frame.src[0]
         if sender == "client":
             if src != self.conversation.client:
-                if verdict != None:
+                if verdict is not None:
                     self.setverdict(verdict, "expected %s from the client" % template)
                 self.failed_frames.append(self.frame.id)
                 return False
         elif sender == "server":
             if src != self.conversation.server:
-                if verdict != None:
+                if verdict is not None:
                     self.setverdict(verdict, "expected %s from the server" % template)
                 self.failed_frames.append(self.frame.id)
                 return False
         else:
-            assert sender == None
+            assert sender is None
 
         # check the template
         if template:
             diff_list = DifferenceList(self.frame.coap)
             if template.match(self.frame.coap, diff_list):
                 # pass
-                if verdict != None:
+                if verdict is not None:
                     self.setverdict("pass", "match: %s" % template)
 
             else:
-                if verdict != None:
+                if verdict is not None:
                     def callback(path, mismatch, describe):
                         self.log("             %s: %s\n" % (".".join(path), type(mismatch).__name__))
                         self.log("                 got:        %s\n" % mismatch.describe_value(describe))

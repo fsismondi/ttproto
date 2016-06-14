@@ -141,7 +141,7 @@ class BaseMessagePort (Port):
 		"""Disconnect this port"""
 		with self.__lock:
 			other = self.__endpoint
-			if other is self or other == None:
+			if other is self or other is None:
 				self.__endpoint = None
 				return
 
@@ -185,7 +185,7 @@ class BaseMessagePort (Port):
 		"""
 
 		with self.endpoint() as ep:
-			if ep == None:
+			if ep is None:
 				return False
 
 #			print ("%s->%s: %s" % (self.__name__, ep.__name__, msg))
@@ -319,7 +319,7 @@ class MessagePort (snapshot.EventSource, BaseMessagePort):
 			msg = self.__queue_in[0]
 
 			mismatch_list = []
-			if data != None and not as_data(data).match(msg.get_value(), mismatch_list):
+			if data is not None and not as_data(data).match(msg.get_value(), mismatch_list):
 				if data not in self.__failed_matches:
 #					print "%s: mismatch  ->  got: %s, expected: %s" % (self.__name__, msg, data)
 					self.__failed_matches.append (data)

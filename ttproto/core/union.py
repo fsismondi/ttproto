@@ -38,7 +38,7 @@ class UnionClass (type):
 	@typecheck
 	def __new__ (cls, name, bases, dct, types: optional(iterable) = None):
 
-		if types == None:
+		if types is None:
 			if len(bases) == 0:
 				raise exceptions.Error ("UnionClass requires the 'types' parameter")
 

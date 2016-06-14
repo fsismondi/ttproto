@@ -138,8 +138,8 @@ class SixLowpanMessagePort (port.MessagePort):
 
 	def match_receive (self, data: optional (is_data) = None, src=None, dst=None):
 		#TODO: match the src/dst addresses
-		if data == None:
-			assert src==None and dst==None
+		if data is None:
+			assert src is None and dst is None
 			return super().match_receive()
 
 		if issubclass (data.get_type(), IPv6):

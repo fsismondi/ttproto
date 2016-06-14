@@ -62,7 +62,7 @@ def _print_stack (st):
 	i = len (st) - 1
 	for l in reversed (st):
 		l4 = l[4]
-		print("%d. %s() in %s:%d\n  %s" % (i, l[3], l[1], l[2], "\n" if l[4] == None else l4[0]), end=' ')
+		print("%d. %s() in %s:%d\n  %s" % (i, l[3], l[1], l[2], "\n" if l[4] is None else l4[0]), end=' ')
 		i -= 1
 
 # guess the name of the variable that will store the result of the calling function

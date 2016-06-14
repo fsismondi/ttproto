@@ -146,7 +146,7 @@ def FixedLengthBytesClass (size: int):
 
 		@typecheck
 		def __new__ (cls, value = None):
-			if value == None:
+			if value is None:
 				value = b"\0" * size
 			# TODO: check that the resulting value is valid
 			result = super().__new__(cls, value)
@@ -178,7 +178,7 @@ class __OptFieldRefTag (PacketValue.Tag):
 
 	def init (self, *k):
 		super().init (*k)
-		self.__ref_field_id = None if self.field_name == None else self.get_packet_type().get_field_id(self.field_name)
+		self.__ref_field_id = None if self.field_name is None else self.get_packet_type().get_field_id(self.field_name)
 
 	def get_ref_id(self):
 		return self.__ref_field_id
@@ -201,22 +201,22 @@ class InetType (__OptFieldRefTag):
 		self.__bidict = bidict
 
 	def _set_bidict (self, bidict: Bidict):
-		assert self.__bidict == None
+		assert self.__bidict is None
 		self.__bidict = bidict
 
 	def compute (self, seq, values_bins):
-		assert self.__bidict != None	# must have been initialised
+		assert self.__bidict is not None  # must have been initialised
 
-		v = seq if self.get_ref_id() == None else values_bins[self.get_ref_id()][0]
+		v = seq if self.get_ref_id() is None else values_bins[self.get_ref_id()][0]
 
 		return self.__bidict[:v.get_type()]
 
 	def post_decode (self, ctx, value):
-		assert self.__bidict != None	# must have been initialised
+		assert self.__bidict is not None  # must have been initialised
 
 		expected_type = self.__bidict[value]
 
-		if self.get_ref_id() != None:
+		if self.get_ref_id() is not None:
 			# set a handler -> a 'with' context to change the slice on the fly
 			ctx.push_context (self.get_ref_id(), self.__decode_context (ctx, expected_type))
 		else:
@@ -231,7 +231,7 @@ class InetType (__OptFieldRefTag):
 					prune = True
 				v = v.get_base_variant()
 
-				if v == None:
+				if v is None:
 					raise Error ("The new variant must be based on the current one") # FIXME: this could be relaxed
 			try:
 				if not (expected_type._decode_message.__func__ is ctx.variant._decode_message.__func__):
@@ -286,7 +286,7 @@ class InetLength (__OptFieldRefTag):
 		self.__unit = unit * 8
 
 	def compute (self, seq, values_bins):
-		if self.get_ref_id() == None:
+		if self.get_ref_id() is None:
 			l = 0
 			for vb in values_bins:
 				l += get_binary_length (vb[1])
@@ -301,7 +301,7 @@ class InetLength (__OptFieldRefTag):
 
 		value *= self.__unit
 
-		if self.get_ref_id() == None:
+		if self.get_ref_id() is None:
 			assert ctx.initial_slice.same_buffer_as (ctx.remaining_slice) # we must still be working on the same slice
 
 			right = ctx.initial_slice.get_left() + value
@@ -338,7 +338,7 @@ class InetCount (__OptFieldRefTag):
 		super().__init__ (field_name)
 
 	def compute (self, seq, values_bins):
-		assert self.get_ref_id() != None
+		assert self.get_ref_id() is not None
 
 		return len (values_bins[self.get_ref_id()][0])
 
@@ -483,7 +483,7 @@ class InetPacketValue (PacketValue):
 
 	@classmethod
 	def metaclass_func (cls, *k, variant_of: optional (type) = None, **kw):
-		assert variant_of == None or issubclass (variant_of, InetPacketValue)
+		assert variant_of is None or issubclass (variant_of, InetPacketValue)
 
 		result = super().metaclass_func (*k, variant_of = variant_of, **kw)
 
@@ -515,7 +515,7 @@ class InetPacketValue (PacketValue):
 		for field in self.fields():
 			i += 1
 			tag = field.tag
-			if self[i] != None or not hasattr(tag, "compute"):
+			if self[i] is not None or not hasattr(tag, "compute"):
 				continue
 
 			values_bins[i] = tag.build_message (field.store_data (tag.compute (self, values_bins), none_is_allowed = False), values_bins)
@@ -544,9 +544,9 @@ class InetPacketValue (PacketValue):
 		# source address
 		src, dst = self[6], self[7]
 
-		if src == None:
+		if src is None:
 			src = self.get_field(6).tag.get_default_value()
-		if dst == None:
+		if dst is None:
 			dst = self.get_field(7).tag.get_default_value()
 
 		with self.ipv6_pseudo_addresses_context ((src, dst)):
@@ -586,7 +586,7 @@ class InetPacketValue (PacketValue):
 
 			assert issubclass (expected_type, field.type) or (field.optional and issubclass (expected_type, Omit))# FIXME: should be checked earlier
 
-			if ctx.expected_count != None:
+			if ctx.expected_count is not None:
 				assert ctx.expected_count >= 0
 
 				# Here we generate a wrapper class for the expected type, that will passe the 'count'
