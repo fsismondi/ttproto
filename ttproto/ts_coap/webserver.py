@@ -542,7 +542,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         # GET handler for the analyzer_getFrames and dissector_getFrames uri
-        # It will allow a user to get a single frame from the previous pcap
+        # It will allow an user to get a single frame from the previous pcap
         # if no frame_id provided, otherwise it will return all the frames
         #
         # /param token => The token of the corresponding pcap file
@@ -656,6 +656,93 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             frames.insert(0, token_res)
 
             json_result['content'] = frames
+
+            # Dump the json result
+            print(json.dumps(json_result))
+            return
+
+        # GET handler for the dissector_getFramesSummary uri
+        # It will allow an user to get all the frames summary
+        #
+        # /param token => The token of the corresponding pcap file
+        # /param protocol_selection => The protocol we want to filter on
+        #
+        elif url.path == '/api/v1/dissector_getFramesSummary':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Get the parameters
+            params = parse_qs(url.query)
+            try:
+
+                # Only token and protocol_selection
+                if any((
+                    len(params) != 2,
+                    'token' not in params,
+                    'protocol_selection' not in params,
+                    not correct_get_param(params['token']),
+                    not correct_get_param(params['protocol_selection'])
+                )):
+                    raise
+
+            # Catch errors (key mostly) or if wrong parameter
+            except:
+                self.api_error(
+                    "Incorrects parameters expected '?token={string}&protocol_selection={string}'"
+                )
+                return
+
+            # Format the id before passing it to the process function
+            token = params['token'][0]
+            protocol_selection = params['protocol_selection'][0]
+
+            # Check the protocol
+            if protocol_selection not in PROTOCOLS.keys():
+                self.api_error(
+                    'Unknown %s protocol' % protocol_selection
+                )
+                return
+
+            # Get the dump file
+            try:
+                pcap_path = os.path.join(
+                    TMPDIR,
+                    "%s.dump" % token
+                )
+                frames_summary = analysis.basic_dissect_pcap_to_list(
+                    pcap_path,
+                    PROTOCOLS[protocol_selection]['class']
+                )
+            except:
+                self.api_error(
+                    'Session identified by token %s not found' % token
+                )
+                return
+
+            # The result to return
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+
+            token_res = OrderedDict()
+            token_res['_type'] = 'token'
+            token_res['value'] = token
+            json_result['content'] = []
+            json_result['content'].append(token_res)
+
+            # Add each frame summary
+            for f_id, f_sum in frames_summary:
+                summary = OrderedDict()
+                summary['_type'] = 'frame_summary'
+                summary['frame_id'] = f_id
+                summary['frame_summary'] = f_sum
+                json_result['content'].append(summary)
 
             # Dump the json result
             print(json.dumps(json_result))
