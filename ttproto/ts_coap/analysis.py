@@ -31,7 +31,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import sys, time, re, itertools, socket, urllib.parse, glob, json, inspect
+import sys, time, re, itertools, socket, urllib.parse, glob, inspect
 from lib2to3.fixes.fix_print import parend_expr
 from os import chdir, path, getcwd
 
@@ -184,7 +184,7 @@ def import_testcases(testcase_id = None):
 
     Imports test cases classes from TESTCASES_DIR named TD*
     Returns:
-        tuple of lists:
+        tuple of list:
         ( testcases , obsoletes )
     """
 
@@ -625,61 +625,36 @@ c.className=%s;
                 g.hr()
 
 
-def basic_dissect_pcap_to_json (filename, return_only_coap):
+def basic_dissect_pcap_to_list (filename, protocol_selection=None):
     """
-
     :param filename:
-    :param return_only_coap:
-    :return: json object with basic info about frames
+    :param protocol_selection:
+    :return: list of tuples with basic info about frames:
+    [
+        (13, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [CON 38515] GET /test'),
+        (14, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [ACK 38515] 2.05 Content '),
+        (21, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [CON 38516] PUT /test'),
+        (22, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [ACK 38516] 2.04 Changed ')]
+    ]
+
     """
-
-
     # read the frame
     # TODO: filter uninteresting frames ? (to decrease the load)
     with Data.disable_name_resolution():
         frames = Frame.create_list (PcapReader (filename))
-        response={}
+        response=[]
 
-        if return_only_coap:
+        # content of the response, TODO make this generic for any protocol
+        if protocol_selection and protocol_selection is CoAP:
             selected_frames = [f for f in frames if f.coap]
         else:
             selected_frames = frames
 
         for f in selected_frames:
-                response[f.id] = [f.msg.summary()]
-        json_response = json.dumps(response, indent = 4)
-
+                response.append ((f.id , f.msg.summary()))
         # malformed frames
-        #malformed = list (filter ((lambda f: f.exc), frames))
-    return json_response
-
-
-def dissect_pcap_to_json(filename, protocol_selection=None):
-    """
-
-    :param value: Value type of a frame
-    :param protocol_selection: Class of protocol to be returned
-    :return: frame dissected in JSON format:
-        [
-            {
-               ".type": "Ethernet",
-                "DestinationAddress": "ac:bc:32:cd:f3:8b",
-                "SourceAddress": "18:1e:78:4e:03:11",
-                "Type": "0x0800",
-                "Trailer": "b''"
-            },
-            {
-                ".type": "IPv4",
-                "Version": "4",
-                "HeaderLength": "5",
-                ...
-     """
-
-    # TODO implement protocol selection
-
-    # REMARK The json.dumps is done into webserver so we just use pcap_to_list
-
-    return json.dumps(pcap_to_list( filename, True, protocol_selection),indent=2 )
+        # malformed = list (filter ((lambda f: f.exc), frames))
+    return response
 
 
 def value_to_list(l: list, value: Value, extra_data=None, layer_dict:dict=None, is_option=False):
@@ -714,7 +689,14 @@ def value_to_list(l: list, value: Value, extra_data=None, layer_dict:dict=None, 
         layer_dict[extra_data] = str(value)
 
 
-def pcap_to_list(pcap_file, protocol_selection=None):
+def dissect_pcap_to_list(pcap_file, protocol_selection=None):
+    """
+
+    :param pcap_file: dir to the pcap file to be dissected
+    :param protocol_selection:  protocol class (inheriting from packet Value)
+    :return: List of frames as Ordered Dicts
+
+    """
 
     if protocol_selection:
         assert issubclass(protocol_selection, PacketValue)
@@ -751,17 +733,25 @@ def pcap_to_list(pcap_file, protocol_selection=None):
 
 if __name__ == "__main__":
 
+    import pprint
+    PCAP_test2 = getcwd()+ "/tests/test_dumps/TD_COAP_CORE_01_PASS.pcap"
+    PCAP_test3 = getcwd() + "/tests/test_dumps/coap_get_migled_with_tcp_traffic.pcap"
 
-    PCAP_test2 = getcwd()+ "/tests/test_dumps/obs_large.pcap"
     #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
-    #print(dissect_pcap_to_json(PCAP_test, CoAP))
+
 
     #print(analyse_file(PCAP_error))
-    a= get_implemented_testcases('td_coap_coren_01')
-    for f in a:
-        print(a[0][2])
 
-    print(analyse_file_rest_api(PCAP_test2,False,None,"TD_COAP_CORE_17","client"))
+    #get test case implementation
+    #a= get_implemented_testcases('td_coap_core_01')
+    #for f in a:
+    #    print(a[0][2])
+
+    #print(analyse_file_rest_api(PCAP_test2,False,None,"TD_COAP_CORE_17","client"))
+
+    #print(dissect_pcap_to_list(PCAP_test3, None))
+    #print(type(basic_dissect_pcap_to_list(PCAP_test3, None)))
+    print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
 
     #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
 
