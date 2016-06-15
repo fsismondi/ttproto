@@ -96,6 +96,7 @@ class CoAPTestcase(object):
         self.urifilter  = urifilter
         self.force  = force
         self.failed_frames = []
+        self.review_frames_log = []
         try:
             self.verdict = None
             self.__current_conversation = self.conversation
@@ -116,6 +117,7 @@ class CoAPTestcase(object):
             if self.verdict == "inconc" and self.frame == self.conversation[0] and not self.force:
                 # no match
                 self.verdict = None
+                self.review_frames_log.append(('ignoring verdict',self.frame.id))
 
         except Exception:
             if self.__iter:
@@ -186,6 +188,7 @@ class CoAPTestcase(object):
     def log(self, text):
         text = str(text)
         self.text += text if text.endswith("\n") else (text + "\n")
+        self.review_frames_log.append(text)
 
     @contextmanager
     def nolog(self):

@@ -1029,7 +1029,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Only take the first
             verdict = OrderedDict()
             verdict['_type'] = 'verdict'
-            verdict['verdict'] = analysis_results[0][2]
+            verdict['verdict'] = analysis_results[0][1]
             verdict['description'] = test_case['tc_basic']['objective']
             verdict['review_frames'] = []
 

@@ -296,6 +296,24 @@ reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
 
 
 def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
+    """
+
+    :param filename:
+    :param urifilter:
+    :param exceptions:
+    :param regex:
+    :param profile:
+    :return: tuple
+
+    example:
+    [('TD_COAP_CORE_03', 'fail', [13, 13, 14])]
+
+    NOTES:
+     - allows multiple ocurrences of the testcase, returns as verdict:
+            - fail: if at least one on the occurrences failed
+            - inconc : if all ocurrences returned a inconv verdict
+            - pass: all occurrences are inconc or at least one is PASS and the rest is inconc
+    """
     testcases, _ = import_testcases()
     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
 
@@ -319,25 +337,41 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
         tracker = Tracker (frames)
         conversations = tracker.conversations
         ignored = tracker.ignored_frames
-        #   sys.exit(1)
-        #   conversations, ignored = extract_coap_conversations (frames)
-        conversations_by_pair = proto_specific.group_conversations_by_pair (conversations)
-        results_by_pair = {}
+
+
         results = []
-        ocurrences = 0
+
+        conversations_by_pair = proto_specific.group_conversations_by_pair(conversations)
+        results_by_pair = {}
         for pair, conversations in conversations_by_pair.items():
             pair_results = []
-            pair_txt = "%s vs %s" % tuple (map (Resolver.format, pair))
             for tc_type in my_testcases:
                 tc_results = []
                 for tr in conversations:
-                    tc = tc_type (tr, urifilter, force)
+                    tc = tc_type(tr, urifilter, force)
                     if tc.verdict:
-                        ocurrences += 1
-                        tc_results.append (tc)
-                        results.append((ocurrences,type(tc).__name__,tc.verdict))
+
+                        tc_results.append(tc)
+
                         # remember the exception
-                    pair_results.append (tc_results)
+                        if hasattr(tc, "exception") and exceptions is not None:
+                            exceptions.append(tc)
+
+                pair_results.append(tc_results)
+
+        verdicts = None, "inconc", "pass", "fail", "error"
+        for tc_type, tc_results in filter(lambda x: regex in x[0].__name__, zip(my_testcases, pair_results)):
+            v = 0
+            for tc in tc_results:
+                new_v = verdicts.index(tc.verdict)
+                if new_v > v:
+                    v = new_v
+                    review_frames = tc.failed_frames
+            v_txt = verdicts[v]
+            if v_txt is None:
+                v_txt = "none"
+            results.append( (type(tc).__name__, v_txt, review_frames))#, tc.text, tc.review_frames_log)
+            # TODO clean  tc.text, tc.review_frames_log
 
         return results
 
@@ -733,14 +767,13 @@ def dissect_pcap_to_list(pcap_file, protocol_selection=None):
 
 if __name__ == "__main__":
 
-    import pprint
+    import pprint,json
     PCAP_test2 = getcwd()+ "/tests/test_dumps/TD_COAP_CORE_01_PASS.pcap"
     PCAP_test3 = getcwd() + "/tests/test_dumps/coap_get_migled_with_tcp_traffic.pcap"
 
-    #PCAP_test = getcwd() + '/tests/test_dumps/obs_large.pcap'
 
 
-    #print(analyse_file(PCAP_error))
+    analyse_file(PCAP_test3)
 
     #get test case implementation
     #a= get_implemented_testcases('td_coap_core_01')
@@ -751,8 +784,13 @@ if __name__ == "__main__":
 
     #print(dissect_pcap_to_list(PCAP_test3, None))
     #print(type(basic_dissect_pcap_to_list(PCAP_test3, None)))
-    print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
+    #print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
 
+    print('************************')
+    print('**API** ')
+    print('************************')
+    #print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
+    print(analyse_file_rest_api(PCAP_test3, False, None, "TD_COAP_CORE_03", "client"))
     #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
 
     #a= get_implemented_testcases('td_coap_coreasd_01')
