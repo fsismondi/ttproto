@@ -275,8 +275,6 @@ class WebserverTestCase(unittest.TestCase):
         self.assertIn(el['verdict'], self.VERDICT_VALUES)
 
         # Check that we have some review frames
-        # TODO: When the function is done, normally we receive at least one
-        # self.assertGreater(len(el['review_frames']), 0)
         for frame in el['review_frames']:
             self.check_is_int_real(frame)
 
@@ -1897,6 +1895,9 @@ class WebserverTestCase(unittest.TestCase):
             files=files
         )
 
+        # Close the file
+        files['pcap_file'].close()
+
         # Check headers
         self.check_correct_response_header(resp)
 
@@ -1924,9 +1925,6 @@ class WebserverTestCase(unittest.TestCase):
             self.TAT_API_URL + '/api/v1/analyzer_testCaseAnalyze',
             data=datas
         )
-
-        # Close the file
-        files['pcap_file'].close()
 
         # Check headers
         self.check_correct_response_header(resp_token)

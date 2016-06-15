@@ -969,7 +969,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # Get and check the pcap file entered
                 pcap_file = form.getvalue('pcap_file')
                 if not valid_pcap_file(pcap_file):
-                    self.api_error("Expected 'pcap_file' to be a file")
+                    self.api_error("Expected 'pcap_file' to be a non empty file")
                     return
 
                 # Path to save the file
@@ -983,14 +983,22 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     with open(pcap_path, 'wb') as f:
                         f.write(pcap_file)
                 except:
-                    self.api_error("Couldn't write the temporary file")
+                    self.api_error(
+                        "Couldn't write the temporary file %s"
+                        %
+                        pcap_path
+                    )
                     return
 
                 # Get the dissection from analysis tool
                 try:
                     dissection = analysis.dissect_pcap_to_list(pcap_path)
                 except:
-                    self.api_error("Couldn't read the temporary file")
+                    self.api_error(
+                        "Couldn't read the temporary file %s"
+                        %
+                        pcap_path
+                    )
                     return
 
                 # Save the json dissection result into a file
@@ -1015,14 +1023,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                             )
 
             # Error for some test cases that the analysis doesn't manage to get
-            if type(analysis_results) is str:
+            try:
+                assert type(analysis_results) == list
+                assert len(analysis_results) == 1  # >= if we can receive more
+                assert type(analysis_results[0]) == tuple
+                assert len(analysis_results[0]) == 3
+                assert type(analysis_results[0][0]) == str
+                assert type(analysis_results[0][1]) == str
+                assert type(analysis_results[0][2]) == list
+                assert analysis_results[0][0] == test_case['tc_basic']['id']
+            except AssertionError:
                 self.api_error(
-                    'Problem with test case %s, error message:\n%s'
+                    'Problem with the analyse of TC %s, wrong result received'
                     %
-                    (
-                        testcase_id,
-                        analysis_results
-                    )
+                    testcase_id
                 )
                 return
 
@@ -1031,7 +1045,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             verdict['_type'] = 'verdict'
             verdict['verdict'] = analysis_results[0][1]
             verdict['description'] = test_case['tc_basic']['objective']
-            verdict['review_frames'] = []
+            verdict['review_frames'] = analysis_results[0][2]
 
             token_res = OrderedDict()
             token_res['_type'] = 'token'
