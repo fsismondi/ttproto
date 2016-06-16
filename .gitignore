@@ -18,6 +18,7 @@ var/
 .installed.cfg
 *.egg
 .idea/ 
+*.tar.gz
 
 # Rope
 .ropeproject
