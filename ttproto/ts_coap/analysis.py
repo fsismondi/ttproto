@@ -34,6 +34,7 @@
 import sys, time, re, itertools, socket, urllib.parse, glob, inspect
 from lib2to3.fixes.fix_print import parend_expr
 from os import chdir, path, getcwd
+from importlib import import_module
 
 from ttproto.core.lib.ports.pcap import PcapReader
 from ttproto.core.data import Data, Value
@@ -215,9 +216,8 @@ def import_testcases(testcase_id = None):
 
     # import sorted list
     for modname in modname_test_list:
-        tc_plugins[modname] = getattr(__import__(modname,
-                                                 fromlist=[modname.upper()]),
-                                      modname.upper())
+        # note that the module is always lower case and the plugin (class) is upper case (ETSI naming convention)
+        tc_plugins[modname] = getattr(import_module(modname.lower()), modname.upper())
         if tc_plugins[modname].obsolete:
             obsoletes.append (tc_plugins[modname])
         else:
@@ -295,9 +295,9 @@ reg_frame = re.compile ("<Frame  *(\d+):")
 reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
 
 
-def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client"):
+# TODO make unitest for analyse!
+def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client", verbose=False):
     """
-
     :param filename:
     :param urifilter:
     :param exceptions:
@@ -306,7 +306,7 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
     :return: tuple
 
     example:
-    [('TD_COAP_CORE_03', 'fail', [13, 13, 14])]
+    [('TD_COAP_CORE_03', 'fail', [21, 22])]
 
     NOTES:
      - allows multiple ocurrences of the testcase, returns as verdict:
@@ -314,7 +314,7 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
             - inconc : if all ocurrences returned a inconv verdict
             - pass: all occurrences are inconc or at least one is PASS and the rest is inconc
     """
-    testcases, _ = import_testcases()
+    testcases, _ = import_testcases(regex)
     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
 
     if regex is not None:
@@ -347,6 +347,8 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
             pair_results = []
             for tc_type in my_testcases:
                 tc_results = []
+
+                # we run the testcase for each conversation, meaning that one type of TC can have more than one result!
                 for tr in conversations:
                     tc = tc_type(tr, urifilter, force)
                     if tc.verdict:
@@ -361,16 +363,24 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
 
         verdicts = None, "inconc", "pass", "fail", "error"
         for tc_type, tc_results in filter(lambda x: regex in x[0].__name__, zip(my_testcases, pair_results)):
+            review_frames=[]
             v = 0
             for tc in tc_results:
+                # all the failed frames for a TC, even if they are from different conversations!
+                review_frames = tc.failed_frames
+
                 new_v = verdicts.index(tc.verdict)
                 if new_v > v:
                     v = new_v
-                    review_frames = tc.failed_frames
+
             v_txt = verdicts[v]
             if v_txt is None:
                 v_txt = "none"
-            results.append( (type(tc).__name__, v_txt, review_frames))#, tc.text, tc.review_frames_log)
+
+            if verbose:
+                results.append( (type(tc).__name__, v_txt, list(review_frames),tc.review_frames_log))
+            else:
+                results.append((type(tc).__name__, v_txt, list(review_frames),''))
             # TODO clean  tc.text, tc.review_frames_log
 
         return results
@@ -773,7 +783,7 @@ if __name__ == "__main__":
 
 
 
-    analyse_file(PCAP_test3)
+    #analyse_file(PCAP_test3)
 
     #get test case implementation
     #a= get_implemented_testcases('td_coap_core_01')
@@ -790,7 +800,8 @@ if __name__ == "__main__":
     print('**API** ')
     print('************************')
     #print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
-    print(analyse_file_rest_api(PCAP_test3, False, None, "TD_COAP_CORE_03", "client"))
+    print(analyse_file_rest_api(PCAP_test3, False, None, "TD_COAP_CORE_03", "client",True))
+    #print(analyse_file_rest_api(PCAP_test3, False, None, "", "client",False))
     #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
 
     #a= get_implemented_testcases('td_coap_coreasd_01')

@@ -84,7 +84,6 @@ class CoAPTestcase(object):
     obsolete = False
     reverse_proxy = False
 
-
     __verdicts = None, "pass", "inconc", "fail", "error"
 
     class Stop (Exception):
@@ -95,7 +94,8 @@ class CoAPTestcase(object):
         self.text   = ""
         self.urifilter  = urifilter
         self.force  = force
-        self.failed_frames = []
+        # set to avoid repetitions
+        self.failed_frames = set()
         self.review_frames_log = []
         try:
             self.verdict = None
@@ -117,7 +117,6 @@ class CoAPTestcase(object):
             if self.verdict == "inconc" and self.frame == self.conversation[0] and not self.force:
                 # no match
                 self.verdict = None
-                self.review_frames_log.append(('ignoring verdict',self.frame.id))
 
         except Exception:
             if self.__iter:
@@ -190,6 +189,7 @@ class CoAPTestcase(object):
         self.text += text if text.endswith("\n") else (text + "\n")
         self.review_frames_log.append(text)
 
+
     @contextmanager
     def nolog(self):
         text = self.text
@@ -213,7 +213,8 @@ class CoAPTestcase(object):
         if not self.__iter:
             # end of conversation
             self.setverdict(verdict, "expected %s from the %s" % (template, sender))
-            self.failed_frames.append(self.frame.id)
+            self.failed_frames.add(self.frame.id)
+            self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
             return False
 
         # check the sender
@@ -222,13 +223,15 @@ class CoAPTestcase(object):
             if src != self.conversation.client:
                 if verdict is not None:
                     self.setverdict(verdict, "expected %s from the client" % template)
-                self.failed_frames.append(self.frame.id)
+                self.failed_frames.add(self.frame.id)
+                self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
                 return False
         elif sender == "server":
             if src != self.conversation.server:
                 if verdict is not None:
                     self.setverdict(verdict, "expected %s from the server" % template)
-                self.failed_frames.append(self.frame.id)
+                self.failed_frames.add(self.frame.id)
+                self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
                 return False
         else:
             assert sender is None
@@ -250,7 +253,7 @@ class CoAPTestcase(object):
 
                     self.setverdict(verdict, "mismatch: %s" % template)
                     diff_list.describe(callback)
-                self.failed_frames.append(self.frame.id)
+                self.failed_frames.add(self.frame.id)
                 return False
 
         return True
