@@ -174,6 +174,7 @@ def get_implemented_testcases(testcase_id = None):
 
     return ret
 
+
 def import_testcases(testcase_id = None):
     """
     Assumptions:
@@ -378,10 +379,10 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
                 v_txt = "none"
 
             if verbose:
-                results.append( (type(tc).__name__, v_txt, list(review_frames),tc.review_frames_log))
+                results.append( (type(tc).__name__, v_txt, list(review_frames),tc.text))
             else:
                 results.append((type(tc).__name__, v_txt, list(review_frames),''))
-            # TODO clean  tc.text, tc.review_frames_log
+            # TODO clean list(review_frames)  tc.review_frames_log , tc.review_frames_log in module proto_specific
 
         return results
 
