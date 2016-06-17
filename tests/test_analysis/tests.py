@@ -42,7 +42,14 @@ class AnalysisTestCase(unittest.TestCase):
             print(pcap_filename + " || "+ str(path.isfile(pcap_filename)))
             self.assertTrue(path.isfile(pcap_filename))
 
+
+    # TODO add FAIL, and PASS test for each implemented TC
     def test_analysis_api_pass_basic_pass_PCAPs(self):
+        """
+        ATTENTION conventions used here:
+        every pcap_pass_test needs to follow the convention of <TC name>_<verdict>_<optional : reason why testing tool should provide the mentioned verdict>_<option: number>.pcap
+        :return:
+        """
         list_TC =  b = [(tc_i[0]) for tc_i in get_implemented_testcases(no_verbose=True)]
         for tc in list_TC:
             pcap_filename = getcwd() + "/" + DUMPS_DIR + "/" + str(tc) + "_PASS.pcap"
