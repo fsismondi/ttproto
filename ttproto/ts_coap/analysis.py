@@ -671,8 +671,8 @@ c.className=%s;
 
 def basic_dissect_pcap_to_list (filename, protocol_selection=None):
     """
-    :param filename:
-    :param protocol_selection:
+    :param filename: filename of the pcap file to be dissected
+    :param protocol_selection:  protocol class for filtering purposes (inheriting from packet Value)
     :return: list of tuples with basic info about frames:
     [
         (13, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [CON 38515] GET /test'),
@@ -733,13 +733,11 @@ def value_to_list(l: list, value: Value, extra_data=None, layer_dict:dict=None, 
         layer_dict[extra_data] = str(value)
 
 
-def dissect_pcap_to_list(pcap_file, protocol_selection=None):
+def dissect_pcap_to_list(filename, protocol_selection=None):
     """
-
-    :param pcap_file: dir to the pcap file to be dissected
-    :param protocol_selection:  protocol class (inheriting from packet Value)
-    :return: List of frames as Ordered Dicts
-
+    :param filename: filename of the pcap file to be dissected
+    :param protocol_selection:  protocol class for filtering purposes (inheriting from packet Value)
+    :return: List of frames (frames as Ordered Dicts)
     """
 
     if protocol_selection:
@@ -750,7 +748,7 @@ def dissect_pcap_to_list(pcap_file, protocol_selection=None):
     # for speeding up the process
     with Data.disable_name_resolution():
 
-        frames = Frame.create_list(PcapReader(pcap_file))
+        frames = Frame.create_list(PcapReader(filename))
 
         for f in frames:
 
