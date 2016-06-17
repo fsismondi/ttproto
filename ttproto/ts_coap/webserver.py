@@ -1019,18 +1019,24 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                 False,
                                 None,
                                 testcase_id,
-                                'client'
+                                'client',
+                                True
                             )
+
+            # self.log_message("###############################################")
+            # self.log_message("Verdict description is : %s", analysis_results[0][3])
+            # self.log_message("###############################################")
 
             # Error for some test cases that the analysis doesn't manage to get
             try:
                 assert type(analysis_results) == list
                 assert len(analysis_results) == 1  # >= if we can receive more
                 assert type(analysis_results[0]) == tuple
-                assert len(analysis_results[0]) == 3
+                assert len(analysis_results[0]) == 4
                 assert type(analysis_results[0][0]) == str
                 assert type(analysis_results[0][1]) == str
                 assert type(analysis_results[0][2]) == list
+                assert type(analysis_results[0][3]) == str
                 assert analysis_results[0][0] == test_case['tc_basic']['id']
             except AssertionError:
                 self.api_error(
@@ -1044,7 +1050,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             verdict = OrderedDict()
             verdict['_type'] = 'verdict'
             verdict['verdict'] = analysis_results[0][1]
-            verdict['description'] = test_case['tc_basic']['objective']
+            verdict['description'] = analysis_results[0][3]
             verdict['review_frames'] = analysis_results[0][2]
 
             token_res = OrderedDict()
