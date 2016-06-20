@@ -239,7 +239,7 @@ class WebserverTestCase(unittest.TestCase):
 
         # Check its minimum fields
         self.assertIn('_type', el)
-        self.assertIn('Protocol', el)
+        self.assertIn('_protocol', el)
         self.assertEqual(el['_type'], 'protocol')
 
         # Check that it has more values than that
