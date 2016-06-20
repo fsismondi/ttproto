@@ -157,7 +157,7 @@ class Frame:
             break
 
 
-def get_implemented_testcases(testcase_id = None):
+def get_implemented_testcases(testcase_id = None, no_verbose = None):
     """
     :return:
     -List of descriptions of test cases
@@ -170,8 +170,10 @@ def get_implemented_testcases(testcase_id = None):
     testcases,_= import_testcases(testcase_id)
     ret = []
     for tc in testcases:
-        ret.append((tc.__name__ ,tc.get_objective(), inspect.getsource(tc)))
-
+        if no_verbose:
+            ret.append((tc.__name__, tc.get_objective(), ''))
+        else:
+            ret.append((tc.__name__ ,tc.get_objective(), inspect.getsource(tc)))
     return ret
 
 
