@@ -623,7 +623,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     "%s.json" % token
                 )
                 with open(json_path, 'r') as json_fp:
-                    frames = json.load(json_fp)
+                    frames = json.load(json_fp, object_pairs_hook=OrderedDict)
             except:
                 self.api_error(
                     'Session identified by token %s not found' % token
