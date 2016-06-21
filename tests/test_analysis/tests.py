@@ -33,14 +33,14 @@ class AnalysisTestCase(unittest.TestCase):
         #print(a)
         self.assertEqual(len(a), 28)
 
-    def one_pcap_pass_test_per_testcase(self):
+    def test_one_pcap_pass_test_per_testcase(self):
         list_TC =  b = [(tc_i[0]) for tc_i in get_implemented_testcases(no_verbose=True)]
-        print(list_TC)
-        print(getcwd())
+        #print(list_TC)
+        #print(getcwd())
         for tc in list_TC:
             pcap_filename = getcwd() +"/"+ DUMPS_DIR +"/"+ str(tc) + "_PASS.pcap"
             print(pcap_filename + " || "+ str(path.isfile(pcap_filename)))
-            self.assertTrue(path.isfile(pcap_filename))
+            self.assertTrue(path.isfile(pcap_filename),msg= ' no pcap_pass_test for : ' + str(tc))
 
 
     # TODO add FAIL, and PASS test for each implemented TC
