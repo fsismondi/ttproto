@@ -715,7 +715,7 @@ def value_to_list(l: list, value: Value, extra_data=None, layer_dict:dict=None, 
             od['Option'] = value.get_variant().__name__
         else:
             od['_type'] = 'protocol'
-            od['Protocol'] = value.get_variant().__name__
+            od['_protocol'] = value.get_variant().__name__
 
         l.append(od)
 
