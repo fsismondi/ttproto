@@ -306,10 +306,11 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
     :param exceptions:
     :param regex:
     :param profile:
+    :param verbose: boolean, if true method returns verdict description (which may be very verbose)
     :return: tuple
 
     example:
-    [('TD_COAP_CORE_03', 'fail', [21, 22])]
+    [('TD_COAP_CORE_03', 'fail', [21, 22]), 'verdict description']
 
     NOTES:
      - allows multiple ocurrences of the testcase, returns as verdict:

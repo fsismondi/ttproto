@@ -8,6 +8,15 @@ import json
 DUMPS_DIR = '/tests/test_dumps'
 
 class AnalysisTestCase(unittest.TestCase):
+    """
+    cd ttproto
+    python3 -m tests.test_analysis.tests -vvv
+
+    ATTENTION conventions used here:
+    every pcap_pass_test needs to follow the convention of <TC name>_<verdict>_<optional : reason why testing tool should provide the mentioned verdict>_<option: number>.pcap
+
+    """
+
     PCAP_test = getcwd() + '/tests/test_dumps/coap_get_migled_with_tcp_traffic.pcap'
 
     def test_basic_dissect_pcap_list_return_four_elements_coap(self):
@@ -45,11 +54,6 @@ class AnalysisTestCase(unittest.TestCase):
 
     # TODO add FAIL, and PASS test for each implemented TC
     def test_analysis_api_pass_basic_pass_PCAPs(self):
-        """
-        ATTENTION conventions used here:
-        every pcap_pass_test needs to follow the convention of <TC name>_<verdict>_<optional : reason why testing tool should provide the mentioned verdict>_<option: number>.pcap
-        :return:
-        """
         list_TC =  b = [(tc_i[0]) for tc_i in get_implemented_testcases(no_verbose=True)]
         for tc in list_TC:
             pcap_filename = getcwd() + "/" + DUMPS_DIR + "/" + str(tc) + "_PASS.pcap"
@@ -61,6 +65,12 @@ class AnalysisTestCase(unittest.TestCase):
                 tc_name, verdict, _, log = analyse_file_rest_api(pcap_filename, False, None, tc, "client", True)[0]
                 self.assertTrue(verdict=='pass',msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: '+ verdict + '\nLOG:\n' + log)
 
+
+    # TODO add FAIL, and PASS test for each implemented TC
+    def test_analysis_api_fail_PCAPs(self):
+        pcap_filename = getcwd() + "/" + DUMPS_DIR + "/" + 'TC_7_FAIL_MIXED_WITH_TCP_TRAFFIC' + ".pcap"
+        tc_name, verdict, rev_fr, log = analyse_file_rest_api(pcap_filename, False, None, 'TD_COAP_CORE_07', "client", True)[0]
+        print(tc_name +"\n"+ verdict + "\n"+  str(rev_fr) + "\n"+ log)
 
 
 if __name__ == '__main__':
