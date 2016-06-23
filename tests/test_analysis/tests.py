@@ -68,7 +68,7 @@ class AnalysisTestCase(unittest.TestCase):
 
     # TODO add FAIL, and PASS test for each implemented TC
     def test_analysis_api_fail_PCAPs(self):
-        pcap_filename = getcwd() + "/" + DUMPS_DIR + "/" + 'TC_7_FAIL_MIXED_WITH_TCP_TRAFFIC' + ".pcap"
+        pcap_filename = getcwd() + "/" + DUMPS_DIR + "/" + 'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages' + ".pcap"
         tc_name, verdict, rev_fr, log = analyse_file_rest_api(pcap_filename, False, None, 'TD_COAP_CORE_07', "client", True)[0]
         print(tc_name +"\n"+ verdict + "\n"+  str(rev_fr) + "\n"+ log)
 

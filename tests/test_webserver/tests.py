@@ -275,6 +275,7 @@ class WebserverTestCase(unittest.TestCase):
         self.assertIn(el['verdict'], self.VERDICT_VALUES)
 
         # Check that we have some review frames
+        self.assertGreaterEqual(len(el['review_frames']), 0)
         for frame in el['review_frames']:
             self.check_is_int_real(frame)
 
