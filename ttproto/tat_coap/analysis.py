@@ -59,6 +59,8 @@ from ttproto.core.xmlgen import XHTML10Generator
 from ttproto.core.html_logger import HTMLLogger
 from ttproto.utils.version_git import get_git_version
 
+from ttproto.core.dissector import Frame
+
 from collections import OrderedDict
 
 
@@ -73,7 +75,7 @@ from . import proto_specific
 
 TOOL_VERSION = get_git_version()
 TEST_VERSION = "td-coap4_&_IRISA"
-TESTCASES_SUBDIR = '/ttproto/ts_coap/testcases'
+TESTCASES_SUBDIR = '/ttproto/tat_coap/testcases'
 
 # TODO abstract classes?
 TestCase = proto_specific.CoAPTestcase
@@ -105,56 +107,6 @@ class Resolver:
             return "%s (%s)" % (name, ip_addr)
         else:
             return ip_addr
-
-class Frame:
-    """
-
-    """
-    @classmethod
-    def create_list (cls, pcap_frames):
-        return list (cls (i, f) for i,f in zip (itertools.count(1), pcap_frames))
-
-    def __init__ (self, id, pcap_frame):
-        self.id = id
-        self.ts, self.msg, self.exc = pcap_frame
-        self.__extract_infos()
-
-    def __repr__ (self):
-        return "<Frame %3d: %s>" % (self.id, self.msg.summary())
-
-    def __extract_infos (self):
-        self.src    = None
-        self.dst    = None
-        self.coap   = None
-
-        v = self.msg.get_value()
-        while True:
-            if isinstance (v, Ethernet) or isinstance (v, IPv6) or isinstance (v, IPv4):
-                self.src = v["src"]
-                self.dst = v["dst"]
-                v = v["pl"]
-                continue
-            elif isinstance (v, UDP):
-                if not isinstance (self.src, tuple):
-                    self.src = self.src, v["sport"]
-                    self.dst = self.dst, v["dport"]
-                v = v["pl"]
-                continue
-            elif isinstance (v, CoAP):
-                self.coap = v
-            elif isinstance (v, Ieee802154):
-                self.src = v["src"]
-                self.dst = v["dst"]
-                v = v["pl"]
-                continue
-            elif isinstance (v, SixLowpan) or isinstance (v, LinuxCookedCapture) or isinstance (v, NullLoopback):
-                try:
-                    v = v["pl"]
-                    continue
-                except KeyError:
-                    pass
-
-            break
 
 
 def get_implemented_testcases(testcase_id = None, no_verbose = None):

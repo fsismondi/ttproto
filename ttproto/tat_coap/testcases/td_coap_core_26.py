@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-#from ttproto.ts_coap.proto_specific import CoAPTestcase
-# from ttproto.ts_coap.proto_templates import *
-from ttproto.ts_coap.testcases.td_coap_core_20 import TD_COAP_CORE_20
+#from ttproto.tat_coap.proto_specific import CoAPTestcase
+# from ttproto.tat_coap.proto_templates import *
+from ttproto.tat_coap.testcases.td_coap_core_20 import TD_COAP_CORE_20
 
 class TD_COAP_CORE_26 (TD_COAP_CORE_20):
 	"""Identifier:

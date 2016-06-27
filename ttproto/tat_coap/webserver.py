@@ -53,6 +53,7 @@ from . import analysis
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
+from ttproto.core.dissector import Dissector
 from ttproto.core.lib.inet import coap
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 
@@ -710,13 +711,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # Get the dump file
+            pcap_path = os.path.join(
+                TMPDIR,
+                "%s.dump" % token
+            )
             try:
-                pcap_path = os.path.join(
-                    TMPDIR,
-                    "%s.dump" % token
-                )
-                frames_summary = analysis.basic_dissect_pcap_to_list(
-                    pcap_path,
+                # Get summaries from it
+                frames_summary = Dissector(pcap_path).summaries(
                     PROTOCOLS[protocol_selection]['class']
                 )
             except:
@@ -992,7 +993,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
                 # Get the dissection from analysis tool
                 try:
-                    dissection = analysis.dissect_pcap_to_list(pcap_path)
+                    dissection = Dissector(pcap_path).dissect()
                 except:
                     self.api_error(
                         "Couldn't read the temporary file %s"
@@ -1199,9 +1200,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             token_res['_type'] = 'token'
             token_res['value'] = token
 
-            # Get the dissection from analysis tool
+            # Get the dissection from dissector tool
             try:
-                dissection = analysis.dissect_pcap_to_list(pcap_path)
+                dissection = Dissector(pcap_path).dissect()
             except:
                 self.api_error("Couldn't read the temporary file")
                 return
