@@ -32,24 +32,17 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 import itertools
+import sys
+import inspect
+import ttproto.core.lib.all
 
 from ttproto.core.data import Data, Message
 from ttproto.core.packet import Value, PacketValue
 from ttproto.core.list import ListValue
 from ttproto.core.typecheck import *
 from ttproto.core.lib.ports.pcap import PcapReader
+from ttproto.core.lib.inet.meta import InetPacketValue
 
-# TODO: Cleanse this mess
-import ttproto.core.lib.inet.all
-from ttproto.core.lib.ethernet import *
-from ttproto.core.lib.ieee802154 import *
-from ttproto.core.lib.encap import *
-from ttproto.core.lib.inet.ipv4 import *
-from ttproto.core.lib.inet.ipv6 import *
-from ttproto.core.lib.inet.udp import *
-from ttproto.core.lib.inet.coap import *
-from ttproto.core.lib.inet.sixlowpan import *
-from ttproto.core.lib.inet.sixlowpan_hc import *
 from collections import OrderedDict
 
 
@@ -64,28 +57,11 @@ class Frame:
         Class to represent a frame object
     """
 
-    @classmethod
-    @typecheck
-    def create_list(cls, pcap_frames: PcapReader):
-        """
-        The dissector tool initialisation which receives a filename
-
-        :param pcap_frames: The frames got from pcap using the PcapReader
-        :type PcapReader: str
-
-        :return: A list of Frame objects
-        :rtype: list(Frame)
-        """
-        return list(cls(i, f) for i, f in zip(itertools.count(1), pcap_frames))
-
     @typecheck
     def __init__(
-        self, id: int,
-        pcap_frame: (
-            float,
-            Message,
-            optional(Exception)
-        )
+        self,
+        id: int,
+        pcap_frame: (float, Message, optional(Exception))
     ):
         """
         The init function of the Frame object
@@ -96,17 +72,18 @@ class Frame:
         :type pcap_frame: tuple(float, Message, Exception)
         """
 
-        # Put the incremented id of this frame
-        self.id = id
+        # Put the different variables of it
+        self.__id = id
 
         # Get the 3 values of a frame given by the PcapReader
         # ts: Its timestamp value (from the header)
         # msg: Its message read directly from bytes (can be decoded)
         # exc: Exception if one occured
-        self.ts, self.msg, self.exc = pcap_frame
+        self.__timestamp, self.__msg, self.__error = pcap_frame
 
-        # Extract its informations
-        self.__extract_infos()
+        # Put its dictionnary representation and its summary as not done yet
+        self.__dict = None
+        self.__summary = None
 
     def __repr__(self):
         """
@@ -115,62 +92,106 @@ class Frame:
         :return: A string representing this frame object
         :rtype: str
         """
-        return "<Frame %3d: %s>" % (self.id, self.msg.summary())
+        return "<Frame %3d: %s>" % (self.__id, self.__msg.summary())
 
-    def __extract_infos(self):
+    @classmethod
+    @typecheck
+    def create_list(cls, pcap_frames: PcapReader) -> list:
         """
-        Extract informations from its private values
+        The dissector tool initialisation which receives a filename
+
+        :param pcap_frames: The frames got from pcap using the PcapReader
+        :type PcapReader: str
+
+        :return: A list of Frame objects
+        :rtype: [Frame]
         """
+        return list(cls(i, f) for i, f in zip(itertools.count(1), pcap_frames))
 
-        # The informations about the current frame
-        self.src = None
-        self.dst = None
-        self.coap = None  # This part should be externalized
+    @typecheck
+    def value_to_list(
+        self,
+        l: list,
+        value: Value,
+        extra_data: optional(str) = None,
+        layer_dict: optional(dict) = None,
+        is_option: optional(bool) = False
+    ):
 
-        # Get the value of the message as bytes
-        v = self.msg.get_value()
+        # Points to packet
+        if isinstance(value, PacketValue):
 
-        # Here just pop the values one by one in packets descriptions
-        while True:
-            if any((
-                isinstance(v, Ethernet),
-                isinstance(v, IPv6),
-                isinstance(v, IPv4)
-            )):
-                self.src = v["src"]
-                self.dst = v["dst"]
-                v = v["pl"]
-                continue
-            elif isinstance(v, UDP):
-                if not isinstance(self.src, tuple):
-                    self.src = self.src, v["sport"]
-                    self.dst = self.dst, v["dport"]
-                v = v["pl"]
-                continue
-            elif isinstance(v, CoAP):
-                self.coap = v
-            elif isinstance(v, Ieee802154):
-                self.src = v["src"]
-                self.dst = v["dst"]
-                v = v["pl"]
-                continue
-            elif any((
-                isinstance(v, SixLowpan),
-                isinstance(v, LinuxCookedCapture),
-                isinstance(v, NullLoopback)
-            )):
-                try:
-                    v = v["pl"]
-                    continue
-                except KeyError:
-                    pass
-            break
+            od = OrderedDict()
+
+            if is_option:
+                od['Option'] = value.get_variant().__name__
+            else:
+                od['_type'] = 'protocol'
+                od['_protocol'] = value.get_variant().__name__
+
+            l.append(od)
+
+            i = 0
+            for f in value.get_variant().fields():
+                self.value_to_list(l, value[i], f.name, od)
+                i += 1
+
+        # Points to list value
+        elif isinstance(value, ListValue):
+            prot_options = []
+            for i in range(0, len(value)):
+                self.value_to_list(prot_options, value[i], is_option=True)
+            layer_dict['Options'] = prot_options
+
+        # If it's a single field
+        else:
+            layer_dict[extra_data] = str(value)
+
+    def dict(self) -> OrderedDict:
+        """
+        Allow a Frame to generate an ordered dict from its values
+
+        :return: A representation of this frame object as an OrderedDict
+        :rtype: OrderedDict
+        """
+        if self.__dict is None:
+
+            # Create its dictionnary representation
+            self.__dict = OrderedDict()
+
+            # Put the values into it
+            self.__dict['_type'] = 'frame'
+            self.__dict['id'] = self.__id
+            self.__dict['timestamp'] = self.__timestamp
+            self.__dict['error'] = self.__error
+            self.__dict['protocol_stack'] = []
+            self.value_to_list(
+                self.__dict['protocol_stack'],
+                self.__msg.get_value()
+            )
+
+        # Return it
+        return self.__dict
+
+    def summary(self) -> (int, str):
+        """
+        Allow a Frame to generate its summary
+
+        :return: Summary of this frame
+        :rtype: (int, str)
+        """
+        if self.__summary is None:
+            self.__summary = (self.__id, self.__msg.summary())
+        return self.__summary
 
 
 class Dissector:
     """
         Class for the dissector tool
     """
+
+    # Class variables
+    __implemented_protocols = None
 
     @typecheck
     def __init__(self, filename: str):
@@ -184,8 +205,36 @@ class Dissector:
         # Get the reader of the file (this can throw an exception)
         self.__reader = PcapReader(filename)
 
-    def __del__(self):
-        del self.__reader
+    @classmethod
+    @typecheck
+    def get_implemented_protocols(cls) -> list_of(type):
+        """
+        Allow to get the implemented protocols
+
+        :return: Implemented protocols
+        :rtype: [type]
+        """
+
+        # Singleton pattern
+        if cls.__implemented_protocols is None:
+
+            # # First way to do it, can get name and class objects
+            #   The problem is that it takes options classes too
+            # for name, obj in inspect.getmembers(sys.modules[__name__]):
+            # for name, obj in inspect.getmembers(ttproto.core.lib.inet.all):
+            #     if inspect.isclass(obj) and issubclass(obj, PacketValue):
+            #         print(name)
+
+            # Just directly get the PacketValue and InetPacketValue subclasses
+            cls.__implemented_protocols = []
+            cls.__implemented_protocols += PacketValue.__subclasses__()
+            cls.__implemented_protocols += InetPacketValue.__subclasses__()
+
+            # Remove the InetPacketValue class
+            cls.__implemented_protocols.remove(InetPacketValue)
+
+        # Return the singleton value
+        return cls.__implemented_protocols
 
     @typecheck
     def summaries(
@@ -199,7 +248,7 @@ class Dissector:
         :type protocol: PacketValue
 
         :return: Basic informations about frames like the underlying example
-        :rtype: list( tuple(int, str) )
+        :rtype: [(int, str)]
 
         :Example:
 
@@ -223,93 +272,54 @@ class Dissector:
             response = []
 
             # Content of the response, TODO make this generic for any protocol
-            if protocol is CoAP:
-                selected_frames = [f for f in frames if f.coap]
-            else:
-                selected_frames = frames
+            # if protocol is CoAP:
+            #     selected_frames = [f for f in frames if f.coap]
+            # else:
+            selected_frames = frames
 
             for f in selected_frames:
-                    response.append((f.id, f.msg.summary()))
+                response.append(f.summary())
+
             # malformed frames
             # malformed = list (filter ((lambda f: f.exc), frames))
         return response
 
     @typecheck
-    def value_to_list(
-        self,
-        l: list,
-        value: Value,
-        extra_data: optional(str) = None,
-        layer_dict: optional(dict) = None,
-        is_option: optional(bool) = False
-    ):
-
-        # points to packet
-        if isinstance(value, PacketValue):
-
-            od = OrderedDict()
-
-            if is_option:
-                od['Option'] = value.get_variant().__name__
-            else:
-                od['_type'] = 'protocol'
-                od['_protocol'] = value.get_variant().__name__
-
-            l.append(od)
-
-            i = 0
-            for f in value.get_variant().fields():
-                self.value_to_list(l, value[i], f.name, od)
-                i += 1
-
-        # TODO test this
-        elif isinstance(value, ListValue):
-            prot_options = []
-            for i in range(0, len(value)):
-                self.value_to_list(prot_options, value[i], is_option=True)
-            layer_dict['Options'] = prot_options
-
-        # it's a field
-        else:
-            layer_dict[extra_data] = str(value)
-
-    @typecheck
     def dissect(
         self,
         protocol: optional(PacketValue) = None
-    ) -> list:
+    ) -> list_of(OrderedDict):
         """
         The dissect function to dissect a pcap file into list of frames
 
         :param filename: filename of the pcap file to be dissected
-        :param protocol:  protocol class for filtering purposes (inheriting from packet Value)
-        :return: List of frames (frames as Ordered Dicts)
+        :param protocol: protocol class for filtering purposes (inheriting
+        from packet Value)
+        :return: [OrderedDict]
         """
 
+        # Check the protocol is correct if there's one
         if protocol:
             assert issubclass(protocol, PacketValue)
 
+        # Create the frame list
         frame_list = []
 
-        # for speeding up the process
+        # For speeding up the process
         with Data.disable_name_resolution():
 
+            # Get the list of frames
             frames = Frame.create_list(self.__reader)
 
-            for f in frames:
+            # Then append them in the frame list
+            for frame in frames:
+                frame_list.append(frame.dict())
 
-                # if we are filtering and frame doesnt contain protocol
-                # then skip frame
-                # TODO make this generic for any type of protocol
-                if protocol and not f.coap:
-                    pass
-                else:
-                    frame = OrderedDict()
-                    frame['_type'] = 'frame'
-                    frame['id'] = f.id
-                    frame['timestamp'] = f.ts
-                    frame['error'] = f.exc
-                    frame['protocol_stack'] = []
-                    self.value_to_list(frame['protocol_stack'], f.msg.get_value())
-                    frame_list.append(frame)
+        # Then return the frame list
         return frame_list
+
+if __name__ == "__main__":
+    # res = Dissector('tests/test_dumps/TD_COAP_CORE_01_PASS.pcap').dissect()
+    # print(res)
+    # print(Dissector.get_implemented_protocols())
+    pass

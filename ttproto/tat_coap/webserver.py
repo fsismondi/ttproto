@@ -56,6 +56,7 @@ from ttproto.utils import pure_pcapy
 from ttproto.core.dissector import Dissector
 from ttproto.core.lib.inet import coap
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
+from ttproto.core.typecheck import *
 
 
 # List to generate the changelog page
@@ -79,14 +80,6 @@ PCAP_MAGIC_HEADER = b'\xd4\xc3\xb2\xa1'
 
 # The different implemented protocols
 PROTOCOLS = OrderedDict()
-
-PROTOCOLS['None'] = OrderedDict()
-PROTOCOLS['None']['class'] = None
-PROTOCOLS['None']['description'] = 'No particular protocol'
-
-PROTOCOLS['CoAP'] = OrderedDict()
-PROTOCOLS['CoAP']['class'] = coap.CoAP
-PROTOCOLS['CoAP']['description'] = 'CoAP protocol'
 
 # The cache for the test cases
 TEST_CASES = OrderedDict()
@@ -166,17 +159,27 @@ def html_changelog(g):
 
 # ########################## ttproto API ########################### #
 
-# Function to get the test cases from files if not initialized
-# Or directly from the global storage variable
-# Can retrieve a single test case if wanted
-# But doesn't use the analysis function, cf the remark
-#
-# /param testcase_id The id of the single test case if one wanted
-#
-# /remark If we ask for only one test case directly from the analysis function
-# It does return an ImportError when it found the TC, it seems that it's trying
-# to import a module with its name  cf analysis:220
-def get_test_cases(testcase_id=None):
+@typecheck
+def get_test_cases(
+    testcase_id: optional(str) = None
+) -> either(OrderedDict, type(None)):
+    """
+    Function to get the test cases from files if not initialized
+
+    Or directly from the global storage variable, can retrieve a single test
+    case if wanted but doesn't use the analysis function, cf the remark
+
+    :param testcase_id: The id of the single test case if one wanted
+    :type testcase_id: str
+
+    :return: The implemented test cases
+    :rtype: OrderedDict
+
+    .. warnings:: If we ask for only one test case directly from the analysis
+    function, it returns an ImportError when it found the TC, it seems that it
+    is trying to import a module with its name
+    .. seealso:: analysis:220
+    """
 
     # Get the global variable to store the test cases
     global TEST_CASES
@@ -200,10 +203,9 @@ def get_test_cases(testcase_id=None):
             tc_implementation['implementation'] = raw_tc[2]
 
             # Tuple, basic + implementation
-            TEST_CASES[raw_tc[0]] = {
-                'tc_basic': tc_basic,
-                'tc_implementation': tc_implementation
-            }
+            TEST_CASES[raw_tc[0]] = OrderedDict()
+            TEST_CASES[raw_tc[0]]['tc_basic'] = tc_basic
+            TEST_CASES[raw_tc[0]]['tc_implementation'] = tc_implementation
 
     # If only one asked
     if testcase_id is not None:
@@ -217,14 +219,72 @@ def get_test_cases(testcase_id=None):
         return TEST_CASES
 
 
-# Function to check if a get parameter is correct
-#
-# /param par The get parameter to check (care it's a list)
-# /param is_number If we expect it to be a number
-#
-# /return boolean telling if the get parameter is correct or not
-#
-def correct_get_param(par, is_number=False):
+@typecheck
+def get_protocol(
+    protocol: optional(str) = None
+) -> either(OrderedDict, type(None)):
+    """
+    Function to get the protocols
+
+    :param protocol: The name of the protocol
+    :type protocol: str
+
+    :return: The implemented protocols, or a single one
+    :rtype: OrderedDict
+    """
+
+    # Get the global variable to store the protocols
+    global PROTOCOLS
+
+    # If empty for the moment
+    if len(PROTOCOLS) == 0:
+
+        # Put the 'None' protocol which get everything
+        PROTOCOLS['None'] = OrderedDict()
+        PROTOCOLS['None']['_type'] = 'implemented_protocol'
+        PROTOCOLS['None']['name'] = 'None'
+        PROTOCOLS['None']['description'] = ''
+
+        # Getter of protocol's classes from dissector
+        prot_classes = Dissector.get_implemented_protocols()
+
+        # Build the clean results list
+        for prot_class in prot_classes:
+
+            # Put the protocol
+            prot = OrderedDict()
+            prot['_type'] = 'implemented_protocol'
+            prot['name'] = prot_class.__name__
+            prot['description'] = ''
+
+            # Add it to protocol variable
+            PROTOCOLS[prot['name']] = prot
+
+    # If there's only one protocol asked
+    if protocol is not None:
+        if protocol in PROTOCOLS:
+            return PROTOCOLS[protocol]
+        else:
+            return None
+
+    # Rerurn the protocols
+    else:
+        return PROTOCOLS
+
+
+@typecheck
+def correct_get_param(par: list, is_number: optional(bool) = False) -> bool:
+    """
+    Function to check if a get parameter is correct
+
+    :param par: The get parameter to check (care it's a list)
+    :param is_number: If we expect it to be a number
+    :type par: list
+    :type is_number: bool
+
+    :return: True if the get parameter is correct, False if not
+    :rtype: bool
+    """
     return all((
         len(par) == 1,
         type(par[0]) == str,
@@ -237,13 +297,17 @@ def correct_get_param(par, is_number=False):
     ))
 
 
-# Function to check if a pcap file get parameter is a valid one
-#
-# /param bytes_data The pcap file, normally as bytes, but can be wrong
-#
-# /return boolean telling if the data entered is a pcap file
-#
-def valid_pcap_file(bytes_data):
+@typecheck
+def valid_pcap_file(bytes_data: bytes) -> bool:
+    """
+    Function to check if a pcap file get parameter is a valid one
+
+    :param bytes_data: The pcap file, normally as bytes
+    :type bytes_data: bytes
+
+    :return: True if the data entered is a pcap file, False if not
+    :rtype: bool
+    """
     return all((
         bytes_data,
         type(bytes_data) == bytes,
@@ -252,14 +316,18 @@ def valid_pcap_file(bytes_data):
     ))
 
 
-# Function to get a token, if there's a valid one entered just return it
-# otherwise generate a new one
-#
-# /param tok The token if there's already one
-#
-# /return str A token, the same if there's already one, a new one otherwise
-#
-def get_token(tok=None):
+@typecheck
+def get_token(tok: optional(str) = None):
+    """
+    Function to get a token, if there's a valid one entered just return it
+    otherwise generate a new one
+
+    :param tok: The token if there's already one
+    :type tok: str
+
+    :return: A token, the same if there's already one, a new one otherwise
+    :rtype: str
+    """
 
     # If the token is already a correct one
     try:
@@ -489,8 +557,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the test case
             test_case = get_test_cases(params['testcase_id'][0])
-            if test_case is None or len(test_case) == 0:
-                self.api_error('Test case %s not found' % params['testcase_id'][0])
+            if test_case is None:
+                self.api_error(
+                    'Test case %s not found' % params['testcase_id'][0]
+                )
                 return
 
             # The result to return
@@ -528,15 +598,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             json_result['ok'] = True
             json_result['content'] = []
 
-            # Get protocols from the list
-            for prot_name in PROTOCOLS:
-                prot = OrderedDict()
-                prot['_type'] = 'implemented_protocol'
-                prot['name'] = prot_name
-                prot['description'] = PROTOCOLS[prot_name]['description']
-                json_result['content'].append(prot)
-
-            # Maybe it will be good to get those from a file/db in the future
+            # Get the protocols
+            protocols = get_protocol()
+            for prot in protocols:
+                json_result['content'].append(protocols[prot])
 
             # Just give the json representation of the test cases list
             print(json.dumps(json_result))
@@ -608,7 +673,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             protocol_selection = params['protocol_selection'][0]
 
             # Check the protocol
-            if protocol_selection not in PROTOCOLS.keys():
+            protocol = get_protocol(protocol_selection)
+            if protocol is None:
                 self.api_error(
                     'Unknown %s protocol' % protocol_selection
                 )
@@ -704,7 +770,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             protocol_selection = params['protocol_selection'][0]
 
             # Check the protocol
-            if protocol_selection not in PROTOCOLS.keys():
+            protocol = get_protocol(protocol_selection)
+            if protocol is None:
                 self.api_error(
                     'Unknown %s protocol' % protocol_selection
                 )
@@ -718,7 +785,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 # Get summaries from it
                 frames_summary = Dissector(pcap_path).summaries(
-                    PROTOCOLS[protocol_selection]['class']
+                    eval(protocol['name'])
                 )
             except:
                 self.api_error(
@@ -932,8 +999,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Try to get the test case
             test_case = get_test_cases(testcase_id)
-
-            # If no TC found
             if test_case is None:
                 self.api_error('Test case %s not found' % testcase_id)
                 return
@@ -1159,9 +1224,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # In function of the protocol asked
-            try:
-                prot = PROTOCOLS[protocol_selection]
-            except KeyError:
+            prot = get_protocol(protocol_selection)
+            if prot is None:
                 self.api_error('Unknown protocol %s' % protocol_selection)
                 return
 
@@ -1204,7 +1268,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 dissection = Dissector(pcap_path).dissect()
             except:
-                self.api_error("Couldn't read the temporary file")
+                self.api_error(
+                    "Couldn't read the temporary file %s"
+                    %
+                    pcap_path
+                )
                 return
 
             # Save the json dissection result into a file

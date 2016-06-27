@@ -7,8 +7,8 @@ import requests
 import base64
 import hashlib
 
-from ttproto.ts_coap import webserver
-from ttproto.ts_coap.webserver import *
+from ttproto.tat_coap import webserver
+from ttproto.tat_coap.webserver import *
 
 
 class WebserverTestCase(unittest.TestCase):
