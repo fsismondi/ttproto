@@ -49,14 +49,15 @@ import base64
 import requests
 import email.feedparser
 import email.message
+
 from . import analysis
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
 from ttproto.core.dissector import Dissector
-from ttproto.core.lib.inet import coap
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 from ttproto.core.typecheck import *
+from ttproto.core.lib.all import *
 
 
 # List to generate the changelog page
@@ -74,9 +75,6 @@ LOGDIR = "log"
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
-
-# Magic header to identify a pcap file
-PCAP_MAGIC_HEADER = b'\xd4\xc3\xb2\xa1'
 
 # The different implemented protocols
 PROTOCOLS = OrderedDict()
@@ -294,25 +292,6 @@ def correct_get_param(par: list, is_number: optional(bool) = False) -> bool:
                 not par[0].isdigit() or int(par[0]) <= 0
             )
         )
-    ))
-
-
-@typecheck
-def valid_pcap_file(bytes_data: bytes) -> bool:
-    """
-    Function to check if a pcap file get parameter is a valid one
-
-    :param bytes_data: The pcap file, normally as bytes
-    :type bytes_data: bytes
-
-    :return: True if the data entered is a pcap file, False if not
-    :rtype: bool
-    """
-    return all((
-        bytes_data,
-        type(bytes_data) == bytes,
-        len(bytes_data) > 52,  # file header + (src, dest) adresses
-        bytes_data[:4] == PCAP_MAGIC_HEADER
     ))
 
 
@@ -1034,9 +1013,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
                 # Get and check the pcap file entered
                 pcap_file = form.getvalue('pcap_file')
-                if not valid_pcap_file(pcap_file):
-                    self.api_error("Expected 'pcap_file' to be a non empty file")
-                    return
 
                 # Path to save the file
                 pcap_path = os.path.join(
@@ -1059,6 +1035,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # Get the dissection from analysis tool
                 try:
                     dissection = Dissector(pcap_path).dissect()
+                except pure_pcapy.PcapError:
+                    self.api_error(
+                        "Expected 'pcap_file' to be a non empty pcap file"
+                    )
                 except:
                     self.api_error(
                         "Couldn't read the temporary file %s"
@@ -1234,25 +1214,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the pcap file
             pcap_file = form.getvalue('pcap_file')
-            if valid_pcap_file(pcap_file):
 
-                # Path to save the file
-                pcap_path = os.path.join(
-                    TMPDIR,
-                    token + '.dump'
-                )
+            # Path to save the file
+            pcap_path = os.path.join(
+                TMPDIR,
+                token + '.dump'
+            )
 
-                # Write the pcap file to a temporary destination
-                try:
-                    with open(pcap_path, 'wb') as f:
-                        f.write(pcap_file)
-                except:
-                    self.api_error("Couldn't write the temporary file")
-                    return
-            else:
-                self.api_error(
-                    "Expected 'pcap_file' to be a non empty pcap file"
-                )
+            # Write the pcap file to a temporary destination
+            try:
+                with open(pcap_path, 'wb') as f:
+                    f.write(pcap_file)
+            except:
+                self.api_error("Couldn't write the temporary file")
                 return
 
             # Prepare the result to return
@@ -1266,12 +1240,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the dissection from dissector tool
             try:
-                dissection = Dissector(pcap_path).dissect()
+                dissection = Dissector(pcap_path).dissect(eval(prot['name']))
+            except pure_pcapy.PcapError:
+                self.api_error(
+                    "Expected 'pcap_file' to be a non empty pcap file"
+                )
+                return
             except:
                 self.api_error(
-                    "Couldn't read the temporary file %s"
+                    "Couldn't read the temporary file %s and protocol is %s"
                     %
-                    pcap_path
+                    (
+                        pcap_path,
+                        prot['name']
+                    )
                 )
                 return
 

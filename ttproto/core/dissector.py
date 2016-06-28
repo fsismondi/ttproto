@@ -34,12 +34,12 @@
 import itertools
 import sys
 import inspect
-import ttproto.core.lib.all
 
 from ttproto.core.data import Data, Message
 from ttproto.core.list import ListValue
 from ttproto.core.packet import Value, PacketValue
 from ttproto.core.typecheck import *
+from ttproto.core.lib.all import *
 from ttproto.core.lib.ports.pcap import PcapReader
 from ttproto.core.lib.inet.meta import InetPacketValue
 
@@ -98,10 +98,7 @@ class Frame:
         """
 
         # Check the protocol is one entered
-        if all((
-            protocol is not None,
-            protocol not in Dissector.get_implemented_protocols()
-        )):
+        if protocol not in Dissector.get_implemented_protocols():
             raise TypeError(protocol.__name__ + ' is not a protocol class')
 
         # Get current value
@@ -159,7 +156,7 @@ class Frame:
         cls,
         frames: list,
         protocol: type
-    ):
+    ) -> list:
         """
         Allow to filter frames on a protocol
 
@@ -167,19 +164,31 @@ class Frame:
         :param protocol:  Protocol class for filtering purposes
         :type frames: [Frame]
         :type protocol: type
+
+        :return: A list of frames that are filtered
+        :rtype: [Frame]
         """
 
+        # The return list
+        ret = []
+
         # Check the protocol is one entered
-        if all((
-            protocol is not None,
-            protocol not in Dissector.get_implemented_protocols()
-        )):
+        if protocol not in Dissector.get_implemented_protocols():
             raise TypeError(protocol.__name__ + ' is not a protocol class')
 
         # Remove all frames which doesn't include this protocol
         for frame in frames:
-            if protocol not in frame:
-                frames.remove(frame)
+
+            # If an element of the list isn't a Frame
+            if not isinstance(frame, Frame):
+                raise TypeError('Parameter frames contains a non Frame object')
+
+            # If the protocol is contained into this frame
+            if protocol in frame:
+                ret.append(frame)
+
+        # Return the newly created list
+        return ret
 
     @typecheck
     def value_to_list(
@@ -374,7 +383,7 @@ class Dissector:
 
             # Filter the frames for the selected protocol
             if protocol is not None:
-                Frame.filter_frames(frames, protocol)
+                frames = Frame.filter_frames(frames, protocol)
 
             # Then append the summaries
             for frame in frames:
@@ -413,7 +422,7 @@ class Dissector:
 
             # Filter the frames for the selected protocol
             if protocol is not None:
-                Frame.filter_frames(frames, protocol)
+                frames = Frame.filter_frames(frames, protocol)
 
             # Then append them in the frame list
             for frame in frames:
@@ -433,5 +442,5 @@ if __name__ == "__main__":
     # print('##### Dissect without filtering on CoAP #####')
     # print(dis.dissect(CoAP))
     # print('#####')
-    # print(Dissector.get_implemented_protocols())
+    print(Dissector.get_implemented_protocols())
     pass
