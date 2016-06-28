@@ -37,8 +37,8 @@ import inspect
 import ttproto.core.lib.all
 
 from ttproto.core.data import Data, Message
-from ttproto.core.packet import Value, PacketValue
 from ttproto.core.list import ListValue
+from ttproto.core.packet import Value, PacketValue
 from ttproto.core.typecheck import *
 from ttproto.core.lib.ports.pcap import PcapReader
 from ttproto.core.lib.inet.meta import InetPacketValue
@@ -69,7 +69,7 @@ class Frame:
         :param id: The id of the current frame
         :param pcap_frame: The frame tuple got from reading the PcapReader
         :type id: int
-        :type pcap_frame: tuple(float, Message, Exception)
+        :type pcap_frame: (float, Message, Exception)
         """
 
         # Put the different variables of it
@@ -85,7 +85,50 @@ class Frame:
         self.__dict = None
         self.__summary = None
 
-    def __repr__(self):
+    @typecheck
+    def __contains__(self, protocol: type) -> bool:
+        """
+        Put the 'in' keyword to check if a protocol is contained in frame
+
+        :param protocol:  Protocol to check
+        :type protocol: type
+
+        :return: True if the protocol is in the protocol stack of the frame
+        :rtype: bool
+        """
+
+        # Check the protocol is one entered
+        if all((
+            protocol is not None,
+            protocol not in Dissector.get_implemented_protocols()
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
+
+        # Get current value
+        value = self.__msg.get_value()
+
+        # Parse the whole protocol stack
+        while True:
+
+            # If the protocol is contained into it
+            if isinstance(value, protocol):
+                return True
+
+            # Go to the next layer
+            try:
+                value = value['pl']
+                continue
+
+            # If none found, leave the loop
+            except (KeyError, TypeError):
+                pass
+            break
+
+        # Protocol not found into it
+        return False
+
+    @typecheck
+    def __repr__(self) -> str:
         """
         Little function to display a frame object
 
@@ -98,15 +141,45 @@ class Frame:
     @typecheck
     def create_list(cls, pcap_frames: PcapReader) -> list:
         """
-        The dissector tool initialisation which receives a filename
+        The dissector tool initialisation which receives a PcapReader object
 
         :param pcap_frames: The frames got from pcap using the PcapReader
-        :type PcapReader: str
+        :type pcap_frames: PcapReader
 
         :return: A list of Frame objects
         :rtype: [Frame]
+
+        .. note:: Can't put the typecheck as list of a class into itself
         """
         return list(cls(i, f) for i, f in zip(itertools.count(1), pcap_frames))
+
+    @classmethod
+    @typecheck
+    def filter_frames(
+        cls,
+        frames: list,
+        protocol: type
+    ):
+        """
+        Allow to filter frames on a protocol
+
+        :param frames: The frames to filter
+        :param protocol:  Protocol class for filtering purposes
+        :type frames: [Frame]
+        :type protocol: type
+        """
+
+        # Check the protocol is one entered
+        if all((
+            protocol is not None,
+            protocol not in Dissector.get_implemented_protocols()
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
+
+        # Remove all frames which doesn't include this protocol
+        for frame in frames:
+            if protocol not in frame:
+                frames.remove(frame)
 
     @typecheck
     def value_to_list(
@@ -117,14 +190,32 @@ class Frame:
         layer_dict: optional(dict) = None,
         is_option: optional(bool) = False
     ):
+        """
+        An utility function to parse recursively packet datas
+
+        :param l: The list in which we put the values parsed
+        :param value: The value to store
+        :param extra_data: The name of the field to save value into dict
+        :param layer_dict: The dict in which we will write the value
+        :param is_option: To know if the value to write is an option one or not
+        :type l: list
+        :type value: Value
+        :type extra_data: str
+        :type layer_dict: dict
+        :type is_option: bool
+        """
 
         # Points to packet
         if isinstance(value, PacketValue):
 
+            # Prepare the storage dict
             od = OrderedDict()
 
+            # If an option
             if is_option:
                 od['Option'] = value.get_variant().__name__
+
+            # If a protocol value
             else:
                 od['_type'] = 'protocol'
                 od['_protocol'] = value.get_variant().__name__
@@ -147,6 +238,7 @@ class Frame:
         else:
             layer_dict[extra_data] = str(value)
 
+    @typecheck
     def dict(self) -> OrderedDict:
         """
         Allow a Frame to generate an ordered dict from its values
@@ -173,6 +265,7 @@ class Frame:
         # Return it
         return self.__dict
 
+    @typecheck
     def summary(self) -> (int, str):
         """
         Allow a Frame to generate its summary
@@ -203,7 +296,7 @@ class Dissector:
         """
 
         # Get the reader of the file (this can throw an exception)
-        self.__reader = PcapReader(filename)
+        self.__filename = filename
 
     @classmethod
     @typecheck
@@ -237,15 +330,15 @@ class Dissector:
         return cls.__implemented_protocols
 
     @typecheck
-    def summaries(
+    def summary(
         self,
-        protocol: optional(PacketValue) = None
-    ) -> [(int, str)]:
+        protocol: optional(type) = None
+    ) -> list_of((int, str)):
         """
         The summaries function to get the summary of frames
 
-        :param protocol:  Protocol class for filtering purposes
-        :type protocol: PacketValue
+        :param protocol: Protocol class for filtering purposes
+        :type protocol: type
 
         :return: Basic informations about frames like the underlying example
         :rtype: [(int, str)]
@@ -260,47 +353,54 @@ class Dissector:
             ]
 
         .. todo:: Filter uninteresting frames ? (to decrease the load)
+        .. note:: With the protocol option we can filter
         """
+
+        # Check the protocol is one entered
+        if all((
+            protocol is not None,
+            protocol not in Dissector.get_implemented_protocols()
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
+
+        # Prepare the response object
+        response = []
 
         # Disable the name resolution in order to improve performances
         with Data.disable_name_resolution():
 
             # Read the file and get an iterator on it
-            frames = Frame.create_list(self.__reader)
+            frames = Frame.create_list(PcapReader(self.__filename))
 
-            # Prepare the response object
-            response = []
+            # Filter the frames for the selected protocol
+            if protocol is not None:
+                Frame.filter_frames(frames, protocol)
 
-            # Content of the response, TODO make this generic for any protocol
-            # if protocol is CoAP:
-            #     selected_frames = [f for f in frames if f.coap]
-            # else:
-            selected_frames = frames
+            # Then append the summaries
+            for frame in frames:
+                response.append(frame.summary())
 
-            for f in selected_frames:
-                response.append(f.summary())
-
-            # malformed frames
-            # malformed = list (filter ((lambda f: f.exc), frames))
+        # Give the response back
         return response
 
     @typecheck
     def dissect(
         self,
-        protocol: optional(PacketValue) = None
+        protocol: optional(type) = None
     ) -> list_of(OrderedDict):
         """
         The dissect function to dissect a pcap file into list of frames
 
-        :param filename: filename of the pcap file to be dissected
-        :param protocol: protocol class for filtering purposes (inheriting
-        from packet Value)
+        :param protocol: protocol class for filtering purposes
         :return: [OrderedDict]
         """
 
-        # Check the protocol is correct if there's one
-        if protocol:
-            assert issubclass(protocol, PacketValue)
+        # Check the protocol is one entered
+        if all((
+            protocol is not None,
+            protocol not in Dissector.get_implemented_protocols()
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
 
         # Create the frame list
         frame_list = []
@@ -309,7 +409,11 @@ class Dissector:
         with Data.disable_name_resolution():
 
             # Get the list of frames
-            frames = Frame.create_list(self.__reader)
+            frames = Frame.create_list(PcapReader(self.__filename))
+
+            # Filter the frames for the selected protocol
+            if protocol is not None:
+                Frame.filter_frames(frames, protocol)
 
             # Then append them in the frame list
             for frame in frames:
@@ -319,7 +423,15 @@ class Dissector:
         return frame_list
 
 if __name__ == "__main__":
-    # res = Dissector('tests/test_dumps/TD_COAP_CORE_01_PASS.pcap').dissect()
-    # print(res)
+    # dis = Dissector('tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap')
+    # print(dis.summary())
+    # print('##### Dissect without filtering #####')
+    # print(dis.dissect())
+    # print('#####')
+    # print('#####')
+    # print('#####')
+    # print('##### Dissect without filtering on CoAP #####')
+    # print(dis.dissect(CoAP))
+    # print('#####')
     # print(Dissector.get_implemented_protocols())
     pass
