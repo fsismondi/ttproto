@@ -763,9 +763,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             )
             try:
                 # Get summaries from it
-                frames_summary = Dissector(pcap_path).summaries(
+                frames_summary = Dissector(pcap_path).summary(
                     eval(protocol['name'])
                 )
+            except TypeError as e:
+                self.api_error('Dissector error:\n' + e)
+                return
             except:
                 self.api_error(
                     'Session identified by token %s not found' % token
@@ -1241,6 +1244,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get the dissection from dissector tool
             try:
                 dissection = Dissector(pcap_path).dissect(eval(prot['name']))
+            except TypeError as e:
+                self.api_error('Dissector error:\n' + e)
+                return
             except pure_pcapy.PcapError:
                 self.api_error(
                     "Expected 'pcap_file' to be a non empty pcap file"

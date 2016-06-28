@@ -1,9 +1,11 @@
 import unittest
 
+from ttproto.utils.pure_pcapy import PcapError
 from ttproto.core.dissector import Frame, Dissector
 from ttproto.core.packet import PacketValue
 from ttproto.core.lib.inet.coap import CoAP
 from ttproto.core.lib.inet.meta import InetPacketValue
+from tests.test_tools.struct_checker import StructureChecker
 
 
 class DissectorTestCase(unittest.TestCase):
@@ -19,6 +21,9 @@ class DissectorTestCase(unittest.TestCase):
     WRONG_TEST_FILE_DIR = 'tests/test_files/WrongFilesForTests'
     EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
     NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
+
+    # Create a struct checker object
+    STRUCT_CHECKER = StructureChecker()
 
     # #################### Init and deinit functions #########################
     def setUp(self):
@@ -105,6 +110,84 @@ class DissectorTestCase(unittest.TestCase):
         # Get and check the summary
         with self.assertRaises(TypeError):
             summary = self.dissector.summary(Frame)
+
+    def test_summary_with_wrong_pcap_file(self):
+
+        # Create two wrong dissect instances
+        dis_wrong_file = Dissector(self.NOT_A_PCAP_FILE)
+        dis_empty_file = Dissector(self.EMPTY_PCAP_FILE)
+
+        # Get and check the summary
+        with self.assertRaises(PcapError):
+            dis = dis_wrong_file.summary()
+        with self.assertRaises(PcapError):
+            dis = dis_empty_file.summary()
+
+    # ##### dissect
+    def test_dissect_without_filtering(self):
+
+        # Get and check the dissect
+        dissect = self.dissector.dissect()
+        self.assertTrue(type(dissect), list)
+        self.assertTrue(len(dissect), 5)
+
+        i = 1
+        for frame in dissect:
+            self.STRUCT_CHECKER.check_frame(frame)
+            self.assertEqual(frame['id'], i)
+            i += 1
+
+        # Try to get another dissect with None provided
+        dissect_with_none = self.dissector.dissect(None)
+        self.assertEqual(dissect, dissect_with_none)
+
+    def test_dissect_with_filtering_on_coap(self):
+
+        # Get and check the dissect
+        dissect = self.dissector.dissect(CoAP)
+        self.assertTrue(type(dissect), list)
+        self.assertTrue(len(dissect), 2)
+
+        i = 4  # CoAP frames are n°4 and 5
+        for frame in dissect:
+            self.STRUCT_CHECKER.check_frame(frame)
+            self.assertEqual(frame['id'], i)
+            i += 1
+
+    def test_dissect_with_filtering_on_protocols(self):
+
+        # For every implemented protocols
+        for prots in Dissector.get_implemented_protocols():
+
+            # Get and check the dissect
+            dissect = self.dissector.dissect(prots)
+            self.assertTrue(type(dissect), list)
+            for frame in dissect:
+                self.STRUCT_CHECKER.check_frame(frame)
+
+    def test_dissect_with_filtering_on_none_type(self):
+
+        # Get and check the dissect
+        with self.assertRaises(TypeError):
+            dissect = self.dissector.dissect(type(None))
+
+    def test_dissect_with_filtering_on_not_a_protocol(self):
+
+        # Get and check the dissect
+        with self.assertRaises(TypeError):
+            dissect = self.dissector.dissect(Frame)
+
+    def test_dissect_with_wrong_pcap_file(self):
+
+        # Create two wrong dissect instances
+        dis_wrong_file = Dissector(self.NOT_A_PCAP_FILE)
+        dis_empty_file = Dissector(self.EMPTY_PCAP_FILE)
+
+        # Get and check the dissect
+        with self.assertRaises(PcapError):
+            dis = dis_wrong_file.dissect()
+        with self.assertRaises(PcapError):
+            dis = dis_empty_file.dissect()
 
 # #################### Main run the tests #########################
 if __name__ == '__main__':

@@ -41,25 +41,11 @@ from ttproto.core.data import Data, Value
 from ttproto.core.list import ListValue
 from ttproto.core.packet import PacketValue
 
-
-from ttproto.core.lib.ethernet import *
-from ttproto.core.lib.encap import *
-
-import ttproto.core.lib.inet.all
-from ttproto.core.lib.inet.ipv4 import *
-from ttproto.core.lib.inet.ipv6 import *
-from ttproto.core.lib.inet.udp import *
-from ttproto.core.lib.inet.coap import *
-from ttproto.core.lib.inet.sixlowpan import *
-from ttproto.core.lib.inet.sixlowpan_hc import *
-
-from ttproto.core.lib.ieee802154 import *
+from ttproto.core.lib.all import *
 
 from ttproto.core.xmlgen import XHTML10Generator
 from ttproto.core.html_logger import HTMLLogger
 from ttproto.utils.version_git import get_git_version
-
-from ttproto.core.dissector import Frame
 
 from collections import OrderedDict
 
@@ -68,8 +54,8 @@ from collections import OrderedDict
 from . import proto_specific
 
 # small hack to allow participants running a server on non standard ports:
-#import ttproto.core.lib.inet.udp
-#for port in (5684, 5685, 5686, 5687, 5688, 5689):
+# import ttproto.core.lib.inet.udp
+# for port in (5684, 5685, 5686, 5687, 5688, 5689):
 #    ttproto.core.lib.inet.udp.udp_port_map[port] = CoAP
 
 
@@ -625,139 +611,42 @@ c.className=%s;
                 g.hr()
 
 
-def basic_dissect_pcap_to_list (filename, protocol_selection=None):
-    """
-    :param filename: filename of the pcap file to be dissected
-    :param protocol_selection:  protocol class for filtering purposes (inheriting from packet Value)
-    :return: list of tuples with basic info about frames:
-    [
-        (13, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [CON 38515] GET /test'),
-        (14, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [ACK 38515] 2.05 Content '),
-        (21, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [CON 38516] PUT /test'),
-        (22, '[127.0.0.1                        -> 127.0.0.1                       ] CoAP [ACK 38516] 2.04 Changed ')]
-    ]
-
-    """
-    # read the frame
-    # TODO: filter uninteresting frames ? (to decrease the load)
-    with Data.disable_name_resolution():
-        frames = Frame.create_list (PcapReader (filename))
-        response=[]
-
-        # content of the response, TODO make this generic for any protocol
-        if protocol_selection and protocol_selection is CoAP:
-            selected_frames = [f for f in frames if f.coap]
-        else:
-            selected_frames = frames
-
-        for f in selected_frames:
-                response.append ((f.id , f.msg.summary()))
-        # malformed frames
-        # malformed = list (filter ((lambda f: f.exc), frames))
-    return response
-
-
-def value_to_list(l: list, value: Value, extra_data=None, layer_dict:dict=None, is_option=False):
-
-    # points to packet
-    if isinstance(value, PacketValue):
-
-        od = OrderedDict()
-
-        if is_option:
-            od['Option'] = value.get_variant().__name__
-        else:
-            od['_type'] = 'protocol'
-            od['_protocol'] = value.get_variant().__name__
-
-        l.append(od)
-
-        i = 0
-        for f in value.get_variant().fields():
-            value_to_list(l, value[i], f.name, od)
-            i += 1
-
-    # TODO test this
-    elif isinstance(value, ListValue):
-        prot_options = []
-        for i in range(0, len(value)):
-            value_to_list(prot_options, value[i], is_option=True)
-        layer_dict['Options'] = prot_options
-
-    # it's a field
-    else:
-        layer_dict[extra_data] = str(value)
-
-
-def dissect_pcap_to_list(filename, protocol_selection=None):
-    """
-    :param filename: filename of the pcap file to be dissected
-    :param protocol_selection:  protocol class for filtering purposes (inheriting from packet Value)
-    :return: List of frames (frames as Ordered Dicts)
-    """
-
-    if protocol_selection:
-        assert issubclass(protocol_selection, PacketValue)
-
-    frame_list = []
-
-    # for speeding up the process
-    with Data.disable_name_resolution():
-
-        frames = Frame.create_list(PcapReader(filename))
-
-        for f in frames:
-
-            # if we are filtering and frame doesnt contain protocol
-            # then skip frame
-            # TODO make this generic for any type of protocol
-            if protocol_selection and not f.coap:
-                pass
-            else:
-                frame = OrderedDict()
-                frame['_type'] = 'frame'
-                frame['id'] = f.id
-                frame['timestamp'] = f.ts
-                frame['error'] = f.exc
-                frame['protocol_stack'] = []
-                value_to_list(frame['protocol_stack'], f.msg.get_value())
-                frame_list.append(frame)
-    return frame_list
-
-
-################################################################################
+# ###############################################################################
 # Main()
-################################################################################
+# ###############################################################################
 
 if __name__ == "__main__":
 
-    import pprint,json
-    PCAP_test2 = getcwd()+ "/tests/test_dumps/TD_COAP_CORE_01_PASS.pcap"
+    import pprint
+    import json
+    PCAP_test2 = getcwd() + "/tests/test_dumps/TD_COAP_CORE_01_PASS.pcap"
     PCAP_test3 = getcwd() + "/tests/test_dumps/coap_get_migled_with_tcp_traffic.pcap"
 
+    # analyse_file(PCAP_test3)
 
+    # get test case implementation
+    # a= get_implemented_testcases('td_coap_core_01')
+    # for f in a:
+    #     print(a[0][2])
 
-    #analyse_file(PCAP_test3)
-
-    #get test case implementation
-    #a= get_implemented_testcases('td_coap_core_01')
-    #for f in a:
-    #    print(a[0][2])
-
-    #print(analyse_file_rest_api(PCAP_test2,False,None,"TD_COAP_CORE_17","client"))
-
-    #print(dissect_pcap_to_list(PCAP_test3, None))
-    #print(type(basic_dissect_pcap_to_list(PCAP_test3, None)))
-    #print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
+    # print(analyse_file_rest_api(PCAP_test2,False,None,"TD_COAP_CORE_17","client"))
 
     print('************************')
     print('**API** ')
     print('************************')
-    #print(basic_dissect_pcap_to_list(PCAP_test3, CoAP))
-    print(analyse_file_rest_api(PCAP_test3, False, None, "TD_COAP_CORE_03", "client",True))
-    #print(analyse_file_rest_api(PCAP_test3, False, None, "", "client",False))
-    #print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
+    print(
+        analyse_file_rest_api(
+            PCAP_test3,
+            False,
+            None,
+            "TD_COAP_CORE_03",
+            "client",
+            True
+        )
+    )
+    # print(analyse_file_rest_api(PCAP_test3, False, None, "", "client",False))
+    # print(analyse_file_rest_api(PCAP_error,None,None,"TD_COAP_CORE_01","client"))
 
-    #a= get_implemented_testcases('td_coap_coreasd_01')
-    #for f in a:
+    # a= get_implemented_testcases('td_coap_coreasd_01')
+    # for f in a:
     #    print(a)

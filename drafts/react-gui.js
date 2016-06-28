@@ -1,16 +1,16 @@
 // ############### Some parameters ###############
 
 // Some constant values
-var baseUrl = 'http://127.0.0.1';
+var baseUrl = 'http://127.0.0.1:2080';
 var acceptedActions = ['analyse', 'dissect'];
 
 // Urls of the API
-var dissectUrl = '/api/v1/frames_dissect';
-var getFrameUrl = '/api/v1/frames_getFrame';
-var getProtocolsUrl = '/api/v1/frames_getProtocols';
-var analyseUrl = '/api/v1/testcase_analyse';
-var getTestCasesUrl = '/api/v1/testcase_getList';
-var getTestCaseImplementation = '/api/v1/testcase_getTestcaseImplementation';
+var dissectUrl = '/api/v1/dissector_dissectFile';
+var getFrameUrl = '/api/v1/analyzer_getFrames';
+var getProtocolsUrl = '/api/v1/dissector_getProtocols';
+var analyseUrl = '/api/v1/analyzer_testCaseAnalyze';
+var getTestCasesUrl = '/api/v1/analyzer_getTestCases';
+var getTestCaseImplementation = '/api/v1/analyzer_getTestcaseImplementation';
 
 
 
@@ -107,7 +107,7 @@ var SelectGroupBloc = React.createClass({
 			);
 
 		// Dissect function
-		else if (o._type == 'protocol')
+		else if (o._type == 'implemented_protocol')
 			return (
 				<option key={o.name} value={o.name} title={o.description} >{o.name}</option>
 			);
@@ -222,7 +222,7 @@ var FormBloc = React.createClass({
 
 		// Analyse or dissect
 		if (this.state.action == 'analyse') output.append('testcase_id', $("select[name=testcase_id]").val());
-		else output.append('protocol_selection', $("input[name=protocol_selection]").val());
+		else output.append('protocol_selection', $("select[name=protocol_selection]").val());
 
 		// The token or the file
 		if (!this.state.token && this.state.pcapFile) output.append('pcap_file', this.state.pcapFile[0]);
