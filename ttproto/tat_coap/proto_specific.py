@@ -31,7 +31,9 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import traceback, urllib.parse, re
+import traceback
+import urllib.parse
+import re
 
 
 from ttproto.core.lib.inet.coap import *
@@ -46,11 +48,14 @@ RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
 MAX_RETRANSMIT = 4
 
-MAX_TIMEOUT = 10 + round ((RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT)
+MAX_TIMEOUT = 10 + round(
+        (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT
+    )
 
 
-class CoAPConversation (list):
-    def __init__ (self, request_frame):
+class CoAPConversation(list):
+
+    def __init__(self, request_frame):
         assert request_frame.coap
         assert request_frame.coap.is_request() or (request_frame.coap["code"]==0 and request_frame.coap["type"]==0)
 
@@ -80,71 +85,82 @@ class CoAPConversation (list):
             return frame.dst, frame.src
 
 
-class CoAPTestcase(object):
+class CoAPTestcase:
     obsolete = False
     reverse_proxy = False
 
     __verdicts = None, "pass", "inconc", "fail", "error"
 
-    class Stop (Exception):
+    class Stop(Exception):
         pass
 
-    def __init__ (self, conversation: CoAPConversation, urifilter = False, force = False):
-        self.conversation= conversation
-        self.text   = ""
-        self.urifilter  = urifilter
-        self.force  = force
+    def __init__(
+        self,
+        conversation: CoAPConversation,
+        urifilter=None,
+        force=False
+    ):
+        self.conversation = conversation
+        self.text = ""
+        self.urifilter = urifilter
+        self.force = force
+
         # set to avoid repetitions
         self.failed_frames = set()
         self.review_frames_log = []
         try:
             self.verdict = None
             self.__current_conversation = self.conversation
-            self.__iter = iter (self.__current_conversation)
+            self.__iter = iter(self.__current_conversation)
             self.next()
 
             self.run()
 
             # ensure we're at the end of the communication
             try:
-                self.log (next (self.__iter))
-                self.setverdict ("inconc", "unexpected frame")
+                self.log(next(self.__iter))
+                self.setverdict("inconc", "unexpected frame")
             except StopIteration:
                 pass
 
         except self.Stop:
-            # ignore this testcase result if the first frame gives an inconc verdict
-            if self.verdict == "inconc" and self.frame == self.conversation[0] and not self.force:
+            # ignore this testcase result if the first frame gives an inconc
+            # verdict
+            if all((
+                self.verdict == "inconc",
+                self.frame == self.conversation[0],
+                not self.force
+            )):
                 # no match
                 self.verdict = None
 
         except Exception:
             if self.__iter:
-                self.setverdict ("error", "unhandled exception")
+                self.setverdict("error", "unhandled exception")
                 self.exception = traceback.format_exc()
-                self.log (self.exception)
+                self.log(self.exception)
 
         assert self.verdict in self.__verdicts
 
-    def next (self, optional = False):
+    def next(self, optional=False):
         try:
-            f =  next (self.__iter)
-            self.log (f)
+            f = next(self.__iter)
+            self.log(f)
             self.frame = f
             return f
         except StopIteration:
             if not optional:
                 self.__iter = None
-                self.log ("<Frame  ?>")
-                self.setverdict ("inconc", "premature end of conversation")
+                self.log("<Frame  ?>")
+                self.setverdict("inconc", "premature end of conversation")
         except TypeError:
             raise self.Stop()
 
-    def chain (self, optional = False):
+    def chain(self, optional=False):
         # ensure we're at the end of the current conversation
         try:
-            self.log (next (self.__iter))
-            self.setverdict ("inconc", "unexpected frame")
+            self.log(next(self.__iter))
+            self.setverdict("inconc", "unexpected frame")
             raise self.Stop()
         except StopIteration:
             pass
@@ -158,37 +174,40 @@ class CoAPTestcase(object):
             if optional:
                 return False
             else:
-                self.log ("<Frame  ?>")
-                self.setverdict ("inconc", "expected another CoAP conversation")
+                self.log("<Frame  ?>")
+                self.setverdict("inconc", "expected another CoAP conversation")
                 raise self.Stop()
-
 
         # Chain to the next conversation
         self.__current_conversation = c
-        self.__iter = iter (self.__current_conversation)
+        self.__iter = iter(self.__current_conversation)
 
-        self.log ("Chaining to conversation %d %s" % (c.id, c.tag))
+        self.log("Chaining to conversation %d %s" % (c.id, c.tag))
         self.next()
         if self.frame.ts < last_frame.ts:
-            self.setverdict ("inconc", "concurrency issue: frame %d was received earlier than frame %d" % (self.frame.id, last_frame.id))
+            self.setverdict(
+                "inconc",
+                "concurrency issue: frame %d was received earlier than frame %d"
+                %
+                (self.frame.id, last_frame.id)
+            )
             raise self.Stop()
 
         return True
 
-    def setverdict (self, v, text = ""):
+    def setverdict(self, v, text=""):
         if self.verdict is None and v == "inconc" and not self.force:
             raise self.Stop()
 
-        if self.__verdicts.index (v) > self.__verdicts.index (self.verdict):
+        if self.__verdicts.index(v) > self.__verdicts.index(self.verdict):
             self.verdict = v
 
-        self.log ("  [%s] %s" % (format (v, "^6s"), text))
+        self.log("  [%s] %s" % (format(v, "^6s"), text))
 
     def log(self, text):
         text = str(text)
         self.text += text if text.endswith("\n") else (text + "\n")
         self.review_frames_log.append(text)
-
 
     @contextmanager
     def nolog(self):
@@ -202,7 +221,10 @@ class CoAPTestcase(object):
     def next_skip_ack(self, optional=False):
         """Call self_next(), but skips possibly interleaved ACKs"""
         self.next(optional)
-        while (self.frame is not None) and (self.frame.coap in CoAP(type="ack", code=0)):
+        while all((
+            self.frame is not None,
+            self.frame.coap in CoAP(type="ack", code=0)
+        )):
             self.next(optional)
 
         return self.frame
@@ -891,6 +913,3 @@ class TD_COAP_TEST_GOOD_CHAINING (CoAPTestcase):
         self.match_coap ("client", CoAP (code = "get", opt=self.uri("/seg1/seg2/seg3")))
         self.next()
         self.match_coap ("server", CoAP (code = 2.05, pl = Not(b'')))
-
-
-

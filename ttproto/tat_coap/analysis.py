@@ -31,7 +31,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import sys, time, re, itertools, socket, urllib.parse, glob, inspect
+import sys, time, re, itertools, socket, urllib.parse
 from lib2to3.fixes.fix_print import parend_expr
 from os import chdir, path, getcwd
 from importlib import import_module
@@ -61,7 +61,6 @@ from . import proto_specific
 
 TOOL_VERSION = get_git_version()
 TEST_VERSION = "td-coap4_&_IRISA"
-TESTCASES_SUBDIR = '/ttproto/tat_coap/testcases'
 
 # TODO abstract classes?
 TestCase = proto_specific.CoAPTestcase
@@ -93,88 +92,6 @@ class Resolver:
             return "%s (%s)" % (name, ip_addr)
         else:
             return ip_addr
-
-
-def get_implemented_testcases(testcase_id = None, no_verbose = None):
-    """
-    :return:
-    -List of descriptions of test cases
-    Each element of the list is composed of:
-        -tc_identifier
-        -tc_objective
-        -tc_sourcecode
-    """
-
-    testcases,_= import_testcases(testcase_id)
-    ret = []
-    for tc in testcases:
-        if no_verbose:
-            ret.append((tc.__name__, tc.get_objective(), ''))
-        else:
-            ret.append((tc.__name__ ,tc.get_objective(), inspect.getsource(tc)))
-    return ret
-
-
-def import_testcases(testcase_id = None):
-    """
-    Assumptions:
-    -test cases are defined inside a file, each file contains only one test case
-    -names of the file and class must match
-    -all test cases must be named TD_*
-
-    :param testcase_id:
-
-    Imports test cases classes from TESTCASES_DIR named TD*
-    Returns:
-        tuple of list:
-        ( testcases , obsoletes )
-    """
-
-    # TODO take a list as a param and return corresponding testcases classes respecting the order.
-    SEARCH_STRING = 'td*.py'
-    tc_plugins = {}
-    testcases = []
-    obsoletes = []
-
-
-    prv_wd = getcwd()
-    chdir( prv_wd + TESTCASES_SUBDIR )
-
-    #  find files named "TD*" or testcase_id (if provided) in TESTCASES_DIR
-    dir_list = glob.glob(SEARCH_STRING)
-    modname_test_list = [path.basename(f)[:-3] for f in dir_list if path.isfile(f)]
-    modname_test_list.sort()
-
-    if testcase_id:
-        if testcase_id.lower() in modname_test_list:
-            modname_test_list = [testcase_id]
-
-            # filename not found in dir
-        else:
-            # move back to the previously dir
-            chdir(prv_wd)
-            raise FileNotFoundError("Testcase : " + testcase_id + " couldn't be found")
-
-    # import sorted list
-    for modname in modname_test_list:
-        # note that the module is always lower case and the plugin (class) is upper case (ETSI naming convention)
-        tc_plugins[modname] = getattr(import_module(modname.lower()), modname.upper())
-        if tc_plugins[modname].obsolete:
-            obsoletes.append (tc_plugins[modname])
-        else:
-            testcases.append (tc_plugins[modname])
-
-    # move back to the previously dir
-    chdir(prv_wd)
-
-    assert all (isinstance (t, type) and issubclass (t,TestCase) for t in testcases)
-
-    if obsoletes:
-        sys.stderr.write ("%d obsolete testcases:\n" % len (obsoletes))
-        for tc_type in obsoletes:
-            sys.stderr.write ("\t%s\n" % tc_type.__name__)
-
-    return testcases , obsoletes
 
 
 def analyse_file (filename):
@@ -234,98 +151,6 @@ def analyse_file (filename):
 
 reg_frame = re.compile ("<Frame  *(\d+):")
 reg_verdict = re.compile (r"    \[ *([a-z]+) *\]")
-
-
-# TODO make unitest for analyse!
-def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex = None, profile = "client", verbose=False):
-    """
-    :param filename:
-    :param urifilter:
-    :param exceptions:
-    :param regex:
-    :param profile:
-    :param verbose: boolean, if true method returns verdict description (which may be very verbose)
-    :return: tuple
-
-    example:
-    [('TD_COAP_CORE_03', 'fail', [21, 22]), 'verdict description']
-
-    NOTES:
-     - allows multiple ocurrences of the testcase, returns as verdict:
-            - fail: if at least one on the occurrences failed
-            - inconc : if all ocurrences returned a inconv verdict
-            - pass: all occurrences are inconc or at least one is PASS and the rest is inconc
-    """
-    testcases, _ = import_testcases(regex)
-    my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
-
-    if regex is not None:
-        try:
-            re_regex = re.compile (regex, re.I)
-        except Exception as e:
-            return "Error: regular expression %r is invalid (%s)" % (regex, e)
-
-    my_testcases = list (filter ((lambda t: re_regex.search(t.__name__)), my_testcases))
-
-    if not my_testcases:
-        return "regular expression %r did not yield any testcase" % regex
-    force = len (my_testcases) == 1
-
-    with Data.disable_name_resolution():
-        frames = Frame.create_list (PcapReader (filename))
-
-        # malformed frames
-        malformed = list (filter ((lambda f: f.exc), frames))
-        tracker = Tracker (frames)
-        conversations = tracker.conversations
-        ignored = tracker.ignored_frames
-
-
-        results = []
-
-        conversations_by_pair = proto_specific.group_conversations_by_pair(conversations)
-        results_by_pair = {}
-        for pair, conversations in conversations_by_pair.items():
-            pair_results = []
-            for tc_type in my_testcases:
-                tc_results = []
-
-                # we run the testcase for each conversation, meaning that one type of TC can have more than one result!
-                for tr in conversations:
-                    tc = tc_type(tr, urifilter, force)
-                    if tc.verdict:
-
-                        tc_results.append(tc)
-
-                        # remember the exception
-                        if hasattr(tc, "exception") and exceptions is not None:
-                            exceptions.append(tc)
-
-                pair_results.append(tc_results)
-
-        verdicts = None, "inconc", "pass", "fail", "error"
-        for tc_type, tc_results in filter(lambda x: regex in x[0].__name__, zip(my_testcases, pair_results)):
-            review_frames=[]
-            v = 0
-            for tc in tc_results:
-                # all the failed frames for a TC, even if they are from different conversations!
-                review_frames = tc.failed_frames
-
-                new_v = verdicts.index(tc.verdict)
-                if new_v > v:
-                    v = new_v
-
-            v_txt = verdicts[v]
-            if v_txt is None:
-                v_txt = "none"
-
-            if verbose:
-                results.append( (type(tc).__name__, v_txt, list(review_frames),tc.text))
-            else:
-                results.append((type(tc).__name__, v_txt, list(review_frames),''))
-            # TODO clean list(review_frames)  tc.review_frames_log , tc.review_frames_log in module proto_specific
-
-        return results
 
 
 def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None, regex = None, profile = "client"):

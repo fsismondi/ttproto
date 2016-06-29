@@ -52,6 +52,20 @@ __all__ = [
 ]
 
 
+def is_protocol(arg):
+    """
+    Check if a parameter is a valid protocol
+
+    :return: True if a valid protocol, False if not
+    :rtype: boolean
+    """
+    return all((
+        arg is not None,
+        type(arg) == type,
+        arg in Dissector.get_implemented_protocols()
+    ))
+
+
 class Frame:
     """
         Class to represent a frame object
@@ -86,20 +100,22 @@ class Frame:
         self.__summary = None
 
     @typecheck
-    def __contains__(self, protocol: type) -> bool:
+    def __contains__(self, protocol: is_protocol) -> bool:
         """
         Put the 'in' keyword to check if a protocol is contained in frame
 
         :param protocol:  Protocol to check
         :type protocol: type
 
+        :raises TypeError: If protocol is not a valid protocol class
+
         :return: True if the protocol is in the protocol stack of the frame
         :rtype: bool
         """
 
         # Check the protocol is one entered
-        if protocol not in Dissector.get_implemented_protocols():
-            raise TypeError(protocol.__name__ + ' is not a protocol class')
+        # if protocol not in Dissector.get_implemented_protocols():
+        #     raise TypeError(protocol.__name__ + ' is not a protocol class')
 
         # Get current value
         value = self.__msg.get_value()
@@ -155,7 +171,7 @@ class Frame:
     def filter_frames(
         cls,
         frames: list,
-        protocol: type
+        protocol: is_protocol
     ) -> list:
         """
         Allow to filter frames on a protocol
@@ -164,6 +180,9 @@ class Frame:
         :param protocol:  Protocol class for filtering purposes
         :type frames: [Frame]
         :type protocol: type
+
+        :raises TypeError: If protocol is not a protocol class
+                           or if the list contains a non Frame object
 
         :return: A list of frames that are filtered
         :rtype: [Frame]
@@ -286,6 +305,52 @@ class Frame:
             self.__summary = (self.__id, self.__msg.summary())
         return self.__summary
 
+    @typecheck
+    def is_malformed(self) -> bool:
+        """
+        Check if a frame is malformed or not
+
+        :return: True if this frame is malformed, False if not
+        :rtype: bool
+        """
+        return (self.__error is not None)
+
+    @typecheck
+    def get_layer(self, layer: is_protocol) -> Message:
+        """
+        Get the requested layer for this frame
+        """
+
+        # Check that the layer is a correct protocol
+        if layer not in Dissector.get_implemented_protocols():
+            raise TypeError(layer.__name__ + ' is not a protocol class')
+
+        # Get current value
+        value = self.__msg.get_value()
+
+        # Parse the whole protocol stack
+        while True:
+
+            # If we arrive at the correct layer
+            if isinstance(value, layer):
+                return value
+
+            # Go to the next layer
+            try:
+                value = value['pl']
+                continue
+
+            # If none found, leave the loop
+            except (KeyError, TypeError):
+                pass
+
+            # Layer not found into this frame
+            raise LayerNotFoundError(
+                'Layer named %s not found in this frame'
+                %
+                layer.__name__
+            )
+
 
 class Dissector:
     """
@@ -341,13 +406,16 @@ class Dissector:
     @typecheck
     def summary(
         self,
-        protocol: optional(type) = None
+        protocol: optional(is_protocol) = None
     ) -> list_of((int, str)):
         """
         The summaries function to get the summary of frames
 
         :param protocol: Protocol class for filtering purposes
         :type protocol: type
+
+        :raises TypeError: If protocol is not a protocol class
+        :raises PcapError: If the provided file isn't a valid pcap file
 
         :return: Basic informations about frames like the underlying example
         :rtype: [(int, str)]
@@ -366,11 +434,11 @@ class Dissector:
         """
 
         # Check the protocol is one entered
-        if all((
-            protocol is not None,
-            protocol not in Dissector.get_implemented_protocols()
-        )):
-            raise TypeError(protocol.__name__ + ' is not a protocol class')
+        # if all((
+        #     protocol is not None,
+        #     protocol not in Dissector.get_implemented_protocols()
+        # )):
+        #     raise TypeError(protocol.__name__ + ' is not a protocol class')
 
         # Prepare the response object
         response = []
@@ -395,13 +463,19 @@ class Dissector:
     @typecheck
     def dissect(
         self,
-        protocol: optional(type) = None
+        protocol: optional(is_protocol) = None
     ) -> list_of(OrderedDict):
         """
         The dissect function to dissect a pcap file into list of frames
 
-        :param protocol: protocol class for filtering purposes
-        :return: [OrderedDict]
+        :param protocol: Protocol class for filtering purposes
+        :type protocol: type
+
+        :raises TypeError: If protocol is not a protocol class
+        :raises PcapError: If the provided file isn't a valid pcap file
+
+        :return: A list of Frame represented as API's dict form
+        :rtype: [OrderedDict]
         """
 
         # Check the protocol is one entered
@@ -430,6 +504,11 @@ class Dissector:
 
         # Then return the frame list
         return frame_list
+
+
+class LayerNotFoundError(Exception):
+    pass
+
 
 if __name__ == "__main__":
     # dis = Dissector('tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap')

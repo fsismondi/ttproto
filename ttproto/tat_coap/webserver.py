@@ -54,6 +54,7 @@ from . import analysis
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
+from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Dissector
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 from ttproto.core.typecheck import *

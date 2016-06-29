@@ -66,7 +66,9 @@ class PcapReader:
         self.__decode_type = get_type(decode_type)
 
     def __del__(self):
-        self.__pcap_file.close()
+        # Close the file only if it was opened before
+        if hasattr(self, '__pcap_file'):
+            self.__pcap_file.close()
 
     def next(self):
 
