@@ -27,3 +27,8 @@ var/
 log/
 tmp/
 reports/
+
+# Sphinx documentation generation
+sphinx-doc
+sphinx-doc-src
+!sphinx-doc-src/conf.py
