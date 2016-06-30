@@ -152,7 +152,7 @@ class Frame:
 
     @classmethod
     @typecheck
-    def create_list(cls, pcap_frames: PcapReader) -> list:
+    def create_list(cls, pcap_frames: PcapReader) -> list_of(this_class):
         """
         The dissector tool initialisation which receives a PcapReader object
 
@@ -170,9 +170,9 @@ class Frame:
     @typecheck
     def filter_frames(
         cls,
-        frames: list,
+        frames: list_of(this_class),
         protocol: is_protocol
-    ) -> list:
+    ) -> list_of(this_class):
         """
         Allow to filter frames on a protocol
 

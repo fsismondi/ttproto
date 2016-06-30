@@ -85,6 +85,7 @@ class Analyzer:
         :param testcase_id:
 
         :return: List of descriptions of test cases
+                 1st list is the correct ones, the 2nd is the obsoletes one
                  Each element of the list is composed of:
                      -tc_identifier
                      -tc_objective

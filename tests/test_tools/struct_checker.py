@@ -3,6 +3,8 @@ import requests
 import base64
 import hashlib
 
+from collections import OrderedDict
+
 
 class StructureChecker(unittest.TestCase):
 
@@ -179,3 +181,46 @@ class StructureChecker(unittest.TestCase):
         self.assertGreaterEqual(len(el['review_frames']), 0)
         for frame in el['review_frames']:
             self.check_is_int_real(frame)
+
+    def check_tc_from_analyzer(self, el):
+
+        # Check that we receive a tuple(test_cases, obsoletes)
+        self.assertEqual(type(el), tuple)
+        self.assertEqual(len(el), 2)
+
+        # Check for each test case type
+        for tc_type in el:
+            self.assertEqual(type(tc_type), list)
+
+            # Get each element of this list as a tuple
+            for tc_tuple in tc_type:
+                self.assertEqual(type(tc_tuple), tuple)
+                self.assertEqual(len(tc_tuple), 3)
+
+                # For each element of this, it should be a string
+                for tuple_el in tc_tuple:
+                    self.assertEqual(type(tuple_el), str)
+
+    def check_tc_from_webserver(self, el):
+
+        # Webserver function return an ordered dict
+        self.assertEqual(type(el), OrderedDict)
+
+        # For each couple key / value
+        for key in el:
+
+            # Get the value
+            value = el[key]
+
+            # Check that the key is a name and value a dict
+            self.assertEqual(type(key), str)
+            self.assertEqual(type(value), OrderedDict)
+
+            # Check the fields of value
+            self.assertEqual(len(value), 2)
+            self.assertIn('tc_basic', value)
+            self.assertIn('tc_implementation', value)
+
+            # Check the two fields then
+            self.check_tc_basic(value['tc_basic'])
+            self.check_tc_implementation(value['tc_implementation'])

@@ -81,7 +81,7 @@ TOKEN_LENGTH = 28
 PROTOCOLS = OrderedDict()
 
 # The cache for the test cases
-TEST_CASES = OrderedDict()
+# TEST_CASES = OrderedDict()
 
 # ######################## End of API part ######################### #
 
@@ -161,7 +161,7 @@ def html_changelog(g):
 @typecheck
 def get_test_cases(
     testcase_id: optional(str) = None
-) -> either(OrderedDict, type(None)):
+) -> OrderedDict:
     """
     Function to get the test cases from files if not initialized
 
@@ -181,41 +181,72 @@ def get_test_cases(
     """
 
     # Get the global variable to store the test cases
-    global TEST_CASES
+    # global TEST_CASES
 
-    # If empty for the moment
-    if len(TEST_CASES) == 0:
+    # # If empty for the moment
+    # if len(TEST_CASES) == 0:
 
-        # Own function to clean the datas received
-        raw_test_cases = analysis.get_implemented_testcases()
+    #     # Own function to clean the datas received
+    #     raw_test_cases = Analyzer('tat_coap').get_implemented_testcases()
 
-        # Build the clean results list
-        for raw_tc in raw_test_cases:
+    #     # Build the clean results list
+    #     for raw_tc in raw_test_cases:
 
-            tc_basic = OrderedDict()
-            tc_basic['_type'] = 'tc_basic'
-            tc_basic['id'] = raw_tc[0]
-            tc_basic['objective'] = raw_tc[1]
+    #         tc_basic = OrderedDict()
+    #         tc_basic['_type'] = 'tc_basic'
+    #         tc_basic['id'] = raw_tc[0]
+    #         tc_basic['objective'] = raw_tc[1]
 
-            tc_implementation = OrderedDict()
-            tc_implementation['_type'] = 'tc_implementation'
-            tc_implementation['implementation'] = raw_tc[2]
+    #         tc_implementation = OrderedDict()
+    #         tc_implementation['_type'] = 'tc_implementation'
+    #         tc_implementation['implementation'] = raw_tc[2]
 
-            # Tuple, basic + implementation
-            TEST_CASES[raw_tc[0]] = OrderedDict()
-            TEST_CASES[raw_tc[0]]['tc_basic'] = tc_basic
-            TEST_CASES[raw_tc[0]]['tc_implementation'] = tc_implementation
+    #         # Tuple, basic + implementation
+    #         TEST_CASES[raw_tc[0]] = OrderedDict()
+    #         TEST_CASES[raw_tc[0]]['tc_basic'] = tc_basic
+    #         TEST_CASES[raw_tc[0]]['tc_implementation'] = tc_implementation
 
-    # If only one asked
-    if testcase_id is not None:
-        if testcase_id in TEST_CASES:
-            return TEST_CASES[testcase_id]
-        else:
-            return None
+    # # If only one asked
+    # if testcase_id is not None:
+    #     if testcase_id in TEST_CASES:
+    #         return TEST_CASES[testcase_id]
+    #     else:
+    #         return None
 
-    # If everyone asked
-    else:
-        return TEST_CASES
+    # # If everyone asked
+    # else:
+    #     return TEST_CASES
+
+    # New way by analyzer tool
+    test_cases = OrderedDict()
+    raw_tcs = Analyzer('tat_coap').get_implemented_testcases(testcase_id)
+
+    # Get only the correct ones (not the obsoletes)
+    raw_tcs = raw_tcs[0]
+
+    # Build the clean results list
+    for raw_tc in raw_tcs:
+
+        tc_basic = OrderedDict()
+        tc_basic['_type'] = 'tc_basic'
+        tc_basic['id'] = raw_tc[0]
+        tc_basic['objective'] = raw_tc[1]
+
+        tc_implementation = OrderedDict()
+        tc_implementation['_type'] = 'tc_implementation'
+        tc_implementation['implementation'] = raw_tc[2]
+
+        # Tuple, basic + implementation
+        test_cases[raw_tc[0]] = OrderedDict()
+        test_cases[raw_tc[0]]['tc_basic'] = tc_basic
+        test_cases[raw_tc[0]]['tc_implementation'] = tc_implementation
+
+    # If a single element is asked
+    if testcase_id:
+        test_cases = test_cases[raw_tcs[0][0]]
+
+    # Return the results
+    return test_cases
 
 
 @typecheck
@@ -480,7 +511,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
             # Get the list of test cases
-            test_cases = get_test_cases()
+            try:
+                test_cases = get_test_cases()
+            except FileNotFoundError as fnfe:
+                self.api_error(
+                    'Problem during fetching the test cases list:\n' + fnfe
+                )
+                return
+
             clean_test_cases = []
             for tc in test_cases:
                 clean_test_cases.append(test_cases[tc]['tc_basic'])
@@ -536,8 +574,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # Get the test case
-            test_case = get_test_cases(params['testcase_id'][0])
-            if test_case is None:
+            try:
+                test_case = get_test_cases(params['testcase_id'][0])
+            except FileNotFoundError:
                 self.api_error(
                     'Test case %s not found' % params['testcase_id'][0]
                 )
@@ -981,8 +1020,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             # Try to get the test case
-            test_case = get_test_cases(testcase_id)
-            if test_case is None:
+            try:
+                test_case = get_test_cases(testcase_id)
+            except FileNotFoundError:
                 self.api_error('Test case %s not found' % testcase_id)
                 return
 

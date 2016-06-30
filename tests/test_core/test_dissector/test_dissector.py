@@ -2,6 +2,7 @@ import unittest
 
 from ttproto.utils.pure_pcapy import PcapError
 from ttproto.core.dissector import Frame, Dissector
+from ttproto.core.typecheck3000 import InputParameterError
 from ttproto.core.packet import PacketValue
 from ttproto.core.lib.inet.coap import CoAP
 from ttproto.core.lib.inet.meta import InetPacketValue
@@ -102,13 +103,13 @@ class DissectorTestCase(unittest.TestCase):
     def test_summary_with_filtering_on_none_type(self):
 
         # Get and check the summary
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             summary = self.dissector.summary(type(None))
 
     def test_summary_with_filtering_on_not_a_protocol(self):
 
         # Get and check the summary
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             summary = self.dissector.summary(Frame)
 
     def test_summary_with_wrong_pcap_file(self):
@@ -168,13 +169,13 @@ class DissectorTestCase(unittest.TestCase):
     def test_dissect_with_filtering_on_none_type(self):
 
         # Get and check the dissect
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             dissect = self.dissector.dissect(type(None))
 
     def test_dissect_with_filtering_on_not_a_protocol(self):
 
         # Get and check the dissect
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             dissect = self.dissector.dissect(Frame)
 
     def test_dissect_with_wrong_pcap_file(self):

@@ -210,7 +210,7 @@ class FrameTestCase(unittest.TestCase):
         for frame in self.frames:
 
             # Expect the exception
-            with self.assertRaises(TypeError):
+            with self.assertRaises(InputParameterError):
                 check = Frame in frame
 
     def test___contains__higher_classes(self):
@@ -219,15 +219,15 @@ class FrameTestCase(unittest.TestCase):
         for frame in self.frames:
 
             # Expect the exception
-            with self.assertRaises(TypeError):
+            with self.assertRaises(InputParameterError):
                 check = InetPacketValue in frame
 
             # Expect the exception
-            with self.assertRaises(TypeError):
+            with self.assertRaises(InputParameterError):
                 check = PacketValue in frame
 
             # Expect the exception
-            with self.assertRaises(TypeError):
+            with self.assertRaises(InputParameterError):
                 check = Value in frame
 
     def test___contains__options_not_a_protocol(self):
@@ -236,7 +236,7 @@ class FrameTestCase(unittest.TestCase):
         for frame in self.frames:
 
             # Expect the exception
-            with self.assertRaises(TypeError):
+            with self.assertRaises(InputParameterError):
                 check = CoAPOptionLocationQuery in frame
 
     # ##### filter_frames
@@ -265,7 +265,7 @@ class FrameTestCase(unittest.TestCase):
     def test_filter_frames_none_type(self):
 
         # Filter on none protocol
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             filtered = Frame.filter_frames(self.frames, type(None))
 
     def test_filter_frames_none(self):
@@ -277,22 +277,22 @@ class FrameTestCase(unittest.TestCase):
     def test_filter_frames_not_a_protocol(self):
 
         # Filter on each protocol
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             filtered = Frame.filter_frames(self.frames, Frame)
 
     def test_filter_frames_higher_classes(self):
 
         # Filter on each protocol
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             filtered = Frame.filter_frames(self.frames, InetPacketValue)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             filtered = Frame.filter_frames(self.frames, PacketValue)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             filtered = Frame.filter_frames(self.frames, Value)
 
     def test_filter_frames_options_not_a_protocol(self):
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(InputParameterError):
             filtered = Frame.filter_frames(
                 self.frames,
                 CoAPOptionLocationQuery

@@ -5,6 +5,8 @@ import os
 import threading
 import requests
 
+from collections import OrderedDict
+
 from ttproto.tat_coap import webserver
 from ttproto.tat_coap.webserver import *
 from tests.test_tools.struct_checker import StructureChecker
@@ -112,31 +114,30 @@ class WebserverTestCase(unittest.TestCase):
     # ##### get_test_cases(testcase_id=None)
     def test_get_test_cases_all_selected(self):
         test_cases = get_test_cases()
-        self.assertIsInstance(test_cases, dict)
         self.assertGreater(len(test_cases), 0)
-        self.assertIsInstance(test_cases, dict)
+        self.STRUCT_CHECKER.check_tc_from_webserver(test_cases)
 
     def test_get_test_cases_all_selected_with_none_value(self):
         test_cases = get_test_cases(None)
-        self.assertIsInstance(test_cases, dict)
         self.assertGreater(len(test_cases), 0)
-        self.assertIsInstance(test_cases, dict)
+        self.STRUCT_CHECKER.check_tc_from_webserver(test_cases)
 
     def test_get_test_cases_only_one_existing_test_case(self):
         test_case = get_test_cases(self.EXISTING_TEST_CASE)
-        self.assertIsInstance(test_case, dict)
+        self.assertEqual(type(test_case), OrderedDict)
         self.assertEqual(len(test_case), 2)
 
-        # Check that we received a correct element
+        # Check the fields of value
         self.assertIn('tc_basic', test_case)
-        self.STRUCT_CHECKER.check_tc_basic(test_case['tc_basic'])
-
         self.assertIn('tc_implementation', test_case)
+
+        # Check the two fields then
+        self.STRUCT_CHECKER.check_tc_basic(test_case['tc_basic'])
         self.STRUCT_CHECKER.check_tc_implementation(test_case['tc_implementation'])
 
     def test_get_test_cases_only_one_unknown_test_case(self):
-        test_case = get_test_cases(self.UNKNOWN_TEST_CASE)
-        self.assertIsNone(test_case)
+        with self.assertRaises(FileNotFoundError):
+            test_cases = get_test_cases(self.UNKNOWN_TEST_CASE)
 
     # -------------------------------------------------------------------------------
 

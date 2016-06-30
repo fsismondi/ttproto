@@ -67,8 +67,8 @@ class PcapReader:
 
     def __del__(self):
         # Close the file only if it was opened before
-        if hasattr(self, '__pcap_file'):
-            self.__pcap_file.close()
+        # if hasattr(self, '__pcap_file'):
+        self.__pcap_file.close()
 
     def next(self):
 
