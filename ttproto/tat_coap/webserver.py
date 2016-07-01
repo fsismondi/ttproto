@@ -50,7 +50,6 @@ import requests
 import email.feedparser
 import email.message
 
-from . import analysis
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
@@ -80,8 +79,6 @@ TOKEN_LENGTH = 28
 # The different implemented protocols
 PROTOCOLS = OrderedDict()
 
-# The cache for the test cases
-# TEST_CASES = OrderedDict()
 
 # ######################## End of API part ######################### #
 
@@ -815,7 +812,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             g.h1("IRISA CoAP interoperability Testing Tool")
 
             g.b("Tool version: ")
-            g("%s" % analysis.TOOL_VERSION)
+            # g("%s" % Analyzer.TOOL_VERSION)
             with g.br():  # FIXME: bug generator
                 pass
             with g.form(method="POST", action="submit", enctype="multipart/form-data"):
@@ -1062,11 +1059,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     return
 
             # Get the result of the analysis
-            analysis_results = analysis.analyse_file_rest_api(
+            analysis_results = Analyzer('tat_coap').analyse(
                                 pcap_path,
-                                False,
-                                None,
                                 testcase_id,
+                                None,
+                                None,
                                 'client',
                                 True
                             )
@@ -1075,17 +1072,17 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # self.log_message("Verdict description is : %s", analysis_results[0][3])
             # self.log_message("###############################################")
 
+            # print(analysis_results)
+
             # Error for some test cases that the analysis doesn't manage to get
             try:
-                assert type(analysis_results) == list
-                assert len(analysis_results) == 1  # >= if we can receive more
-                assert type(analysis_results[0]) == tuple
-                assert len(analysis_results[0]) == 4
-                assert type(analysis_results[0][0]) == str
-                assert type(analysis_results[0][1]) == str
-                assert type(analysis_results[0][2]) == list
-                assert type(analysis_results[0][3]) == str
-                assert analysis_results[0][0] == test_case['tc_basic']['id']
+                assert type(analysis_results) == tuple
+                assert len(analysis_results) == 4
+                assert type(analysis_results[0]) == str
+                assert type(analysis_results[1]) == str
+                assert type(analysis_results[2]) == list
+                assert type(analysis_results[3]) == str
+                assert analysis_results[0] == test_case['tc_basic']['id']
             except AssertionError:
                 self.api_error(
                     'Problem with the analyse of TC %s, wrong result received'
@@ -1097,9 +1094,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Only take the first
             verdict = OrderedDict()
             verdict['_type'] = 'verdict'
-            verdict['verdict'] = analysis_results[0][1]
-            verdict['description'] = analysis_results[0][3]
-            verdict['review_frames'] = analysis_results[0][2]
+            verdict['verdict'] = analysis_results[1]
+            verdict['description'] = analysis_results[3]
+            verdict['review_frames'] = analysis_results[2]
 
             token_res = OrderedDict()
             token_res['_type'] = 'token'
@@ -1286,111 +1283,112 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
         # ######################## End of API part ######################### #
 
-        elif (self.path == "/submit"):
+        # DEPRECATED
+        # elif (self.path == "/submit"):
 
-            if os.fork():
-                # close the socket right now(because the
-                # requesthandler may do a shutdown(), which triggers a
-                # SIGCHLD in the child process)
-                self.connection.close()
-                return
+        #     if os.fork():
+        #         # close the socket right now(because the
+        #         # requesthandler may do a shutdown(), which triggers a
+        #         # SIGCHLD in the child process)
+        #         self.connection.close()
+        #         return
 
-            parser = BytesFeedParser()
-            ct = self.headers.get("Content-Type")
-            if not ct.startswith("multipart/form-data;"):
-                self.send_error(400)
-                return
+        #     parser = BytesFeedParser()
+        #     ct = self.headers.get("Content-Type")
+        #     if not ct.startswith("multipart/form-data;"):
+        #         self.send_error(400)
+        #         return
 
-            parser.feed(bytes("Content-Type: %s\r\n\r\n" % ct, "ascii"))
-            parser.feed(self.rfile.read(int(self.headers['Content-Length'])))
-            msg = parser.close()
+        #     parser.feed(bytes("Content-Type: %s\r\n\r\n" % ct, "ascii"))
+        #     parser.feed(self.rfile.read(int(self.headers['Content-Length'])))
+        #     msg = parser.close()
 
-            # agree checkbox is selected
-            for part in msg.get_payload():
-                if isinstance(part, email.message.Message):
-                    disposition = part.get("content-disposition")
-                    if disposition and 'name="agree"' in disposition:
-                        agree = True
-                        break
-            else:
-                agree = False
+        #     # agree checkbox is selected
+        #     for part in msg.get_payload():
+        #         if isinstance(part, email.message.Message):
+        #             disposition = part.get("content-disposition")
+        #             if disposition and 'name="agree"' in disposition:
+        #                 agree = True
+        #                 break
+        #     else:
+        #         agree = False
 
-            # urifilter checkbox is selected
-            for part in msg.get_payload():
-                if isinstance(part, email.message.Message):
-                    disposition = part.get("content-disposition")
-                    if disposition and 'name="urifilter"' in disposition:
-                        urifilter = True
-                        break
-            else:
-                urifilter = False
+        #     # urifilter checkbox is selected
+        #     for part in msg.get_payload():
+        #         if isinstance(part, email.message.Message):
+        #             disposition = part.get("content-disposition")
+        #             if disposition and 'name="urifilter"' in disposition:
+        #                 urifilter = True
+        #                 break
+        #     else:
+        #         urifilter = False
 
-            # content of the regex box
-            for part in msg.get_payload():
-                if isinstance(part, email.message.Message):
-                    disposition = part.get("content-disposition")
-                    if disposition and 'name="regex"' in disposition:
-                        regex = part.get_payload()
-                        if not regex:
-                            regex = None
-                        break
-            else:
-                regex = None
+        #     # content of the regex box
+        #     for part in msg.get_payload():
+        #         if isinstance(part, email.message.Message):
+        #             disposition = part.get("content-disposition")
+        #             if disposition and 'name="regex"' in disposition:
+        #                 regex = part.get_payload()
+        #                 if not regex:
+        #                     regex = None
+        #                 break
+        #     else:
+        #         regex = None
 
-            # profile radio buttons
-            for part in msg.get_payload():
-                if isinstance(part, email.message.Message):
-                    disposition = part.get("content-disposition")
-                    if disposition and 'name="profile"' in disposition:
-                        profile = part.get_payload()
-                        break
-            else:
-                profile = "client"
+        #     # profile radio buttons
+        #     for part in msg.get_payload():
+        #         if isinstance(part, email.message.Message):
+        #             disposition = part.get("content-disposition")
+        #             if disposition and 'name="profile"' in disposition:
+        #                 profile = part.get_payload()
+        #                 break
+        #     else:
+        #         profile = "client"
 
-            # receive the pcap file
-            for part in msg.get_payload():
-                if isinstance(part, email.message.Message):
-                    disposition = part.get("content-disposition")
-                    if disposition and 'name="file"' in disposition:
-                        mo = re.search('filename="([^"]*)"', disposition)
+        #     # receive the pcap file
+        #     for part in msg.get_payload():
+        #         if isinstance(part, email.message.Message):
+        #             disposition = part.get("content-disposition")
+        #             if disposition and 'name="file"' in disposition:
+        #                 mo = re.search('filename="([^"]*)"', disposition)
 
-                        orig_filename = mo.group(1) if mo else None
+        #                 orig_filename = mo.group(1) if mo else None
 
-                        timestamp = time.strftime("%y%m%d_%H%M%S")
+        #                 timestamp = time.strftime("%y%m%d_%H%M%S")
 
-                        pcap_file = os.path.join(
-                                (DATADIR if agree else TMPDIR),
-                                "%s_%04d.dump" % (timestamp, job_id)
-                        )
-                        self.log_message("uploading %s(urifilter=%r, regex=%r)", pcap_file, urifilter, regex)
-                        with open(pcap_file, "wb") as fd:
-                            # FIXME: using hidden API(._payload) because it seems that there is something broken with the encoding when getting the payload using .get_payload()
-                            fd.write(part._payload.encode("ascii", errors="surrogateescape"))
+        #                 pcap_file = os.path.join(
+        #                         (DATADIR if agree else TMPDIR),
+        #                         "%s_%04d.dump" % (timestamp, job_id)
+        #                 )
+        #                 self.log_message("uploading %s(urifilter=%r, regex=%r)", pcap_file, urifilter, regex)
+        #                 with open(pcap_file, "wb") as fd:
+        #                     # FIXME: using hidden API(._payload) because it seems that there is something broken with the encoding when getting the payload using .get_payload()
+        #                     fd.write(part._payload.encode("ascii", errors="surrogateescape"))
 
-                        break
-            else:
-                self.send_error(400)
-                return
+        #                 break
+        #     else:
+        #         self.send_error(400)
+        #         return
 
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html;charset=utf-8")
-            self.end_headers()
+        #     self.send_response(200)
+        #     self.send_header("Content-Type", "text/html;charset=utf-8")
+        #     self.end_headers()
 
-            out = UTF8Wrapper(self.wfile)
+        #     out = UTF8Wrapper(self.wfile)
 
-            self.wfile.flush()
+        #     self.wfile.flush()
 
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+        #     os.dup2(self.wfile.fileno(), sys.stdout.fileno())
 
-            try:
-                exceptions = []
-                analysis.analyse_file_html(pcap_file, orig_filename, urifilter, exceptions, regex, profile)
-                for tc in exceptions:
-                    self.log_message("exception in %s", type(tc).__name__, append=tc.exception)
-            except pure_pcapy.PcapError:
-                print("Bad file format!")
+        #     try:
+        #         exceptions = []
+        #         analysis.analyse_file_html(pcap_file, orig_filename, urifilter, exceptions, regex, profile)
+        #         for tc in exceptions:
+        #             self.log_message("exception in %s", type(tc).__name__, append=tc.exception)
+        #     except pure_pcapy.PcapError:
+        #         print("Bad file format!")
 
-            shutdown()
+        #     shutdown()
 
         # If we didn't manage to bind the request
         else:

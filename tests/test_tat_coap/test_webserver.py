@@ -26,9 +26,6 @@ class WebserverTestCase(unittest.TestCase):
     TAT_API_URL = 'http://127.0.0.1:' + str(SERVER_PORT)
     FILES_DIR = 'tests/test_files'
 
-    # Accepted values for some fields
-    VERDICT_VALUES = [None, "inconc", "pass", "fail", "error"]
-
     # Some dummy values
     EXISTING_TEST_CASE = 'TD_COAP_CORE_01'
     UNKNOWN_TEST_CASE = 'UNKNOWN_TEST_CASE'
@@ -1345,6 +1342,16 @@ class WebserverTestCase(unittest.TestCase):
             data=datas,
             files=files
         )
+
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write(str(resp.content))
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write('#######################"')
+        # sys.stderr.write('#######################"')
 
         # Close the file
         files['pcap_file'].close()

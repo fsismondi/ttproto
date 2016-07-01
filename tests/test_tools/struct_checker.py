@@ -50,6 +50,7 @@ class StructureChecker(unittest.TestCase):
         'description': str,
         'review_frames': list
     }
+    VERDICT_VALUES = [None, "inconc", "pass", "fail", "error"]
 
     # #################### Utilities functions #########################
 

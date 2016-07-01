@@ -37,7 +37,6 @@ import re
 import socket
 import glob
 import inspect
-import itertools
 
 from collections import OrderedDict
 from importlib import import_module

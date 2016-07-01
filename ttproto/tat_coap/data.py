@@ -31,7 +31,10 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+import itertools
+
 from ttproto.core.data import Template, Mismatch
+from ttproto.core.lib.inet.all import *
 
 
 # #################### CoAP specific Templates #########################
