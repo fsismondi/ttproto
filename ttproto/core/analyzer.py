@@ -70,6 +70,29 @@ class Analyzer:
 
     @typecheck
     def __init__(self, test_env: str):
+        """
+        Initialization function for the analyzer, just fetch the test env
+        in which we will get the test description's implementation
+
+        :param test_env: The test environment
+        :type test_env: str
+
+        :raises NotADirectoryError: If the test environemnt isn't found
+        """
+
+        # Check the test_env passed
+        test_dir = path.join(
+            TTPROTO_DIR,
+            test_env,
+            TESTCASES_SUBDIR
+        )
+        if not path.isdir(test_dir):
+            raise NotADirectoryError(
+                'The test environment wasn\'t found at %s'
+                %
+                test_dir
+            )
+
         # LoggedObject.__init__(self)
         self.__test_env = test_env
 
@@ -92,7 +115,7 @@ class Analyzer:
                      -tc_sourcecode
         :rtype: ([(str, str, str)], [(str, str, str)])
 
-        :raises FileNotFoundError: If the test env of the tc is not found
+        :raises FileNotFoundError: If the test case is not found
 
         .. note::
                 Assumptions v1:
@@ -185,8 +208,8 @@ class Analyzer:
                 testcases.append((tc.__name__, tc.get_objective(), more_info))
 
         # Log a message if obsolete tcs are found
-        if obsoletes:
-            self.log(EventObsoleteTCFound, obsoletes)
+        # if obsoletes:
+        #     self.log(EventObsoleteTCFound, obsoletes)
 
         # Return the final value
         return (testcases, obsoletes)
@@ -450,24 +473,24 @@ class EventFileNotFound(metaclass=LogEventClass):
 
 
 if __name__ == "__main__":
-    # print(Analyzer('tat_coap').get_implemented_testcases())
-    # print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_24'))
-    # try:
-    #     print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42'))
-    # except FileNotFoundError as e:
-    #     print(e)
-    # try:
-    #     print(Analyzer('unknown').get_implemented_testcases())
-    # except FileNotFoundError as e:
-    #     print(e)
-    # try:
-    #     print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
-    # except FileNotFoundError as e:
-    #     print(e)
-    print(
-        Analyzer('tat_coap').analyse(
-            'tests/test_dumps/TD_COAP_CORE_01_PASS.pcap',
-            'TD_COAP_CORE_01'
-        )
-    )
+    print(Analyzer('tat_coap').get_implemented_testcases())
+    print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_24'))
+    try:
+        print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42'))
+    except FileNotFoundError as e:
+        print(e)
+    try:
+        print(Analyzer('unknown').get_implemented_testcases())
+    except NotADirectoryError as e:
+        print(e)
+    try:
+        print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
+    except NotADirectoryError as e:
+        print(e)
+    # print(
+    #     Analyzer('tat_coap').analyse(
+    #         'tests/test_dumps/TD_COAP_CORE_01_PASS.pcap',
+    #         'TD_COAP_CORE_01'
+    #     )
+    # )
     pass

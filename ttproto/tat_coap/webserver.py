@@ -173,49 +173,7 @@ def get_test_cases(
 
     :return: The implemented test cases
     :rtype: OrderedDict
-
-    .. warnings:: If we ask for only one test case directly from the analysis
-    function, it returns an ImportError when it found the TC, it seems that it
-    is trying to import a module with its name
-    .. seealso:: analysis:220
     """
-
-    # Get the global variable to store the test cases
-    # global TEST_CASES
-
-    # # If empty for the moment
-    # if len(TEST_CASES) == 0:
-
-    #     # Own function to clean the datas received
-    #     raw_test_cases = Analyzer('tat_coap').get_implemented_testcases()
-
-    #     # Build the clean results list
-    #     for raw_tc in raw_test_cases:
-
-    #         tc_basic = OrderedDict()
-    #         tc_basic['_type'] = 'tc_basic'
-    #         tc_basic['id'] = raw_tc[0]
-    #         tc_basic['objective'] = raw_tc[1]
-
-    #         tc_implementation = OrderedDict()
-    #         tc_implementation['_type'] = 'tc_implementation'
-    #         tc_implementation['implementation'] = raw_tc[2]
-
-    #         # Tuple, basic + implementation
-    #         TEST_CASES[raw_tc[0]] = OrderedDict()
-    #         TEST_CASES[raw_tc[0]]['tc_basic'] = tc_basic
-    #         TEST_CASES[raw_tc[0]]['tc_implementation'] = tc_implementation
-
-    # # If only one asked
-    # if testcase_id is not None:
-    #     if testcase_id in TEST_CASES:
-    #         return TEST_CASES[testcase_id]
-    #     else:
-    #         return None
-
-    # # If everyone asked
-    # else:
-    #     return TEST_CASES
 
     # New way by analyzer tool
     test_cases = OrderedDict()

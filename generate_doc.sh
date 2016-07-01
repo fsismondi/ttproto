@@ -18,7 +18,7 @@ mv sphinx-doc-src/ttproto.ts_6lowpan_nd.run_implem.rst sphinx-doc-src/ttproto.ts
 # rename 's/\.rst$/\.rst\.old/' sphinx-doc-src/ttproto.ts_6lowpan_nd.test*.rst
 
 # Build html documentations
-sphinx-build -q -w log/sphinx-build.log -b html sphinx-doc-src sphinx-doc
+sphinx-build -q -w log/sphinx-build.log -b html sphinx-doc-src doc
 
 # Build latex documentations
-# sphinx-build -q -w log/sphinx-build.log -b latex sphinx-doc-src sphinx-doc
+# sphinx-build -q -w log/sphinx-build.log -b latex sphinx-doc-src doc
