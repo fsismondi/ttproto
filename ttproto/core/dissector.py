@@ -57,12 +57,25 @@ def is_protocol(arg):
     Check if a parameter is a valid protocol
 
     :return: True if a valid protocol, False if not
-    :rtype: boolean
+    :rtype: bool
     """
     return all((
         arg is not None,
         type(arg) == type,
         arg in Dissector.get_implemented_protocols()
+    ))
+
+
+def is_layer_value(arg):
+    """
+    Check if a parameter is a valid layer value
+
+    :return: True if a valid layer value, False if not
+    :rtype: bool
+    """
+    return all((
+        arg is not None,
+        isinstance(arg, Value)
     ))
 
 
@@ -98,6 +111,51 @@ class Frame:
         # Put its dictionnary representation and its summary as not done yet
         self.__dict = None
         self.__summary = None
+
+        # FIXME: Remove this duct tape
+        self.duct_tape()
+
+    def duct_tape(self):
+        self.src = None
+        self.dst = None
+
+        v = self.__msg.get_value()
+        self.ts = self.__timestamp
+        while True:
+            if any((
+                isinstance(v, Ethernet),
+                isinstance(v, IPv6),
+                isinstance(v, IPv4)
+            )):
+                self.src = v["src"]
+                self.dst = v["dst"]
+                v = v["pl"]
+                continue
+            elif isinstance(v, UDP):
+                if not isinstance(self.src, tuple):
+                    self.src = self.src, v["sport"]
+                    self.dst = self.dst, v["dport"]
+                v = v["pl"]
+                continue
+            elif isinstance(v, CoAP):
+                self.coap = v
+            elif isinstance(v, Ieee802154):
+                self.src = v["src"]
+                self.dst = v["dst"]
+                v = v["pl"]
+                continue
+            elif any((
+                isinstance(v, SixLowpan),
+                isinstance(v, LinuxCookedCapture),
+                isinstance(v, NullLoopback)
+            )):
+                try:
+                    v = v["pl"]
+                    continue
+                except KeyError:
+                    pass
+
+            break
 
     @typecheck
     def __contains__(self, protocol: is_protocol) -> bool:
@@ -316,7 +374,7 @@ class Frame:
         return (self.__error is not None)
 
     @typecheck
-    def get_layer(self, layer: is_protocol) -> Message:
+    def get_layer(self, layer: is_protocol) -> is_layer_value:
         """
         Get the requested layer for this frame
         """

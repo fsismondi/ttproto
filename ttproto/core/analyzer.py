@@ -31,23 +31,31 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+import sys
+import time
+import re
+import socket
 import glob
 import inspect
+import itertools
 
-from os import path
+from collections import OrderedDict
 from importlib import import_module
+from os import chdir, path, getcwd
+from lib2to3.fixes.fix_print import parend_expr
 from ttproto.core import logger
-from ttproto.core.data import Data
+from ttproto.core.data import (Data, get_type, store_data,
+                               DifferenceList, Value)
 from ttproto.core.dissector import Frame
+from ttproto.core.html_logger import HTMLLogger
+from ttproto.core.list import ListValue
 from ttproto.core.logger import LoggedObject, LogEventClass
 from ttproto.core.typecheck import *
+from ttproto.core.packet import PacketValue
+from ttproto.core.xmlgen import XHTML10Generator
+from ttproto.core.lib.inet.all import *
 from ttproto.core.lib.ports.pcap import PcapReader
-from ttproto.tat_coap.proto_specific import (CoAPTestcase, CoAPTracker,
-                                             group_conversations_by_pair)
-
-# TODO: Remove this and use ttproto core and generic class instead
-TestCase = CoAPTestcase
-Tracker = CoAPTracker
+from urllib import parse
 
 
 __all__ = [
@@ -58,6 +66,7 @@ __all__ = [
 TESTCASES_SUBDIR = 'testcases'
 TTPROTO_DIR = 'ttproto'
 SEARCH_STRING = 'td_*.py'
+ENTRY_MODULE = 'common'
 
 
 # class Analyzer(LoggedObject):
@@ -92,6 +101,9 @@ class Analyzer:
                 %
                 test_dir
             )
+
+        # Import test env common module
+        # import_module('.'.join((TTPROTO_DIR, test_env, ENTRY_MODULE)))
 
         # LoggedObject.__init__(self)
         self.__test_env = test_env
@@ -195,9 +207,6 @@ class Analyzer:
                 modname.upper()
             )
 
-            # Check the tc
-            assert isinstance(tc, type) and issubclass(tc, TestCase)
-
             # If verbose is asked, we provide the source code too
             more_info = inspect.getsource(tc) if verbose else ''
 
@@ -247,6 +256,20 @@ class Analyzer:
                 - pass: all occurrences are inconc or at least one is PASS and
                         the rest is inconc
         """
+
+        # FIXME: To remove too
+        # Import test env common module
+        com_mod = import_module(
+            '.'.join((TTPROTO_DIR, self.__test_env, ENTRY_MODULE))
+        )
+        Tracker = getattr(
+            com_mod,
+            'Tracker'
+        )
+        group_conversations_by_pair = getattr(
+            com_mod,
+            'group_conversations_by_pair'
+        )
 
         # Get all the implemented test cases
         try:
@@ -359,42 +382,41 @@ class Analyzer:
             # Get only the results of the test case that we requested
             # You can look upper and see that we loop on ALL the test cases,
             # whereas here we only loop on the requested ones (can be many)
-            # for tc_type, tc_results in filter(
-            #     lambda x: tc_id in x[0].__name__,
-            #     zip(test_cases, pair_results)
-            # ):
+            for tc_type, tc_results in filter(
+                lambda x: tc_id in x[0].__name__,
+                zip(test_cases, pair_results)
+            ):
+                # (tc_type, tc_results) = filter(
+                #     lambda x: tc_id == x[0].__name__,  # Take only the requested tc
+                #     zip(test_cases, pair_results)  # Parse the 2 lists in parallel
+                # )
 
-            (tc_type, tc_results) = filter(
-                lambda x: tc_id == x[0].__name,  # Take only the requested tc
-                zip(test_cases, pair_results)  # Parse the 2 lists in parallel
-            )
+                # Prepare the review frames list
+                review_frames = []
 
-            # Prepare the review frames list
-            review_frames = []
+                # Current verdict (inconc)
+                v = 0
 
-            # Current verdict (inconc)
-            v = 0
+                # For every results
+                for tc in tc_results:
 
-            # For every results
-            for tc in tc_results:
+                    # All the failed frames for a TC, even if they are from
+                    # different conversations!
+                    review_frames = tc.failed_frames
 
-                # All the failed frames for a TC, even if they are from
-                # different conversations!
-                review_frames = tc.failed_frames
+                    # Get the new verdict and update current one if the new has
+                    # higher priority
+                    new_v = self.verdicts.index(tc.verdict)
+                    if new_v > v:
+                        v = new_v
 
-                # Get the new verdict and update current one if the new has
-                # higher priority
-                new_v = self.verdicts.index(tc.verdict)
-                if new_v > v:
-                    v = new_v
+                # Get the text value of the verdict
+                v_txt = self.verdicts[v]
+                if v_txt is None:
+                    v_txt = "none"
 
-            # Get the text value of the verdict
-            v_txt = self.verdicts[v]
-            if v_txt is None:
-                v_txt = "none"
-
-            # Compute the extra informations
-            extra_info = tc.text if verbose else ''
+                # Compute the extra informations
+                extra_info = tc.text if verbose else ''
 
             # Return the result
             return (type(tc).__name__, v_txt, list(review_frames), extra_info)
@@ -405,78 +427,80 @@ class Analyzer:
             # return results
 
 
-class EventNoTestCasesFoundForAnalysis(metaclass=LogEventClass):
-    fields = (
-        ('analyzer', Analyzer),
-        ('test_case', str),
-        ('test_env', str),
-        ('profile', str)
-    )
+# class EventNoTestCasesFoundForAnalysis(metaclass=LogEventClass):
+#     fields = (
+#         ('analyzer', Analyzer),
+#         ('test_case', str),
+#         ('test_env', str),
+#         ('profile', str)
+#     )
 
-    def summary(self):
-        return (
-            "%s: No TC %s found in %s test env and with %s profile"
-            %
-            (self[0].__name__, self[1], self[2], self[3])
-        )
-
-
-class EventNoTestCasesFound(metaclass=LogEventClass):
-    fields = (
-        ('analyzer', Analyzer),
-        ('search_query', str)
-    )
-
-    def summary(self):
-        return (
-            "%s: Non TC found with %s query" % (self[0].__name__, self[1])
-        )
+#     def summary(self):
+#         return (
+#             "%s: No TC %s found in %s test env and with %s profile"
+#             %
+#             (self[0].__name__, self[1], self[2], self[3])
+#         )
 
 
-class EventObsoleteTCFound(metaclass=LogEventClass):
-    fields = (
-        ('analyzer', Analyzer),
-        ('obsoletes', list)  # Class list
-    )
+# class EventNoTestCasesFound(metaclass=LogEventClass):
+#     fields = (
+#         ('analyzer', Analyzer),
+#         ('search_query', str)
+#     )
 
-    def summary(self):
-
-        # Build the string representation of obsolete tc class list
-        first = True
-        class_str_repr = '['
-        for obs_class in self[1]:
-            assert type(obs_class) == type
-            if not first:
-                class_str_repr += ', '
-            class_str_repr += obs_class.__name__
-            first = False
-        class_str_repr += ']'
-
-        # Return the warning to be logged
-        return (
-            "%s: %d obsolete testcases found:\n%s"
-            %
-            (self[0].__name__, len(self[1]), class_str_repr)
-        )
+#     def summary(self):
+#         return (
+#             "%s: Non TC found with %s query" % (self[0].__name__, self[1])
+#         )
 
 
-class EventFileNotFound(metaclass=LogEventClass):
-    fields = (
-        ('analyzer', Analyzer),
-        ('filename', str)
-    )
+# class EventObsoleteTCFound(metaclass=LogEventClass):
+#     fields = (
+#         ('analyzer', Analyzer),
+#         ('obsoletes', list)  # Class list
+#     )
 
-    def summary(self):
-        return (
-            "%s: Testcase %s couldn't be found" % (self[0].__name__, self[1])
-        )
+#     def summary(self):
+
+#         # Build the string representation of obsolete tc class list
+#         first = True
+#         class_str_repr = '['
+#         for obs_class in self[1]:
+#             assert type(obs_class) == type
+#             if not first:
+#                 class_str_repr += ', '
+#             class_str_repr += obs_class.__name__
+#             first = False
+#         class_str_repr += ']'
+
+#         # Return the warning to be logged
+#         return (
+#             "%s: %d obsolete testcases found:\n%s"
+#             %
+#             (self[0].__name__, len(self[1]), class_str_repr)
+#         )
+
+
+# class EventFileNotFound(metaclass=LogEventClass):
+#     fields = (
+#         ('analyzer', Analyzer),
+#         ('filename', str)
+#     )
+
+#     def summary(self):
+#         return (
+#             "%s: Testcase %s couldn't be found" % (self[0].__name__, self[1])
+#         )
 
 
 if __name__ == "__main__":
     print(Analyzer('tat_coap').get_implemented_testcases())
     print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_24'))
     try:
-        print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42'))
+        print(
+            Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42')
+        )
     except FileNotFoundError as e:
         print(e)
     try:
@@ -487,10 +511,10 @@ if __name__ == "__main__":
         print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
     except NotADirectoryError as e:
         print(e)
-    # print(
-    #     Analyzer('tat_coap').analyse(
-    #         'tests/test_dumps/TD_COAP_CORE_01_PASS.pcap',
-    #         'TD_COAP_CORE_01'
-    #     )
-    # )
+    print(
+        Analyzer('tat_coap').analyse(
+            'tests/test_dumps/TD_COAP_CORE_01_PASS.pcap',
+            'TD_COAP_CORE_01'
+        )
+    )
     pass

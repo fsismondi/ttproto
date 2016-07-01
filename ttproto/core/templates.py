@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-#   (c) 2012  Universite de Rennes 1
+#  (c) 2012  Universite de Rennes 1
 #
 # Contact address: <t3devkit@irisa.fr>
 #
@@ -33,217 +33,275 @@
 
 import re
 
-from	ttproto.core.typecheck	import *
-from	ttproto.core.data	import *
-from	ttproto.core.list	import ListValue
+from ttproto.core.typecheck import *
+from ttproto.core.data import *
+from ttproto.core.list import ListValue
 
 __all__ = [
-	'Range',
-	'ValueList',
-	'AnyValue',
-	'Length',
-	'Superset',
-	'Regex',
-	'All',
-	'Any',
+    'Range',
+    'ValueList',
+    'AnyValue',
+    'Length',
+    'Superset',
+    'Regex',
+    'All',
+    'Any',
+    'Not'
 ]
 
 
-class Range (Template):
-	@typecheck
-	def __init__ (self, parent: either (is_data, is_type), lower_bound: is_flat_value, upper_bound: is_flat_value):
+class Range(Template):
+    @typecheck
+    def __init__(
+        self,
+        parent: either(is_data, is_type),
+        lower_bound: is_flat_value,
+        upper_bound: is_flat_value
+    ):
 
-		Template.__init__ (self, parent)
-		self.__lower	= self.store_data (lower_bound)
-		self.__upper	= self.store_data (upper_bound)
+        Template.__init__(self, parent)
+        self.__lower = self.store_data(lower_bound)
+        self.__upper = self.store_data(upper_bound)
 
-	def _template_match (self, value):
-		return value >= self.__lower and value <= self.__upper
+    def _template_match(self, value):
+        return value >= self.__lower and value <= self.__upper
 
-	def _repr (self):
-		return "%s(%s, %s, %s)" % (
-			type (self).__name__,
-			self.get_type().__name__,
-			repr (self.__lower),
-			repr (self.__upper),
-		)
-
-#TODO: rename it as Or
-class ValueList (Template):
-
-	@typecheck
-	def __init__ (self, parent: either (is_type, is_data), datas: iterable):
-
-		Template.__init__ (self, parent)
-
-		self.__datas = [self.store_data (d) for d in datas]
-
-	def _template_match (self, value):
-
-		for d in self.__datas:
-			if d.match (value):
-				return True
-
-		return False
-
-	def _repr (self):
-		return "%s(%s, [%s])" % (
-			type (self).__name__,
-			self.get_type().__name__,
-			", ".join (repr(v) for v in self.__datas),
-		)
+    def _repr(self):
+        return "%s(%s, %s, %s)" % (
+            type(self).__name__,
+            self.get_type().__name__,
+            repr(self.__lower),
+            repr(self.__upper),
+        )
 
 
-class AnyValue (Template):
-	@typecheck
-	def __init__ (self, type_: is_type):
-		Template.__init__ (self, type_)
+# TODO: rename it as Or
+class ValueList(Template):
 
-	def _template_match (self, value):
-		return True
+    @typecheck
+    def __init__(self, parent: either(is_type, is_data), datas: iterable):
 
-	def _repr (self):
-		return "%s(%s)" % (
-			type (self).__name__,
-			self.get_type().__name__,
-		)
+        Template.__init__(self, parent)
 
+        self.__datas = [self.store_data(d) for d in datas]
 
-class Length (Template):
-	@typecheck
-	def __init__ (self, parent: either (is_type, is_data), length: (either (int, tuple_of (int), list_of (either (int, tuple_of (int)))))):
-		Template.__init__ (self, parent)
+    def _template_match(self, value):
 
-		if not isinstance (length, list):
-			length = [length]
+        for d in self.__datas:
+            if d.match(value):
+                return True
 
-		self.__length = [(v if isinstance (v, tuple) else (v, v)) for v in length]
+        return False
 
-		# check that 'length' contains valid values
-		for lower, upper in self.__length:
-			assert lower >= 0
-			assert upper >= lower
-
-	def _template_match (self, data):
-		l = len (data)
-		for lower, upper in self.__length:
-			if lower <= l and l <= upper:
-				return True
-		return False
-
-	def __initlist (self):
-		for l, u in self.__length:
-			if l==u:
-				yield str(l)
-			else:
-				yield "(%s, %s)" % (l, u)
-
-	def _repr (self):
-		return "%s(%s, %s)" % (
-			type (self).__name__,
-			self.get_type().__name__,
-			("[%s]" % (", ".join (self.__initlist())) if len(self.__length) > 1 else next(self.__initlist()))
-		)
+    def _repr(self):
+        return "%s(%s, [%s])" % (
+            type(self).__name__,
+            self.get_type().__name__,
+            ", ".join(repr(v) for v in self.__datas),
+        )
 
 
-class Superset (Template):
-	@typecheck
-	def __init__ (self, parent, datas: iterable):
+class AnyValue(Template):
+    @typecheck
+    def __init__(self, type_: is_type):
+        Template.__init__(self, type_)
 
-		Template.__init__ (self, parent)
+    def _template_match(self, value):
+        return True
 
-		assert issubclass (self.get_type(), ListValue)
-		assert not self.get_type().is_ordered()
-		assert all (is_data(d) for d in datas)
+    def _repr(self):
+        return "%s(%s)" % (
+            type(self).__name__,
+            self.get_type().__name__,
+        )
 
-		ct = self.get_type().get_content_type()
-		self.__datas = tuple (store_data(d, ct) for d in datas)
 
-	def _repr (self):
-		return "%s(%s, [%s])" % (
-			type (self).__name__,
-			self.get_type().__name__,
-			", ".join (repr(v) for v in self.__datas),
-		)
+class Length(Template):
+    @typecheck
+    def __init__(
+        self,
+        parent: either(is_type, is_data),
+        length: (either(
+            int,
+            tuple_of(int),
+            list_of(either(
+                int,
+                tuple_of(int)))
+            ))
+    ):
+        Template.__init__(self, parent)
 
-	def _template_match (self, value):
-		missing = len (value) - len (self.__datas)
-		if missing < 0:
-			return False
-		else:
-			# TODO: do it in a more efficient way
-			return self.get_type()(self.__datas + missing * (AnyValue(self.get_type().get_content_type()),)).match (value)
+        if not isinstance(length, list):
+            length = [length]
 
-		return False
+        self.__length = [
+            (v if isinstance(v, tuple) else(v, v))
+            for v in length
+        ]
 
-class Regex (Template):
-	@typecheck
-	def __init__ (self, pattern: str, flags: optional (int) = 0):
+        # check that 'length' contains valid values
+        for lower, upper in self.__length:
+            assert lower >= 0
+            assert upper >= lower
 
-		Template.__init__ (self, str)
+    def _template_match(self, data):
+        l = len(data)
+        for lower, upper in self.__length:
+            if lower <= l and l <= upper:
+                return True
+        return False
 
-		self.__re = re.compile (pattern, flags)
+    def __initlist(self):
+        for l, u in self.__length:
+            if l == u:
+                yield str(l)
+            else:
+                yield "(%s, %s)" % (l, u)
 
-	def _repr (self):
-		flags = self.__re.flags
-		flist = []
-		for flagname in 'ASCII', 'DEBUG', 'IGNORECASE', 'LOCALE', 'MULTILINE', 'DOTALL', 'VERBOSE', 'UNICODE':
-			v = getattr (re, flagname)
-			if v & flags:
-				flags &= ~v
-				flist.append ("re." + flagname)
-		if flags:
-			flist.append (str (flags))
+    def _repr(self):
+        return "%s(%s, %s)" % (
+            type(self).__name__,
+            self.get_type().__name__,
+            (
+                "[%s]"
+                %
+                (", ".join(self.__initlist()))
+                if len(self.__length) > 1
+                else next(self.__initlist())
+            )
+        )
 
-		return "%s(%s, %s)" % (
-			type (self).__name__,
-			repr (self.__re.pattern),
-			"|".join (flist),
-		)
 
-	def _template_match (self, value):
-		return bool (re.search (self.__re, value))
+class Superset(Template):
+    @typecheck
+    def __init__(self, parent, datas: iterable):
 
-class All (Template):
-	@typecheck
-	def __init__ (self, *templates):
-		assert templates
+        Template.__init__(self, parent)
 
-		Template.__init__ (self, get_type (templates[0])) # FIXME: bof
+        assert issubclass(self.get_type(), ListValue)
+        assert not self.get_type().is_ordered()
+        assert all(is_data(d) for d in datas)
 
-		self.__templates = [self.store_data(t) for t in templates]
+        ct = self.get_type().get_content_type()
+        self.__datas = tuple(store_data(d, ct) for d in datas)
 
-	def _repr (self):
-		return "%s(%s)" % (
-			type (self).__name__,
-			",".join (repr (t) for t in self.__templates),
-		)
+    def _repr(self):
+        return "%s(%s, [%s])" % (
+            type(self).__name__,
+            self.get_type().__name__,
+            ", ".join(repr(v) for v in self.__datas),
+        )
 
-	# here we override _match since we need to match all templates
-	#
-	# FIXME: may have side effects in the HTML log module (we may have
-	# multiple mismatch for the same value)
-	def _match (self, value, mismatch_list):
-		result = True
-		for t in self.__templates:
-			if not t.match (value, mismatch_list):
-				result = False
-		return result
+    def _template_match(self, value):
+        missing = len(value) - len(self.__datas)
+        if missing < 0:
+            return False
+        else:
+            # TODO: do it in a more efficient way
+            return self.get_type()(
+                self.__datas + missing * (
+                    AnyValue(self.get_type().get_content_type()),)
+                ).match(value)
 
-class Any (Template):
-	@typecheck
-	def __init__ (self, *templates):
-		assert templates
+        return False
 
-		Template.__init__ (self, get_type (templates[0])) # FIXME: bof
 
-		self.__templates = [self.store_data(t) for t in templates]
+class Regex(Template):
+    @typecheck
+    def __init__(self, pattern: str, flags: optional(int) = 0):
 
-	def _repr (self):
-		return "%s(%s)" % (
-			type (self).__name__,
-			",".join (repr (t) for t in self.__templates),
-		)
+        Template.__init__(self, str)
 
-	def _template_match (self, value):
-		return any (t.match (value) for t in self.__templates)
+        self.__re = re.compile(pattern, flags)
+
+    def _repr(self):
+        flags = self.__re.flags
+        flist = []
+        for flagname in (
+            'ASCII', 'DEBUG', 'IGNORECASE', 'LOCALE',
+            'MULTILINE', 'DOTALL', 'VERBOSE', 'UNICODE'
+        ):
+            v = getattr(re, flagname)
+            if v & flags:
+                flags &= ~v
+                flist.append("re." + flagname)
+        if flags:
+            flist.append(str(flags))
+
+        return "%s(%s, %s)" % (
+            type(self).__name__,
+            repr(self.__re.pattern),
+            "|".join(flist),
+        )
+
+    def _template_match(self, value):
+        return bool(re.search(self.__re, value))
+
+
+class All(Template):
+    @typecheck
+    def __init__(self, *templates):
+        assert templates
+
+        Template.__init__(self, get_type(templates[0]))  # FIXME: bof
+
+        self.__templates = [self.store_data(t) for t in templates]
+
+    def _repr(self):
+        return "%s(%s)" % (
+            type(self).__name__,
+            ",".join(repr(t) for t in self.__templates),
+        )
+
+    # here we override _match since we need to match all templates
+    #
+    # FIXME: may have side effects in the HTML log module(we may have
+    # multiple mismatch for the same value)
+    def _match(self, value, mismatch_list):
+        result = True
+        for t in self.__templates:
+            if not t.match(value, mismatch_list):
+                result = False
+        return result
+
+
+class Any(Template):
+    @typecheck
+    def __init__(self, *templates):
+        assert templates
+
+        Template.__init__(self, get_type(templates[0]))  # FIXME: bof
+
+        self.__templates = [self.store_data(t) for t in templates]
+
+    def _repr(self):
+        return "%s(%s)" % (
+            type(self).__name__,
+            ",".join(repr(t) for t in self.__templates),
+        )
+
+    def _template_match(self, value):
+        return any(t.match(value) for t in self.__templates)
+
+
+# #################### Part added from ts_coap plugin #################### #
+class Not(Template):
+    """
+    Template class for Not
+    """
+
+    @typecheck
+    def __init__(self, data: is_data):
+        super().__init__(get_type(data))
+        self.__data = store_data(data)
+
+    @typecheck
+    def _repr(self) -> str:
+        return "%s(%s)" % (
+            type(self).__name__,
+            repr(self.__data),
+        )
+
+    @typecheck
+    def _template_match(self, data: is_data) -> bool:
+        return data not in self.__data

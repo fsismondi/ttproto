@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 #
-#   (c) 2012    Universite de Rennes 1
+#  (c) 2012  Universite de Rennes 1
 #
 # Contact address: <t3devkit@irisa.fr>
 #
 #
 # This software is governed by the CeCILL license under French law and
-# abiding by the rules of distribution of free software.    You can  use,
+# abiding by the rules of distribution of free software.  You can  use,
 # modify and/or redistribute the software under the terms of the CeCILL
 # license as circulated by CEA, CNRS and INRIA at the following URL
 # "http://www.cecill.info".
@@ -14,7 +14,7 @@
 # As a counterpart to the access to the source code and  rights to copy,
 # modify and redistribute granted by the license, users are provided only
 # with a limited warranty  and the software's author,  the holder of the
-# economic rights,  and the successive licensors    have only  limited
+# economic rights,  and the successive licensors  have only  limited
 # liability.
 #
 # In this respect, the user's attention is drawn to the risks associated
@@ -32,17 +32,12 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 import traceback
-import urllib.parse
-import re
 
-
-from ttproto.core.lib.inet.coap import *
-from ttproto.core.templates import All
-from ttproto.core.data import store_data, DifferenceList
-
+from .data import *
 from contextlib import contextmanager
-
-from .proto_templates import Opt, NoOpt, Not
+from ttproto.core.templates import All, Not
+from ttproto.core.lib.inet.all import *
+from ttproto.utils.version_git import get_git_version
 
 RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
@@ -53,11 +48,15 @@ MAX_TIMEOUT = 10 + round(
     )
 
 
+TOOL_VERSION = get_git_version()
+TEST_VERSION = "td-coap4_&_IRISA"
+
+
 class CoAPConversation(list):
 
     def __init__(self, request_frame):
-        assert request_frame.coap
-        assert request_frame.coap.is_request() or (request_frame.coap["code"]==0 and request_frame.coap["type"]==0)
+        assert request_frame.get_layer(CoAP)
+        assert request_frame.get_layer(CoAP).is_request() or (request_frame.get_layer(CoAP)["code"] == 0 and request_frame.get_layer(CoAP)["type"]==0)
 
         self.tag = self.gen_tag (request_frame)
 #       self.append (request_frame)
@@ -77,9 +76,9 @@ class CoAPConversation(list):
 
     @staticmethod
     def gen_tag (frame):
-        assert frame.coap
+        assert frame.get_layer(CoAP)
 
-        if frame.coap.is_request():
+        if frame.get_layer(CoAP).is_request():
             return frame.src, frame.dst
         else:
             return frame.dst, frame.src
@@ -223,7 +222,7 @@ class CoAPTestcase:
         self.next(optional)
         while all((
             self.frame is not None,
-            self.frame.coap in CoAP(type="ack", code=0)
+            self.frame.get_layer(CoAP) in CoAP(type="ack", code=0)
         )):
             self.next(optional)
 
@@ -260,8 +259,8 @@ class CoAPTestcase:
 
         # check the template
         if template:
-            diff_list = DifferenceList(self.frame.coap)
-            if template.match(self.frame.coap, diff_list):
+            diff_list = DifferenceList(self.frame.get_layer(CoAP))
+            if template.match(self.frame.get_layer(CoAP), diff_list):
                 # pass
                 if verdict is not None:
                     self.setverdict("pass", "match: %s" % template)
@@ -336,7 +335,7 @@ class CoAPTestcase:
 
     def get_max_age(self):
         try:
-            return self.frame.coap["opt"][CoAPOptionMaxAge]["val"]
+            return self.frame.get_layer(CoAP)["opt"][CoAPOptionMaxAge]["val"]
         except KeyError:
             # option not present
             return 60
@@ -349,9 +348,9 @@ class CoAPTestcase:
         else:
             opt = Opt(CoAPOptionUriQuery(), *path)
 
-            if self.frame.coap in CoAP(code="get", opt=opt):
+            if self.frame.get_layer(CoAP) in CoAP(code="get", opt=opt):
 
-                q = self.frame.coap["opt"][CoAPOptionUriQuery]["val"]
+                q = self.frame.get_layer(CoAP)["opt"][CoAPOptionUriQuery]["val"]
                 i = q.find("=")
                 if i < 0:
                     self.setverdict("fail", "malformed Uri-Query option: %r" % q)
@@ -390,10 +389,10 @@ class CoAPTestcase:
                 raise self.Stop()
 
             try:
-                bl2 = self.frame.coap["opt"][CoAPOptionBlock2]
+                bl2 = self.frame.get_layer(CoAP)["opt"][CoAPOptionBlock2]
             except KeyError:
                 # single block
-                pl = self.frame.coap["pl"]
+                pl = self.frame.get_layer(CoAP)["pl"]
                 break
             else:
                 # multiple blocks
@@ -419,7 +418,7 @@ class CoAPTestcase:
                     szx = bl2["szx"]
                     blocks = new_blocks
 
-                blocks[bl2["num"]] = self.frame.coap["pl"]
+                blocks[bl2["num"]] = self.frame.get_layer(CoAP)["pl"]
 
                 if not bl2["m"]:
                     # final block
@@ -626,14 +625,14 @@ class CoAPTracker:
         def append (self, frame):
 
             # get the token
-            token = frame.coap["tok"]
+            token = frame.get_layer(CoAP)["tok"]
             #print (" token:", repr(token))
             tr  = None
-            opt = frame.coap["opt"]
+            opt = frame.get_layer(CoAP)["opt"]
 
-            if frame.coap.is_request() or (frame.coap["code"]==0 and frame.coap["type"]==0):
+            if frame.get_layer(CoAP).is_request() or (frame.get_layer(CoAP)["code"]==0 and frame.get_layer(CoAP)["type"]==0):
                 # frame is a request or a ping
-                uri = frame.coap.get_uri()
+                uri = frame.get_layer(CoAP).get_uri()
                 #print (" uri:", uri)
 
                 # handle block options
@@ -707,7 +706,7 @@ class CoAPTracker:
                 tr.__uri = uri
                 assert tr
 
-            elif frame.coap.is_response():
+            elif frame.get_layer(CoAP).is_response():
                 # response frame
 
                 #print (" response")
@@ -737,8 +736,8 @@ class CoAPTracker:
                 #print (" by_bl[tr.__uri]:", self.by_bl.get(tr.__uri))
             # matching by message id for RST & ACK
             #
-            mid = frame.coap['mid']
-            typ = frame.coap['type']
+            mid = frame.get_layer(CoAP)['mid']
+            typ = frame.get_layer(CoAP)['type']
             if typ==0 and tr:
                 # CON frame w/ known conversation
 
@@ -782,7 +781,7 @@ class CoAPTracker:
 
     @staticmethod
     def flow_tag (frame):
-        assert frame.coap
+        assert frame.get_layer(CoAP)
 
         src, dst = frame.src, frame.dst
 
@@ -798,7 +797,7 @@ class CoAPTracker:
     def append (self, frames):
         for f in frames:
             #print (f)
-            if not f.coap:
+            if not f.get_layer(CoAP):
                 # not a coap frame
                 self.ignored_frames.append (f)
                 continue
@@ -832,7 +831,7 @@ def extract_coap_conversations (frames):
     # TODO: garbage-collect timeouts every N frames
     for f in frames:
 
-        if not f.coap:
+        if not f.get_layer(CoAP):
             # we care only about coap packets
             ignored_frames.append (f)
             continue
@@ -848,13 +847,13 @@ def extract_coap_conversations (frames):
             else:
                 # append this frame to the existing conversation
                 t.append (f)
-                if f.coap.is_request():
+                if f.get_layer(CoAP).is_request():
                     t.update_timeout(f)
                 continue
 
         # we have no valid conversation for that tag
 
-        if f.coap.is_response():
+        if f.get_layer(CoAP).is_response():
             ignored_frames.append (f)
             continue
 
@@ -887,29 +886,34 @@ def group_conversations_by_pair (conversations):
     return d
 
 
-class TD_COAP_TEST_BAD_CHAINING (CoAPTestcase):
+class Resolver:
+    __cache = {}
 
-    def run (self):
-        self.match_coap ("client", CoAP (code = "get", opt=self.uri("/test")))
-        self.next()
-        self.match_coap ("server", CoAP (code = 2.05, pl = Not(b'')))
-        self.chain()
-        self.match_coap ("client", CoAP (code = "get", opt=self.uri("/hello")))
-        self.next()
-        self.match_coap ("server", CoAP (code = 2.05, pl = Not(b'')))
+    def __new__ (cls, ip_addr):
+        try:
+            return cls.__cache[ip_addr]
+        except KeyError:
+            pass
+
+        try:
+            name = socket.gethostbyaddr (str (ip_addr))[0]
+        except socket.herror:
+            name = None
+
+        cls.__cache[ip_addr] = name
+
+        return name
+
+    @classmethod
+    def format (cls, ip_addr):
+        name = cls (ip_addr)
+
+        if name:
+            return "%s (%s)" % (name, ip_addr)
+        else:
+            return ip_addr
 
 
-class TD_COAP_TEST_GOOD_CHAINING (CoAPTestcase):
-
-    def run (self):
-        self.match_coap ("client", CoAP (code = "get", opt=self.uri("/seg1")))
-        self.next()
-        self.match_coap ("server", CoAP (code = 2.05, pl = Not(b'')))
-        self.chain()
-        self.match_coap ("client", CoAP (code = "get", opt=self.uri("/seg1/seg2")))
-        self.next()
-        self.match_coap ("server", CoAP (code = 2.05, pl = Not(b'')))
-        self.chain()
-        self.match_coap ("client", CoAP (code = "get", opt=self.uri("/seg1/seg2/seg3")))
-        self.next()
-        self.match_coap ("server", CoAP (code = 2.05, pl = Not(b'')))
+# TODO: Remove this and use ttproto core and generic class instead
+TestCase = CoAPTestcase
+Tracker = CoAPTracker
