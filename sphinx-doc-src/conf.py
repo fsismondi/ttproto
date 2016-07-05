@@ -16,10 +16,11 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+
 # import os
-import sys
-sys.path.append('/home/tandriam/Workspace/ttproto')
+from sys import path
+from os.path import abspath, dirname
+path.insert(1, dirname(dirname(abspath(__file__))))
 
 # -- General configuration ------------------------------------------------
 
@@ -90,7 +91,13 @@ language = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = [
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    '**console.rst',
+    'ttproto.ts_6lowpan_nd.run_implem.rst'
+]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.

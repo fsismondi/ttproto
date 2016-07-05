@@ -3,22 +3,16 @@
 # Build the .rst files
 sphinx-apidoc -e -f -l -o sphinx-doc-src ttproto
 
-# FIXME: Sphinx building system seems to run the code
-# 		 And those files has some waiting mecanism in them
-#		 so they block the whole build
+# WARNING: The following script will run module codes if there are some
+#          and this can lead to errors or even to the blocking of the
+#          documentation generation.
+#          You can put the files to exclude into the exclude_patterns
+#          variable in sphinx-doc-src/conf.py file to avoid this.
 
-# Change extension of the launcher files
-mv sphinx-doc-src/ttproto.ts_6lowpan_nd.console.rst sphinx-doc-src/ttproto.ts_6lowpan_nd.console.rst.old
-mv sphinx-doc-src/ttproto.ts_6lowpan_nd.run_implem.rst sphinx-doc-src/ttproto.ts_6lowpan_nd.run_implem.rst.old
-
-# Clear old .old files that will block the renaming of the new ones
-# rm sphinx-doc-src/ttproto.ts_6lowpan_nd.test*.rst.old
-
-# Same for test files that are executed too
-# rename 's/\.rst$/\.rst\.old/' sphinx-doc-src/ttproto.ts_6lowpan_nd.test*.rst
-
-# Build html documentations
+# Build html documentations (-b latex to generate latex doc)
 sphinx-build -q -w log/sphinx-build.log -b html sphinx-doc-src doc
 
-# Build latex documentations
-# sphinx-build -q -w log/sphinx-build.log -b latex sphinx-doc-src doc
+# Put the index.html document to be opened into browser
+if [ ! -f doc/index.html ]; then
+    ln -L doc/ttproto.html doc/index.html
+fi
