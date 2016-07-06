@@ -32,12 +32,25 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 import traceback
+import sys
+import time
+import re
+import socket
 
 from .data import *
 from contextlib import contextmanager
+from lib2to3.fixes.fix_print import parend_expr
+from ttproto.core.analyzer import TestCase, is_verdict
+from ttproto.core.dissector import Frame
+from ttproto.core.packet import PacketValue
+from ttproto.core.xmlgen import XHTML10Generator
+from ttproto.core.list import ListValue
 from ttproto.core.templates import All, Not
-from ttproto.core.lib.inet.all import *
+from ttproto.core.typecheck import *
+from ttproto.core.lib.all import *
 from ttproto.utils.version_git import get_git_version
+from ttproto.core.lib.ports.pcap import PcapReader
+from urllib import parse
 
 RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
@@ -52,94 +65,313 @@ TOOL_VERSION = get_git_version()
 TEST_VERSION = "td-coap4_&_IRISA"
 
 
+def duct_tape(frame):
+    frame.src = None
+    frame.dst = None
+
+    v = frame.get_value()
+    frame.ts = frame.get_timestamp()
+    while True:
+        if any((
+            isinstance(v, Ethernet),
+            isinstance(v, IPv6),
+            isinstance(v, IPv4)
+        )):
+            frame.src = v["src"]
+            frame.dst = v["dst"]
+            v = v["pl"]
+            continue
+        elif isinstance(v, UDP):
+            if not isinstance(frame.src, tuple):
+                frame.src = frame.src, v["sport"]
+                frame.dst = frame.dst, v["dport"]
+            v = v["pl"]
+            continue
+        elif isinstance(v, CoAP):
+            frame.coap = v
+        elif isinstance(v, Ieee802154):
+            frame.src = v["src"]
+            frame.dst = v["dst"]
+            v = v["pl"]
+            continue
+        elif any((
+            isinstance(v, SixLowpan),
+            isinstance(v, LinuxCookedCapture),
+            isinstance(v, NullLoopback)
+        )):
+            try:
+                v = v["pl"]
+                continue
+            except KeyError:
+                pass
+
+        break
+
+
 class CoAPConversation(list):
+    """
+    Class to represent a CoAP conversation
+    """
 
-    def __init__(self, request_frame):
-        assert request_frame.get_layer(CoAP)
-        assert request_frame.get_layer(CoAP).is_request() or (request_frame.get_layer(CoAP)["code"] == 0 and request_frame.get_layer(CoAP)["type"]==0)
+    @typecheck
+    def __init__(self, request_frame: Frame):
+        """
+        Initialize a coap conversation using a request frame
 
-        self.tag = self.gen_tag (request_frame)
-#       self.append (request_frame)
-#       self.update_timeout (request_frame)
+        :param request_frame: The request frame to initialize the conversation.
+                              This frame has to be a request or a ping frame.
+        :type request_frame: Frame
+        """
 
+        # Check that there si a CoAP layer in the frame
+        assert CoAP in request_frame
+
+        # Check that the frame is a normal or a ping request
+        assert any((
+            request_frame[CoAP].is_request(),
+            all((
+                request_frame[CoAP]["code"] == 0,
+                request_frame[CoAP]["type"] == 0
+            ))
+        ))
+
+        # Generate the tag of this conversation (src, dst) or (dst, src)
+        self.tag = self.gen_tag(request_frame)
+        # self.append (request_frame)
+        # self.update_timeout (request_frame)
+
+        # Define the 2 entities @ of this conversation
         self.client = request_frame.src[0]
         self.server = request_frame.dst[0]
 
-    def update_timeout (self, request_frame):
+    @typecheck
+    def update_timeout(self, request_frame: Frame):
+        """
+        Put the timeout of this conversation, this function is to check at the
+        end that the conversation is valid in order to take or not take it into
+        account
+
+        :param request_frame: The request frame which has the timestamp of the
+                              beginning of the conversation
+        :type request_frame: Frame
+        """
         self.timeout = request_frame.ts + MAX_TIMEOUT
 
-    def __hash__ (self):
-        return id (self)
+    @typecheck
+    def __hash__(self) -> int:
+        """
+        Generate an unique id for this conversation
 
-    def __bool__ (self):
+        :return: Unique conversation id
+        :rtype: int
+        """
+        return id(self)
+
+    @typecheck
+    def __bool__(self) -> bool:
+        """
+        Function to make the checking of this object as returning true
+
+        :return: True everytime we check this object
+        :rtype: bool
+
+        .. note:: Normally Python should always return "True" when checking an
+                  object which is not None. Maybe this should be removed.
+        """
         return True
 
     @staticmethod
-    def gen_tag (frame):
-        assert frame.get_layer(CoAP)
+    @typecheck
+    def gen_tag(frame: Frame) -> ((Value, int), (Value, int)):
+        """
+        Generate a tag from a frame
 
-        if frame.get_layer(CoAP).is_request():
+        :param frame: The frame from which we will generate the tag
+        :type frame: Frame
+
+        :return: The tag of this conversation
+                 - ((src_addr, src_port), (dst_addr, dst_port)) for a request
+                 - ((dst_addr, dst_port), (src_addr, src_port)) for a response
+        :rtype: ((Value, int), (Value, int))
+        """
+        assert CoAP in frame
+
+        if frame[CoAP].is_request():
             return frame.src, frame.dst
         else:
             return frame.dst, frame.src
 
 
-class CoAPTestcase:
-    obsolete = False
-    reverse_proxy = False
+class CoAPTestcase(TestCase):
+    """
+    The test case extension representing a CoAP test case
+    """
 
-    __verdicts = None, "pass", "inconc", "fail", "error"
+    reverse_proxy = False
 
     class Stop(Exception):
         pass
 
-    def __init__(
-        self,
-        conversation: CoAPConversation,
-        urifilter=None,
-        force=False
-    ):
-        self.conversation = conversation
-        self.text = ""
-        self.urifilter = urifilter
-        self.force = force
+    @typecheck
+    def __init__(self, frame_list: list_of(Frame)):
+        """
+        Initialize a test case, the only thing that it needs for
+        interoperability testing is a list of frame
 
-        # set to avoid repetitions
-        self.failed_frames = set()
-        self.review_frames_log = []
-        try:
-            self.verdict = None
-            self.__current_conversation = self.conversation
-            self.__iter = iter(self.__current_conversation)
-            self.next()
+        :param frame_list: The list of frames to analyze
+        :type frame_list: [Frame]
+        """
+        super().__init__(frame_list)
 
-            self.run()
+        # Prepare the parameters
+        self.__conversations = []
+        self.__text = ''
+        # self.failed_frames = set()
+        # self.review_frames_log = []
+        # try:
+        # self.__current_conversation = self.conversations
+        # self.__iter = iter(self.__current_conversation)
+        # self.next()
 
-            # ensure we're at the end of the communication
-            try:
-                self.log(next(self.__iter))
-                self.setverdict("inconc", "unexpected frame")
-            except StopIteration:
-                pass
+        # self.run()
 
-        except self.Stop:
-            # ignore this testcase result if the first frame gives an inconc
-            # verdict
-            if all((
-                self.verdict == "inconc",
-                self.frame == self.conversation[0],
-                not self.force
-            )):
-                # no match
-                self.verdict = None
+        # Ensure we're at the end of the communication
+        # try:
+        #     self.log(next(self.__iter))
+        #     self.setverdict("inconc", "unexpected frame")
+        # except StopIteration:
+        #     pass
 
-        except Exception:
-            if self.__iter:
-                self.setverdict("error", "unhandled exception")
-                self.exception = traceback.format_exc()
-                self.log(self.exception)
+        # except self.Stop:
+        #     # ignore this testcase result if the first frame gives an inconc
+        #     # verdict
+        #     if all((
+        #         self.__verdict.get_value() == "inconc",
+        #         self.frame == self.conversation[0]
+        #     )):
+        #         # no match
+        #         self.verdict = None
 
-        assert self.verdict in self.__verdicts
+        # except Exception:
+        #     if self.__iter:
+        #         self.setverdict("error", "unhandled exception")
+        #         self.exception = traceback.format_exc()
+        #         self.log(self.exception)
+
+        # assert self.verdict in self.__verdicts
+
+    @typecheck
+    def match(self, verdict: is_verdict = 'inconc', msg: str = '', *args):
+        """
+        Abstract function to match a packet value with a template
+
+        :param verdict: The verdict to put if it matches
+        :param msg: The message to associate with the verdict
+        :param args: More arguments if needed into implementations
+        :type verdict: str
+        :type msg: str
+        :type args: tuple
+        """
+        raise NotImplementedError
+
+    def next_frame(self):
+        """
+        Switch to the next frame
+        """
+        raise NotImplementedError
+
+    @typecheck
+    def log(self, msg: str):
+        """
+        Log a message
+
+        :param msg: The message to log
+        :type msg: str
+        """
+        text = str(msg)
+        self.text += text if text.endswith("\n") else (text + "\n")
+        self.review_frames_log.append(text)
+
+    @classmethod
+    @typecheck
+    def get_objective(self) -> str:
+        """
+        Get the objective of this test case
+
+        :return: The objective of this test case
+        :rtype: str
+
+        .. note:: Find a cleaner way to do this
+        """
+        if self.__doc__:
+            ok = False
+            for line in self.__doc__.splitlines():
+                if ok:
+                    return line
+                if line == "Objective:":
+                    ok = True
+        return ""
+
+    @typecheck
+    def set_verdict(self, verdict: is_verdict, msg: str = ''):
+        """
+        Update the current verdict of the current test case
+
+        :param verdict: The new verdict
+        :param msg: The message to associate with the verdict
+        :type verdict: str
+        :type msg: str
+        """
+        if all((
+            self._verdict.get_value() == 'none',
+            verdict == 'inconc',
+            not self.force
+        )):
+            raise self.Stop()
+
+        # Update the verdict
+        self._verdict.update(verdict, msg)
+
+        # TODO: Check that the log function will be used like this
+        self.log("  [%s] %s" % (format(v, "^6s"), text))
+
+    @typecheck
+    def pre_process(self) -> list_of(Frame):
+        """
+        Function for each TC to preprocess its list of frames
+
+        :return: The list of ignored frames
+        :rtype: [Frame]
+        """
+
+        # Parse every frame with the duct tape
+        for frame in self._frames:
+            duct_tape(frame)
+
+        # Create the tracker from the frames which will create conversations
+        # and at the same time filter the ignored frames
+        tracker = CoAPTracker(self._frames)
+        self.__conversations = tracker.conversations
+
+        # Get the conversations by pair
+        self.__conversations_by_pair = group_conversations_by_pair(
+            self.__conversations
+        )
+
+        return tracker.ignored_frames
+
+    def run(self) -> (str, list_of(int), str, list_of(Exception)):
+        """
+        Run the test case
+
+        :return: A tuple with the informations about the running which are
+                 - The verdict as a string
+                 - The list of the review frames
+                 - A string for extra informations
+                 - A list of Exceptions that could have occured during the run
+        :rtype: (str, [int], str, [Exception])
+        """
+        raise NotImplementedError
 
     def next(self, optional=False):
         try:
@@ -194,20 +426,7 @@ class CoAPTestcase:
 
         return True
 
-    def setverdict(self, v, text=""):
-        if self.verdict is None and v == "inconc" and not self.force:
-            raise self.Stop()
-
-        if self.__verdicts.index(v) > self.__verdicts.index(self.verdict):
-            self.verdict = v
-
-        self.log("  [%s] %s" % (format(v, "^6s"), text))
-
-    def log(self, text):
-        text = str(text)
-        self.text += text if text.endswith("\n") else (text + "\n")
-        self.review_frames_log.append(text)
-
+    # NOTE: Seems to be never used
     @contextmanager
     def nolog(self):
         text = self.text
@@ -222,7 +441,7 @@ class CoAPTestcase:
         self.next(optional)
         while all((
             self.frame is not None,
-            self.frame.get_layer(CoAP) in CoAP(type="ack", code=0)
+            self.frame[CoAP] in CoAP(type="ack", code=0)
         )):
             self.next(optional)
 
@@ -259,8 +478,8 @@ class CoAPTestcase:
 
         # check the template
         if template:
-            diff_list = DifferenceList(self.frame.get_layer(CoAP))
-            if template.match(self.frame.get_layer(CoAP), diff_list):
+            diff_list = DifferenceList(self.frame[CoAP])
+            if template.match(self.frame[CoAP], diff_list):
                 # pass
                 if verdict is not None:
                     self.setverdict("pass", "match: %s" % template)
@@ -278,20 +497,6 @@ class CoAPTestcase:
                 return False
 
         return True
-
-    def run(self):
-        raise NotImplementedError()
-
-    @classmethod
-    def get_objective(self):
-        if self.__doc__:
-            ok = False
-            for line in self.__doc__.splitlines():
-                if ok:
-                    return line
-                if line == "Objective:":
-                    ok = True
-        return ""
 
     def uri(self, uri, *other_opts):
         """filter for disabling a template if URI-Filter is disabled
@@ -335,7 +540,7 @@ class CoAPTestcase:
 
     def get_max_age(self):
         try:
-            return self.frame.get_layer(CoAP)["opt"][CoAPOptionMaxAge]["val"]
+            return self.frame[CoAP]["opt"][CoAPOptionMaxAge]["val"]
         except KeyError:
             # option not present
             return 60
@@ -348,9 +553,9 @@ class CoAPTestcase:
         else:
             opt = Opt(CoAPOptionUriQuery(), *path)
 
-            if self.frame.get_layer(CoAP) in CoAP(code="get", opt=opt):
+            if self.frame[CoAP] in CoAP(code="get", opt=opt):
 
-                q = self.frame.get_layer(CoAP)["opt"][CoAPOptionUriQuery]["val"]
+                q = self.frame[CoAP]["opt"][CoAPOptionUriQuery]["val"]
                 i = q.find("=")
                 if i < 0:
                     self.setverdict("fail", "malformed Uri-Query option: %r" % q)
@@ -389,10 +594,10 @@ class CoAPTestcase:
                 raise self.Stop()
 
             try:
-                bl2 = self.frame.get_layer(CoAP)["opt"][CoAPOptionBlock2]
+                bl2 = self.frame[CoAP]["opt"][CoAPOptionBlock2]
             except KeyError:
                 # single block
-                pl = self.frame.get_layer(CoAP)["pl"]
+                pl = self.frame[CoAP]["pl"]
                 break
             else:
                 # multiple blocks
@@ -418,7 +623,7 @@ class CoAPTestcase:
                     szx = bl2["szx"]
                     blocks = new_blocks
 
-                blocks[bl2["num"]] = self.frame.get_layer(CoAP)["pl"]
+                blocks[bl2["num"]] = self.frame[CoAP]["pl"]
 
                 if not bl2["m"]:
                     # final block
@@ -602,15 +807,37 @@ class Link (list):
 
 
 class CoAPTracker:
+    """
+    Tracker class to create conversations from frame list
+    """
+
     class FlowState:
-        def __init__ (self, tracker):
+        """
+        Tool to link a frame to others in order to generate the final conv
+
+        The main responsability of this tool class is to manage many
+        conversations that can be interleaved. It will map a request
+        with its corresponding response.
+        """
+
+        @typecheck
+        def __init__(self, tracker: this_class):
+            """
+            Initialize the flow state with a tracker object, its main concern
+            is to provide an easy way to create conversations and maintains a
+            list of ignored frames
+
+            :param tracker: The CoAPTracker object which will have its
+                            conversation populated
+            :type tracker: CoAPTracker
+            """
             self.__tracker = tracker
 
             # msgid -> (conversation, timeout)
             self.by_mid = {}
 
             # token -> conversation
-            self.by_request_token={}
+            self.by_request_token = {}
 
             # token -> conversation     (Block1)
             # uri   -> conversation     (Block2)
@@ -622,264 +849,290 @@ class CoAPTracker:
             # token -> conversation
             self.obs_by_token = {}
 
-        def append (self, frame):
+        @typecheck
+        def append(self, frame: Frame):
+            """
+            Append a new frame to the current flow state
 
-            # get the token
-            token = frame.get_layer(CoAP)["tok"]
-            #print (" token:", repr(token))
-            tr  = None
-            opt = frame.get_layer(CoAP)["opt"]
+            :param frame: The frame to append
+            :type frame: Frame
+            """
 
-            if frame.get_layer(CoAP).is_request() or (frame.get_layer(CoAP)["code"]==0 and frame.get_layer(CoAP)["type"]==0):
-                # frame is a request or a ping
-                uri = frame.get_layer(CoAP).get_uri()
-                #print (" uri:", uri)
+            # Get the token and options
+            token = frame[CoAP]["tok"]
+            opt = frame[CoAP]["opt"]
 
-                # handle block options
+            # A temporary value to store the current conversation
+            conv = None
+
+            # REQUEST or PING frame
+            if any((
+                frame[CoAP].is_request(),
+                all((
+                    frame[CoAP]["code"] == 0,
+                    frame[CoAP]["type"] == 0
+                ))
+            )):
+
+                # Get its uri
+                uri = frame[CoAP].get_uri()
+
+                # Handle block options
                 try:
-                    bl = opt[CoAPOptionBlock]
-                    #print (" bl:", bl)
 
-                    # it is a request w/ a block
-                    if isinstance (bl, CoAPOptionBlock1):
-                        tr = self.by_bl.get (token)
-                        #print (" tr:", tr)
+                    # Get block option
+                    block_option = opt[CoAPOptionBlock]
 
-                        # block1 option
-                        if tr:
-                            if not bl["m"]:
-                                # final block of an existing conversation
-                                del self.by_bl[token]
+                    # It is a request w/ a block
+                    if isinstance(block_option, CoAPOptionBlock1):
 
-                        elif bl["m"]:
-                            # new block1 conversation w/ more blocks
-                            tr = self.__tracker.new_conversation (frame)
-                            self.by_bl[token] = tr
+                        # Get the conversation from current dictionnary
+                        conv = self.by_bl.get(token)
+
+                        # Final block of an existing conversation
+                        # Clear the by block dict associated to this token
+                        if conv and not block_option['m']:
+                            del self.by_bl[token]
+
+                        # New block1 conversation w/ more blocks
+                        # Create the by block dict associated to this token
+                        elif block_option['m']:
+                            conv = self.__tracker.new_conversation(frame)
+                            self.by_bl[token] = conv
+
+                    # Block2 option (a block option is Block1 or Block2 type)
                     else:
-                        # block2 option
-                        #print (" block2")
 
-                        tr = self.by_bl.get (uri)
-                        #print (" tr:", tr)
+                        # Get the corresponding conversations from the uri
+                        conv = self.by_bl.get(uri)
 
-                        if tr:
-                            #print (" delete from by_bl")
+                        # If it exists, clear the conv got from the uri mapping
+                        # And map it to its token value
+                        if conv:
                             del self.by_bl[uri]
-                            self.by_request_token[token] = tr
+                            self.by_request_token[token] = conv
 
+                # Not a block conversation
                 except KeyError:
-                    # not a block conversation
-                    if tr:
-                        # -> discard the state in by_bl and start a new conversation
+
+                    # If a conversation is found
+                    if conv:
+
+                        # Discard the state in by_bl
                         if token in self.by_bl:
                             del self.by_bl[token]
                         if uri in self.by_bl:
                             del self.by_bl[uri]
 
-                        tr = None
+                        # And start a new conversation
+                        conv = None
 
-                if not tr:
-                    # handle observe option
-                    tr = self.obs_by_uri.get (uri)
+                # If new conversation
+                if not conv:
+
+                    # Handle observe option
+                    conv = self.obs_by_uri.get(uri)
 
                     try:
                         obs = opt[CoAPOptionObserve]
-                        if not tr or not tr.__obs_active:
-                            # this is a new conversation
-                            tr = self.__tracker.new_conversation (frame)
-                            tr.__obs_active = True
-                            self.obs_by_uri[uri] = tr
 
-                        # remember the token
-                        self.obs_by_token[token] = tr
+                        # This is a new conversation
+                        if not conv or not conv.__obs_active:
+                            conv = self.__tracker.new_conversation(frame)
+                            conv.__obs_active = True
+                            self.obs_by_uri[uri] = conv
 
+                        # Remember the token
+                        self.obs_by_token[token] = conv
+
+                    # Not with observe option
                     except KeyError:
-                        if tr and tr.__obs_active:
-                            # this observation is no longer active
-                            tr.__obs_active = False
+
+                        # This observation is no longer active
+                        if conv and conv.__obs_active:
+                            conv.__obs_active = False
+
+                        # Unrelated new conversation
                         else:
-                            # unrelated new conversation
-                            tr = self.__tracker.new_conversation (frame)
+                            conv = self.__tracker.new_conversation(frame)
 
-                        self.by_request_token[token] = tr
+                        # Map it from its token
+                        self.by_request_token[token] = conv
 
-                tr.__uri = uri
-                assert tr
+                # Check that at the end of a request managment, we have a
+                # conversation and an uri. The goal is to match a request
+                # with its corresponding response
+                assert conv
+                conv.__uri = uri
 
-            elif frame.get_layer(CoAP).is_response():
-                # response frame
+            # Response frame
+            elif frame[CoAP].is_response():
 
-                #print (" response")
-                # match by token
+                # Match by token
                 try:
+
+                    # If response of a simple request
                     try:
-                        tr = self.by_request_token.pop (token)
+                        conv = self.by_request_token.pop(token)
+
+                    # If observable response
                     except KeyError:
-                        #print (" key error 1")
-                        tr = self.obs_by_token[token]
-                    #print (" tr:", tr)
+                        conv = self.obs_by_token[token]
 
-                    # track block2 transfers
+                    # Track block2 transfers
                     bl2 = opt[CoAPOptionBlock2]
-                    #print (" response bl2")
-                    #print (" bl2[M]", bl2["M"])
 
-                    if bl2["M"]:
-                        self.by_bl[tr.__uri] = tr
+                    if bl2['M']:
+                        self.by_bl[conv.__uri] = conv
                 except KeyError:
-                    #print (" key error 2")
                     pass
 
-            #print (" by_bl[token]:", self.by_bl.get(token))
-            #if tr:
-                #print (" tr.__uri:", tr.__uri)
-                #print (" by_bl[tr.__uri]:", self.by_bl.get(tr.__uri))
-            # matching by message id for RST & ACK
-            #
-            mid = frame.get_layer(CoAP)['mid']
-            typ = frame.get_layer(CoAP)['type']
-            if typ==0 and tr:
-                # CON frame w/ known conversation
+            # Matching by message id for RST & ACK
+            mid = frame[CoAP]['mid']
+            typ = frame[CoAP]['type']
 
-                # record the mid
-                self.by_mid[mid] = tr, frame.ts + MAX_TIMEOUT
+            # CON frame w/ known conversation
+            if typ == 0 and conv:
 
-            elif typ>1 and not tr:
-                # ACK/RST frame w/o known conversation
+                # Record the mid
+                self.by_mid[mid] = conv, frame.ts + MAX_TIMEOUT
 
-                # -> try matching by message-id
+            # ACK/RST frame w/o known conversation
+            elif typ > 1 and not conv:
+
+                # Try matching by message-id
                 try:
-                    tr, timeout = self.by_mid[mid]
+                    conv, timeout = self.by_mid[mid]
+
+                    # If timeout passed, delete the conv because inconsistant
                     if frame.ts > timeout:
                         del self.by_mid[mid]
-                        tr = None
+                        conv = None
                 except KeyError:
                     pass
 
-            if typ == 3: # RST
-                if tr:
-                    tr.__obs_active = False
+            # RST frame
+            if typ == 3:
 
-                tr2 = self.obs_by_token.get (token)
-                if tr2:
-                    tr2.__obs_active = False
+                # Observable not anymore active
+                if conv:
+                    conv.__obs_active = False
 
-            if tr:
-                tr.append (frame)
+                # If another conv was registered, not anymore active too
+                conv2 = self.obs_by_token.get(token)
+                if conv2:
+                    conv2.__obs_active = False
+
+            # If we found a corresponding conv for this response
+            if conv:
+                conv.append(frame)
+
+            # If none, add it to the ignored ones
             else:
-                self.__tracker.ignored_frames.append (frame)
+                self.__tracker.ignored_frames.append(frame)
 
+    @typecheck
+    def __init__(self, frames: list_of(Frame) = []):
+        """
+        Initialize the CoAP Tracker with a frame list
 
-    def __init__ (self, frames = ()):
+        :param frames: List of frames
+        :type frames: [Frame]
+        """
         self.reset()
-        self.append (frames)
+        self.append(frames)
 
-    def reset (self):
+    def reset(self):
+        """
+        Reset the tracker, clear all its list and dict
+        """
         self.conversations = []
         self.ignored_frames = []
         self.__states = {}
 
     @staticmethod
-    def flow_tag (frame):
-        assert frame.get_layer(CoAP)
+    @typecheck
+    def flow_tag(frame: Frame) -> str:
+        """
+        Generate a tag for a flow, consists into displaying the two adresses
+
+        :param frame: The frame from which we will generate the tag
+        :type frame: Frame
+
+        :return: A tag of the flow consisting into the adresses of the two
+                 communicating entities
+        :rtype: str
+        """
+        assert CoAP in frame
 
         src, dst = frame.src, frame.dst
 
-        return str ((src, dst)) if src < dst else str ((dst, src))
+        return str((src, dst)) if src < dst else str((dst, src))
 
-    def new_conversation (self, frame):
-        t = CoAPConversation (frame)
-        self.conversations.append (t)
-        t.id = len (self.conversations)
+    @typecheck
+    def new_conversation(self, frame: Frame) -> CoAPConversation:
+        """
+        Generate a new conversation
+
+        :param frame: The first frame of the new conversation
+        :type frame: Frame
+
+        :return: A new conversation containing the entered frame
+        :rtype: CoAPConversation
+        """
+        t = CoAPConversation(frame)
+        self.conversations.append(t)
+        t.id = len(self.conversations)
         return t
 
-
-    def append (self, frames):
+    @typecheck
+    def append(self, frames: list_of(Frame)):
+        """
+        Put the frames into the tracker lists
+        """
         for f in frames:
-            #print (f)
-            if not f.get_layer(CoAP):
-                # not a coap frame
-                self.ignored_frames.append (f)
+
+            # Not a coap frame
+            if CoAP not in f:
+                self.ignored_frames.append(f)
                 continue
 
-            tag = self.flow_tag (f)
-            #print (" tag:", tag)
+            # Get the flow tag of this frame "(src, dst)" or "(dst, src)"
+            tag = self.flow_tag(f)
 
+            # Try to get the corresponding flowstate
             try:
-                state = self.__states [tag]
+                state = self.__states[tag]
+
+            # If none found, create it
             except KeyError:
-                state = self.FlowState (self)
+                state = self.FlowState(self)
                 self.__states[tag] = state
-            #print (" state:", state)
 
-            state.append (f)
-
-#       for s in self.__states:
-#           print (s)
+            # In the end, add it to the flow state
+            state.append(f)
 
 
-def extract_coap_conversations (frames):
-    conversations = []
-    ignored_frames = []
+@typecheck
+def group_conversations_by_pair(
+    conversations: list_of(CoAPConversation)
+) -> dict_of((Value, Value), list_of(CoAPConversation)):
+    """
+    Group a list of conversations by pair
 
-    id_t = 1
+    :param conversations: The list of conversations to regroup by pair
+    :type conversations: [CoAPConversation]
 
-    # tag -> conversation
-    actives = {}
-
-
-    # TODO: garbage-collect timeouts every N frames
-    for f in frames:
-
-        if not f.get_layer(CoAP):
-            # we care only about coap packets
-            ignored_frames.append (f)
-            continue
-
-        # We have a CoAP frame
-        tag = CoAPConversation.gen_tag (f)
-        t = actives.get (tag)
-        if t:
-            # we have an existing conversation w/ this tag
-            if f.ts > t.timeout:
-                # this conversation has expired
-                del actives[tag]
-            else:
-                # append this frame to the existing conversation
-                t.append (f)
-                if f.get_layer(CoAP).is_request():
-                    t.update_timeout(f)
-                continue
-
-        # we have no valid conversation for that tag
-
-        if f.get_layer(CoAP).is_response():
-            ignored_frames.append (f)
-            continue
-
-
-        # We have a CoAP request
-        # -> begin a new conversation
-        t = CoAPConversation (f)
-        t.id = id_t
-        id_t += 1
-
-        assert t.tag == tag
-
-        conversations.append (t)
-        actives[tag] = t
-
-    return conversations, ignored_frames
-
-
-def group_conversations_by_pair (conversations):
+    :return: A dict mapping of the client/server @ pair and the list ofconv
+    :rtype: {(Value, Value): [CoAPConversation]}
+    """
     d = {}
     for t in conversations:
         pair = t.client, t.server
         try:
-            d[pair].append (t)
+            d[pair].append(t)
 
-            # chain successive conversations together
+            # Chain successive conversations together
             d[pair][-2].next = t
         except KeyError:
             d[pair] = [t]
@@ -889,14 +1142,14 @@ def group_conversations_by_pair (conversations):
 class Resolver:
     __cache = {}
 
-    def __new__ (cls, ip_addr):
+    def __new__(cls, ip_addr):
         try:
             return cls.__cache[ip_addr]
         except KeyError:
             pass
 
         try:
-            name = socket.gethostbyaddr (str (ip_addr))[0]
+            name = socket.gethostbyaddr(str(ip_addr))[0]
         except socket.herror:
             name = None
 
@@ -905,8 +1158,8 @@ class Resolver:
         return name
 
     @classmethod
-    def format (cls, ip_addr):
-        name = cls (ip_addr)
+    def format(cls, ip_addr):
+        name = cls(ip_addr)
 
         if name:
             return "%s (%s)" % (name, ip_addr)
@@ -914,6 +1167,122 @@ class Resolver:
             return ip_addr
 
 
-# TODO: Remove this and use ttproto core and generic class instead
-TestCase = CoAPTestcase
-Tracker = CoAPTracker
+def analyze_fix():
+
+    # Parse the conversations grouped by pair
+    # pair => A tuple (client, server)
+    # conversations => A list of corresponding conversations put by
+    #                  pair and in temporal order
+    for pair, conversations in conversations_by_pair.items():
+
+        # The results also by pair
+        pair_results = []
+
+        # For every test cases found (most of the time, there will be
+        # only one)
+        for tc_type in test_cases:
+
+            # Results for each tc
+            tc_results = []
+
+            # We run the testcase for each conversation, meaning that
+            # one type of TC can have more than one result!
+            for tr in conversations:
+
+                # Create the CoAPTestCase object from parameters
+                tc = tc_type(tr, None, True)
+
+                # If there's a result
+                if tc.verdict:
+                    tc_results.append(tc)
+
+                    # If exception, add it to the function parameter
+                    if all((
+                        hasattr(tc, "exception"),
+                        exceptions is not None
+                    )):
+                        exceptions.append(tc)
+
+            # Append the results of each test case confronted to this
+            # conversation pair
+            pair_results.append(tc_results)
+
+    # Get only the results of the test case that we requested
+    # You can look upper and see that we loop on ALL the test cases,
+    # whereas here we only loop on the requested ones (can be many)
+    for tc_type, tc_results in filter(
+        lambda x: tc_id in x[0].__name__,
+        zip(test_cases, pair_results)
+    ):
+        # (tc_type, tc_results) = filter(
+        #     lambda x: tc_id == x[0].__name__,  # Take only the requested tc
+        #     zip(test_cases, pair_results)  # Parse the 2 lists in parallel
+        # )
+
+        # Prepare the review frames list
+        review_frames = []
+
+        # Current verdict (inconc)
+        v = 0
+
+        # For every results
+        for tc in tc_results:
+
+            # All the failed frames for a TC, even if they are from
+            # different conversations!
+            review_frames = tc.failed_frames
+
+            # Get the new verdict and update current one if the new has
+            # higher priority
+            new_v = self.verdicts.index(tc.verdict)
+            if new_v > v:
+                v = new_v
+
+        # Get the text value of the verdict
+        v_txt = self.verdicts[v]
+        if v_txt is None:
+            v_txt = "none"
+
+        # Compute the extra informations
+        extra_info = tc.text if verbose else ''
+
+    pass
+
+
+if __name__ == "__main__":
+    filename = '/'.join((
+        'tests',
+        'test_dumps',
+        '_'.join((
+            'TD',
+            'COAP',
+            'CORE',
+            '07',
+            'FAIL',
+            'No',
+            'CoAPOptionContentFormat',
+            'plus',
+            'random',
+            'UDP',
+            'messages.pcap'
+        ))
+    ))
+    frame_list = Frame.create_list(PcapReader(filename))
+
+    for frame in frame_list:
+        duct_tape(frame)
+
+    tracker = CoAPTracker(frame_list)
+    conversations = tracker.conversations
+    ignored = tracker.ignored_frames
+    print('#####')
+    print('##### Conversations')
+    print(conversations)
+    print('#####')
+    print('##### Ignored')
+    print(ignored)
+    print('#####')
+    print('##### Conversations by pair')
+    conversations_by_pair = group_conversations_by_pair(conversations)
+    print(conversations_by_pair)
+    print('#####')

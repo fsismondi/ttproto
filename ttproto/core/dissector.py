@@ -35,6 +35,7 @@ import itertools
 import sys
 import inspect
 
+from ttproto.core.exceptions import Error
 from ttproto.core.data import Data, Message
 from ttproto.core.list import ListValue
 from ttproto.core.packet import Value, PacketValue
@@ -54,7 +55,8 @@ __all__ = [
 
 def is_protocol(arg):
     """
-    Check if a parameter is a valid protocol
+    Check if a parameter is a valid protocol.
+    This function is used for the typechecker decorator.
 
     :return: True if a valid protocol, False if not
     :rtype: bool
@@ -68,7 +70,8 @@ def is_protocol(arg):
 
 def is_layer_value(arg):
     """
-    Check if a parameter is a valid layer value
+    Check if a parameter is a valid layer value.
+    This function is used for the typechecker decorator.
 
     :return: True if a valid layer value, False if not
     :rtype: bool
@@ -77,6 +80,13 @@ def is_layer_value(arg):
         arg is not None,
         isinstance(arg, Value)
     ))
+
+
+class ProtocolNotFound(Error):
+    """
+    Error thrown when a protocol isn't found in a frame
+    """
+    pass
 
 
 class Frame:
@@ -111,51 +121,6 @@ class Frame:
         # Put its dictionnary representation and its summary as not done yet
         self.__dict = None
         self.__summary = None
-
-        # FIXME: Remove this duct tape
-        self.duct_tape()
-
-    def duct_tape(self):
-        self.src = None
-        self.dst = None
-
-        v = self.__msg.get_value()
-        self.ts = self.__timestamp
-        while True:
-            if any((
-                isinstance(v, Ethernet),
-                isinstance(v, IPv6),
-                isinstance(v, IPv4)
-            )):
-                self.src = v["src"]
-                self.dst = v["dst"]
-                v = v["pl"]
-                continue
-            elif isinstance(v, UDP):
-                if not isinstance(self.src, tuple):
-                    self.src = self.src, v["sport"]
-                    self.dst = self.dst, v["dport"]
-                v = v["pl"]
-                continue
-            elif isinstance(v, CoAP):
-                self.coap = v
-            elif isinstance(v, Ieee802154):
-                self.src = v["src"]
-                self.dst = v["dst"]
-                v = v["pl"]
-                continue
-            elif any((
-                isinstance(v, SixLowpan),
-                isinstance(v, LinuxCookedCapture),
-                isinstance(v, NullLoopback)
-            )):
-                try:
-                    v = v["pl"]
-                    continue
-                except KeyError:
-                    pass
-
-            break
 
     @typecheck
     def __contains__(self, protocol: is_protocol) -> bool:
@@ -230,7 +195,7 @@ class Frame:
         cls,
         frames: list_of(this_class),
         protocol: is_protocol
-    ) -> list_of(this_class):
+    ) -> (list_of(this_class), list_of(this_class)):
         """
         Allow to filter frames on a protocol
 
@@ -242,12 +207,13 @@ class Frame:
         :raises TypeError: If protocol is not a protocol class
                            or if the list contains a non Frame object
 
-        :return: A list of frames that are filtered
-        :rtype: [Frame]
+        :return: A tuple containing the filtered frames and the ignored ones
+        :rtype: ([Frame], [Frame])
         """
 
         # The return list
-        ret = []
+        filtered_frames = []
+        ignored_frames = []
 
         # Check the protocol is one entered
         if protocol not in Dissector.get_implemented_protocols():
@@ -262,10 +228,12 @@ class Frame:
 
             # If the protocol is contained into this frame
             if protocol in frame:
-                ret.append(frame)
+                filtered_frames.append(frame)
+            else:
+                ignored_frames.append(frame)
 
         # Return the newly created list
-        return ret
+        return filtered_frames, ignored_frames
 
     @typecheck
     def value_to_list(
@@ -374,14 +342,20 @@ class Frame:
         return (self.__error is not None)
 
     @typecheck
-    def get_layer(self, layer: is_protocol) -> is_layer_value:
+    def __getitem__(self, prot: is_protocol) -> is_layer_value:
         """
-        Get the requested layer for this frame
+        Get the requested informations of the layer level for this frame
+
+        :param prot: The layer level that we want to retrieve
+        :type prot: type
+
+        :return: The layer level as a Value instance
+        :rtype: Value
         """
 
         # Check that the layer is a correct protocol
-        if layer not in Dissector.get_implemented_protocols():
-            raise TypeError(layer.__name__ + ' is not a protocol class')
+        if prot not in Dissector.get_implemented_protocols():
+            raise TypeError(prot.__name__ + ' is not a protocol class')
 
         # Get current value
         value = self.__msg.get_value()
@@ -390,7 +364,7 @@ class Frame:
         while True:
 
             # If we arrive at the correct layer
-            if isinstance(value, layer):
+            if isinstance(value, prot):
                 return value
 
             # Go to the next layer
@@ -401,13 +375,20 @@ class Frame:
             # If none found, leave the loop
             except (KeyError, TypeError):
                 pass
+            break
 
-            # Layer not found into this frame
-            raise LayerNotFoundError(
-                'Layer named %s not found in this frame'
-                %
-                layer.__name__
-            )
+        # If this protocol isn't found in the stack
+        raise ProtocolNotFound(
+            "%s protocol wasn't found in this frame" % prot.__name__
+        )
+
+    @typecheck
+    def get_timestamp(self) -> float:
+        return self.__timestamp
+
+    @typecheck
+    def get_value(self) -> is_layer_value:
+        return self.__msg.get_value()
 
 
 class Dissector:
@@ -509,7 +490,7 @@ class Dissector:
 
             # Filter the frames for the selected protocol
             if protocol is not None:
-                frames = Frame.filter_frames(frames, protocol)
+                frames, _ = Frame.filter_frames(frames, protocol)
 
             # Then append the summaries
             for frame in frames:
@@ -554,7 +535,7 @@ class Dissector:
 
             # Filter the frames for the selected protocol
             if protocol is not None:
-                frames = Frame.filter_frames(frames, protocol)
+                frames, _ = Frame.filter_frames(frames, protocol)
 
             # Then append them in the frame list
             for frame in frames:
@@ -564,12 +545,10 @@ class Dissector:
         return frame_list
 
 
-class LayerNotFoundError(Exception):
-    pass
-
-
 if __name__ == "__main__":
-    # dis = Dissector('tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap')
+    # dis = Dissector(
+    #     'tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    # )
     # print(dis.summary())
     # print('##### Dissect without filtering #####')
     # print(dis.dissect())
@@ -579,5 +558,29 @@ if __name__ == "__main__":
     # print('##### Dissect without filtering on CoAP #####')
     # print(dis.dissect(CoAP))
     # print('#####')
-    print(Dissector.get_implemented_protocols())
+    # print(Dissector.get_implemented_protocols())
+    # frame_list = Frame.create_list(PcapReader(
+    #     '/'.join((
+    #         'tests',
+    #         'test_dumps',
+    #         'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    #     ))
+    # ))
+    # frame_list, _ = Frame.filter_frames(frame_list, CoAP)
+    # print(frame_list[0].get_layer(IPv4))
+    # print(frame_list[0].get_timestamp())
+    # print(frame_list[0].get_value())
+    # print(frame_list[0]['CoAP'])
+    # print(frame_list[0]['CoAP']['Type'])
+    # try:
+    #     print(frame_list[0][Value])
+    # except InputParameterError:
+    #     pass
+    # try:
+    #     print(frame_list[0][IPv6])
+    # except ProtocolNotFound as e:
+    #     print(e)
+    # print(frame_list[0][CoAP])
+    # print(frame_list[0][CoAP]['type'])
+    # print(frame_list[0]['Unknown'])
     pass

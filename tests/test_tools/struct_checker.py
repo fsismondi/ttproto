@@ -4,6 +4,7 @@ import base64
 import hashlib
 
 from collections import OrderedDict
+from ttproto.core.control import Verdict
 
 
 class StructureChecker(unittest.TestCase):
@@ -50,7 +51,7 @@ class StructureChecker(unittest.TestCase):
         'description': str,
         'review_frames': list
     }
-    VERDICT_VALUES = [None, "inconc", "pass", "fail", "error"]
+    VERDICT_VALUES = Verdict.values()
 
     # #################### Utilities functions #########################
 

@@ -249,10 +249,19 @@ class FrameTestCase(unittest.TestCase):
         for protocol in protocols:
 
             # Filter on each protocol
-            filtered = Frame.filter_frames(self.frames, protocol)
+            filtered, ignored = Frame.filter_frames(self.frames, protocol)
 
             # Get the id of frames with this protocol
             ids = self.frames_with_protocol(protocol)
+
+            # Check the two datas received
+            self.assertEqual(type(filtered), list)
+            for f in filtered:
+                self.assertEqual(type(f), Frame)
+            self.assertEqual(type(ignored), list)
+            for i in ignored:
+                self.assertEqual(type(i), Frame)
+            self.assertEqual(len(filtered) + len(ignored), len(self.frames))
 
             # Check the length of filtered
             self.assertEqual(len(filtered), len(ids))
@@ -266,34 +275,37 @@ class FrameTestCase(unittest.TestCase):
 
         # Filter on none protocol
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(self.frames, type(None))
+            filtered, ignored = Frame.filter_frames(self.frames, type(None))
 
     def test_filter_frames_none(self):
 
         # Filter on none protocol
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(self.frames, None)
+            filtered, ignored = Frame.filter_frames(self.frames, None)
 
     def test_filter_frames_not_a_protocol(self):
 
         # Filter on each protocol
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(self.frames, Frame)
+            filtered, ignored = Frame.filter_frames(self.frames, Frame)
 
     def test_filter_frames_higher_classes(self):
 
         # Filter on each protocol
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(self.frames, InetPacketValue)
+            filtered, ignored = Frame.filter_frames(
+                self.frames,
+                InetPacketValue
+            )
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(self.frames, PacketValue)
+            filtered, ignored = Frame.filter_frames(self.frames, PacketValue)
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(self.frames, Value)
+            filtered, ignored = Frame.filter_frames(self.frames, Value)
 
     def test_filter_frames_options_not_a_protocol(self):
 
         with self.assertRaises(InputParameterError):
-            filtered = Frame.filter_frames(
+            filtered, ignored = Frame.filter_frames(
                 self.frames,
                 CoAPOptionLocationQuery
             )
@@ -308,7 +320,10 @@ class FrameTestCase(unittest.TestCase):
 
             # Filter on none protocol
             with self.assertRaises(InputParameterError):
-                filtered = Frame.filter_frames(self.frames[0], protocol)
+                filtered, ignored = Frame.filter_frames(
+                    self.frames[0],
+                    protocol
+                )
 
     def test_filter_frames_list_of_non_frame(self):
 
@@ -320,7 +335,7 @@ class FrameTestCase(unittest.TestCase):
 
             # Filter on none protocol
             with self.assertRaises(TypeError):
-                filtered = Frame.filter_frames(protocols, protocol)
+                filtered, ignored = Frame.filter_frames(protocols, protocol)
 
     def test_filter_frames_list_of_frame_with_a_non_frame(self):
 
@@ -335,7 +350,7 @@ class FrameTestCase(unittest.TestCase):
 
             # Filter on none protocol
             with self.assertRaises(TypeError):
-                filtered = Frame.filter_frames(self.frames, protocol)
+                filtered, ignored = Frame.filter_frames(self.frames, protocol)
 
 
 # #################### Main run the tests #########################

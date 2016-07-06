@@ -31,34 +31,30 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import sys
-import time
-import re
-import socket
+"""
+Analyzer module, defines all the needed tools to analyse a given dump file for
+interoperability testing
+"""
+
 import glob
 import inspect
 
 from collections import OrderedDict
 from importlib import import_module
-from os import chdir, path, getcwd
-from lib2to3.fixes.fix_print import parend_expr
-from ttproto.core import logger
+from os import path
 from ttproto.core.data import (Data, get_type, store_data,
                                DifferenceList, Value)
 from ttproto.core.dissector import Frame
-from ttproto.core.html_logger import HTMLLogger
-from ttproto.core.list import ListValue
-from ttproto.core.logger import LoggedObject, LogEventClass
+from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import *
-from ttproto.core.packet import PacketValue
-from ttproto.core.xmlgen import XHTML10Generator
-from ttproto.core.lib.inet.all import *
+from ttproto.core.lib.all import *
 from ttproto.core.lib.ports.pcap import PcapReader
-from urllib import parse
 
 
 __all__ = [
-    'Analyzer'
+    'Analyzer',
+    'Verdict',
+    'TestCase'
 ]
 
 
@@ -68,13 +64,188 @@ SEARCH_STRING = 'td_*.py'
 ENTRY_MODULE = 'common'
 
 
-# class Analyzer(LoggedObject):
+@typecheck
+def is_verdict(arg) -> bool:
+    """
+    Check if a parameter is a valid verdict.
+    This function is used for the typechecker decorator.
+
+    :return: True if a valid verdict, False if not
+    :rtype: bool
+    """
+    return all((
+        arg is not None,
+        type(arg) == str,
+        arg in Verdict.values()
+    ))
+
+
+class Verdict:
+    """
+    A class handling the verdict for an analysis
+
+    Known verdict values are:
+     - "none": No verdict set yet
+     - "pass": The NUT fulfilled the test purpose
+     - "inconc": The NUT did not fulfill the test purpose but did not display
+                 bad behaviour
+     - "fail": The NUT did not fulfill the test purpose and displayed a bad
+               behaviour
+     - "aborted": The test execution was aborted by the user
+     - "error": A runtime error occured during the test
+
+    At initialisation time, the verdict is set to None. Then it can be updated
+    one or multiple times, either explicitely calling set_verdict() or
+    implicitely if an unhandled exception is caught by the control module
+    (error verdict) or if the user interrupts the test manually (aborted
+    verdict).
+
+    Each value listed above has precedence over the previous ones. This means
+    that when a verdict is updated, the resulting verdict is changed only if
+    the new verdict is worse than the previous one.
+    """
+
+    __values = ("none", "pass", "inconc", "fail", "aborted", "error")
+
+    @typecheck
+    def __init__(self, initial_value: optional(int) = None):
+        self.__value = 0
+        if initial_value is not None:
+            self.update(initial_value)
+
+    @typecheck
+    def update(self, new_verdict: str, message: str = ''):
+        """Update the verdict"""
+
+        assert new_verdict in self.__values
+
+        new_value = self.__values.index(new_verdict)
+        if new_value > self.__value:
+            self.__value = new_value
+
+    @classmethod
+    @typecheck
+    def values(cls) -> tuple_of(str):
+        """List the known verdict values"""
+        return cls.__values
+
+    @typecheck
+    def get_value(self) -> str:
+        """Get the value of the verdict"""
+        return self.__values[self.__value]
+
+    @typecheck
+    def __str__(self) -> str:
+        return self.__values[self.__value]
+
+
+class TestCase:
+    """
+    A class handling a test case for an analysis
+    """
+
+    # Attribute to know if this TC is obsolete or not
+    obsolete = False
+
+    @typecheck
+    def __init__(self, frame_list: list_of(Frame)):
+        """
+        Initialize a test case, the only thing that it needs for
+        interoperability testing is a list of frame
+
+        It will put the list of frames in it and then init the verdict
+
+        :param frame_list: The list of frames to analyze
+        :type frame_list: [Frame]
+        """
+
+        # Initialize its verdict instance and its list of frame
+        self._verdict = Verdict()
+        self._frames = frame_list
+
+    @typecheck
+    def match(self, verdict: is_verdict = 'inconc', msg: str = '', *args):
+        """
+        Abstract function to match a packet value with a template
+
+        :param verdict: The verdict to put if it matches
+        :param msg: The message to associate with the verdict
+        :param args: More arguments if needed into implementations
+        :type verdict: str
+        :type msg: str
+        :type args: tuple
+        """
+        raise NotImplementedError
+
+    def next_frame(self):
+        """
+        Switch to the next frame
+        """
+        raise NotImplementedError
+
+    @typecheck
+    def log(self, msg: str):
+        """
+        Log a message
+
+        :param msg: The message to log
+        :type msg: str
+        """
+        raise NotImplementedError
+
+    @classmethod
+    @typecheck
+    def get_objective(self) -> str:
+        """
+        Get the objective of this test case
+
+        :return: The objective of this test case
+        :rtype: str
+        """
+        raise NotImplementedError
+
+    @typecheck
+    def pre_process(self) -> list_of(Frame):
+        """
+        Function for each TC to preprocess its list of frames
+
+        :return: The list of ignored frames
+        :rtype: [Frame]
+
+        .. note:: Maybe it will be better to return the reason?
+        """
+        raise NotImplementedError
+
+    @typecheck
+    def set_verdict(self, verdict: is_verdict, msg: str = ''):
+        """
+        Update the current verdict of the current test case
+
+        :param verdict: The new verdict
+        :param msg: The message to associate with the verdict
+        :type verdict: str
+        :type msg: str
+        """
+        self._verdict.update(verdict, msg)
+
+    def run(self) -> (str, list_of(int), str, list_of(Exception)):
+        """
+        Run the test case
+
+        :return: A tuple with the informations about the running which are
+                 - The verdict as a string
+                 - The list of the review frames
+                 - A string for extra informations
+                 - A list of Exceptions that could have occured during the run
+        :rtype: (str, [int], str, [Exception])
+        """
+        raise NotImplementedError
+
+
 class Analyzer:
     """
         Class for the analyzer tool
     """
-
-    verdicts = None, "inconc", "pass", "fail", "error"
 
     @typecheck
     def __init__(self, test_env: str):
@@ -226,24 +397,16 @@ class Analyzer:
     def analyse(
         self,
         filename: str,
-        tc_id: str,
-        urifilter: optional(str) = None,
-        exceptions: optional(list) = None,
-        profile: str = 'client',
-        verbose: bool = False
+        tc_id: str
     ) -> (str, str, list_of(int), str):
         """
         :param filename:
-        :param urifilter:
-        :param exceptions:
-        :param tc_di:
-        :param profile:
-        :param verbose: boolean, if true method returns verdict description
-                        (which may be very verbose)
+        :param tc_id:
         :return: tuple
 
         :raises FileNotFoundError: If the test env of the tc is not found
         :raises PcapError: If the provided file isn't a valid pcap file
+        :raises ObsoleteTestCase: If the test case if obsolete
 
         example:
         [('TD_COAP_CORE_03', 'fail', [21, 22]), 'verdict description']
@@ -256,63 +419,41 @@ class Analyzer:
                         the rest is inconc
         """
 
-        # FIXME: To remove too
-        # Import test env common module
-        com_mod = import_module(
-            '.'.join((TTPROTO_DIR, self.__test_env, ENTRY_MODULE))
-        )
-        Tracker = getattr(
-            com_mod,
-            'Tracker'
-        )
-        group_conversations_by_pair = getattr(
-            com_mod,
-            'group_conversations_by_pair'
-        )
-
-        # Get all the implemented test cases
+        # Get the test case
         try:
-            implemented_tcs, _ = self.get_implemented_testcases(tc_id)
+            implemented_tcs, obsoletes = self.get_implemented_testcases(tc_id)
         except FileNotFoundError:
-            # self.log(EventFileNotFound, testcase_id)
             raise FileNotFoundError(
                 "Testcase : " + testcase_id + " couldn't be found"
             )
 
-        # Import test cases
-        test_cases = []
+        # Check that we received only one
+        assert len(implemented_tcs) + len(obsoletes) == 1
 
-        # Build the module relative name
-        for tc in implemented_tcs:
-            modname = tc[0]
-            mod_rel_name = '.'.join([
-                TTPROTO_DIR,
-                self.__test_env,
-                TESTCASES_SUBDIR,
-                modname.lower()
-            ])
-
-            # Note that the module is always lower case and the plugin (class)
-            # is upper case (ETSI naming convention)
-            tc = getattr(
-                import_module(mod_rel_name),
-                modname.upper()
+        # If the test case is obsolete
+        if len(obsoletes) == 1:
+            assert obsoletes[0][0] == tc_id
+            raise ObsoleteTestCase(
+                "Testcase : " + testcase_id + " is obsolete"
             )
 
-            # In function of the current profile ('client' or 'reverse-proxy')
-            # TODO: This should be generic and put as core.Config class
-            if tc.reverse_proxy == (profile == 'reverse-proxy'):
-                test_cases.append(tc)
+        # Correct test case
+        assert implemented_tcs[0][0] == tc_id
+        modname = implemented_tcs[0][0]
+        mod_real_name = '.'.join([
+            TTPROTO_DIR,
+            self.__test_env,
+            TESTCASES_SUBDIR,
+            modname.lower()
+        ])
 
-        # In function of the current profile ('client' or 'reverse-proxy')
-        # TODO: This should be generic and put as core.Config class
-        # test_cases = [
-        #     t for t in implemented_tcs
-        #     if eval(t[0]).reverse_proxy == (profile == 'reverse-proxy')
-        # ]
-
-        # Check if there's only one test case to confront the pcap file
-        force = len(test_cases) == 1
+        # Load the test case class
+        # Note that the module is always lower case and the plugin (class)
+        # is upper case (ETSI naming convention)
+        test_case_class = getattr(
+            import_module(mod_real_name),
+            modname.upper()
+        )
 
         # Disable name resolution for performance improvment
         with Data.disable_name_resolution():
@@ -320,199 +461,69 @@ class Analyzer:
             # Get the list of frames from the file
             frames = Frame.create_list(PcapReader(filename))
 
-            # Malformed frames
+            # Malformed frames are removed (can be done here or let to the TC)
+            # FIXME: We do this HERE or into the TC IMPLEMENTATION ?
             malformed = [frame for frame in frames if frame.is_malformed()]
+            print('#####')
+            print('##### Malformed')
+            print(malformed)
+            print('#####')
+            frames = [f for f in frames if f not in malformed]
+            print('##### Frames in')
+            print(frames)
+            print('#####')
 
-            # Create the tracker from the frames
-            # TODO: This part needs to be generic
-            #
-            # It consists into taking frames, grouping them by conversations
-            # and filtering interessant (coap) frames from those ignored
-            # This part is REALLY specific for CoAP
-            tracker = Tracker(frames)
-            conversations = tracker.conversations
-            ignored = tracker.ignored_frames
+            # Initialize the TC with this list of frames
+            test_case = test_case_class(frames)
 
-            # Return results
-            # results = []
+            # Preprocess the list of frames which returns the list of ignored
+            # FIXME: Maybe integrate the pre-processing into the constructor?
+            ignored = test_case.pre_process()
+            print('##### Ignored')
+            print(ignored)
+            print('#####')
+            raise Exception
 
-            # Get the conversations by pair
-            # TODO: This part is also very specific to CoAP
-            conversations_by_pair = group_conversations_by_pair(conversations)
-
-            # Parse the conversations grouped by pair
-            # pair => A tuple (client, server)
-            # conversations => A list of corresponding conversations put by
-            #                  pair and in temporal order
-            for pair, conversations in conversations_by_pair.items():
-
-                # The results also by pair
-                pair_results = []
-
-                # For every test cases found (most of the time, there will be
-                # only one)
-                for tc_type in test_cases:
-
-                    # Results for each tc
-                    tc_results = []
-
-                    # We run the testcase for each conversation, meaning that
-                    # one type of TC can have more than one result!
-                    for tr in conversations:
-
-                        # Create the CoAPTestCase object from parameters
-                        tc = tc_type(tr, urifilter, force)
-
-                        # If there's a result
-                        if tc.verdict:
-                            tc_results.append(tc)
-
-                            # If exception, add it to the function parameter
-                            if all((
-                                hasattr(tc, "exception"),
-                                exceptions is not None
-                            )):
-                                exceptions.append(tc)
-
-                    # Append the results of each test case confronted to this
-                    # conversation pair
-                    pair_results.append(tc_results)
-
-            # Get only the results of the test case that we requested
-            # You can look upper and see that we loop on ALL the test cases,
-            # whereas here we only loop on the requested ones (can be many)
-            for tc_type, tc_results in filter(
-                lambda x: tc_id in x[0].__name__,
-                zip(test_cases, pair_results)
-            ):
-                # (tc_type, tc_results) = filter(
-                #     lambda x: tc_id == x[0].__name__,  # Take only the requested tc
-                #     zip(test_cases, pair_results)  # Parse the 2 lists in parallel
-                # )
-
-                # Prepare the review frames list
-                review_frames = []
-
-                # Current verdict (inconc)
-                v = 0
-
-                # For every results
-                for tc in tc_results:
-
-                    # All the failed frames for a TC, even if they are from
-                    # different conversations!
-                    review_frames = tc.failed_frames
-
-                    # Get the new verdict and update current one if the new has
-                    # higher priority
-                    new_v = self.verdicts.index(tc.verdict)
-                    if new_v > v:
-                        v = new_v
-
-                # Get the text value of the verdict
-                v_txt = self.verdicts[v]
-                if v_txt is None:
-                    v_txt = "none"
-
-                # Compute the extra informations
-                extra_info = tc.text if verbose else ''
+            # Here we execute the test case and return the result
+            res = test_case.run()
 
             # Return the result
-            return (type(tc).__name__, v_txt, list(review_frames), extra_info)
-
-            # TODO clean list(review_frames)  tc.review_frames_log,
-            # tc.review_frames_log in module proto_specific
-
-            # return results
+            return (tc_id, res[0], res[1], res[2])
+            # return (tc_id, v_txt, list(review_frames), extra_info)
 
 
-# class EventNoTestCasesFoundForAnalysis(metaclass=LogEventClass):
-#     fields = (
-#         ('analyzer', Analyzer),
-#         ('test_case', str),
-#         ('test_env', str),
-#         ('profile', str)
-#     )
-
-#     def summary(self):
-#         return (
-#             "%s: No TC %s found in %s test env and with %s profile"
-#             %
-#             (self[0].__name__, self[1], self[2], self[3])
-#         )
-
-
-# class EventNoTestCasesFound(metaclass=LogEventClass):
-#     fields = (
-#         ('analyzer', Analyzer),
-#         ('search_query', str)
-#     )
-
-#     def summary(self):
-#         return (
-#             "%s: Non TC found with %s query" % (self[0].__name__, self[1])
-#         )
-
-
-# class EventObsoleteTCFound(metaclass=LogEventClass):
-#     fields = (
-#         ('analyzer', Analyzer),
-#         ('obsoletes', list)  # Class list
-#     )
-
-#     def summary(self):
-
-#         # Build the string representation of obsolete tc class list
-#         first = True
-#         class_str_repr = '['
-#         for obs_class in self[1]:
-#             assert type(obs_class) == type
-#             if not first:
-#                 class_str_repr += ', '
-#             class_str_repr += obs_class.__name__
-#             first = False
-#         class_str_repr += ']'
-
-#         # Return the warning to be logged
-#         return (
-#             "%s: %d obsolete testcases found:\n%s"
-#             %
-#             (self[0].__name__, len(self[1]), class_str_repr)
-#         )
-
-
-# class EventFileNotFound(metaclass=LogEventClass):
-#     fields = (
-#         ('analyzer', Analyzer),
-#         ('filename', str)
-#     )
-
-#     def summary(self):
-#         return (
-#             "%s: Testcase %s couldn't be found" % (self[0].__name__, self[1])
-#         )
+class ObsoleteTestCase(Error):
+    pass
 
 
 if __name__ == "__main__":
-    print(Analyzer('tat_coap').get_implemented_testcases())
-    print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_24'))
-    try:
-        print(
-            Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42')
-        )
-    except FileNotFoundError as e:
-        print(e)
-    try:
-        print(Analyzer('unknown').get_implemented_testcases())
-    except NotADirectoryError as e:
-        print(e)
-    try:
-        print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
-    except NotADirectoryError as e:
-        print(e)
+    # print(Analyzer('tat_coap').get_implemented_testcases())
+    # print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_24'))
+    print(Analyzer('tat_coap').get_implemented_testcases(
+        'TD_COAP_CORE_24', True
+    ))
+    # try:
+    #     print(
+    #         Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42')
+    #     )
+    # except FileNotFoundError as e:
+    #     print(e)
+    # try:
+    #     print(Analyzer('unknown').get_implemented_testcases())
+    # except NotADirectoryError as e:
+    #     print(e)
+    # try:
+    #     print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
+    # except NotADirectoryError as e:
+    #     print(e)
     print(
         Analyzer('tat_coap').analyse(
-            'tests/test_dumps/TD_COAP_CORE_01_PASS.pcap',
+            '/'.join((
+                'tests',
+                'test_files',
+                'DissectorTests',
+                'CoAP_plus_random_UDP_messages.pcap'
+            )),
             'TD_COAP_CORE_01'
         )
     )
