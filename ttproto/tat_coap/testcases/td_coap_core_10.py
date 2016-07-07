@@ -58,8 +58,8 @@ Client displays the response
         ))
         self.match ("client", CoAP (tok = Length (bytes, (1, 8))
                 ), "fail")
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next()
 

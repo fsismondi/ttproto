@@ -52,8 +52,8 @@ Client displays the received information
     def run (self):
         self.match ("client", CoAP (type="con", code="get",
                         opt = self.uri ("/test")))
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next()
 

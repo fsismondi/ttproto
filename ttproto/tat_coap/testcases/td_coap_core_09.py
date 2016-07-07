@@ -68,11 +68,11 @@ Verify
 Client displays the response
 Note: Steps 3 and 4 may occur out-of-order
 """
-    def _run(self):
+    def run(self):
         self.match ("client", CoAP (type="con", code = "get",
                         opt = self.uri ("/separate")))
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next()
 
@@ -89,7 +89,7 @@ Note: Steps 3 and 4 may occur out-of-order
                         pl = Not (b''),
                         opt= Opt(CoAPOptionContentFormat())
                 ), "fail")
-        SMID = self._frame.coap["mid"]
+        SMID = self.get_coap_layer()["mid"]
 
         self.next()
 

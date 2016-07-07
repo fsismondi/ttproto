@@ -62,7 +62,7 @@ Client displays the response
         self.next()
 
         #FIXME: may be out-of-order
-        if self._frame.coap in CoAP (type="ack"):
+        if self.get_coap_layer() in CoAP (type="ack"):
             self.set_verdict ("fail", "server must no send any ack")
             self.next()
 

@@ -85,13 +85,13 @@ Verify
 Client displays the response
 """
 
-    def _run(self):
+    def run(self):
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format") if self.urifilter else Opt(CoAPOptionAccept())))
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(CoAPOptionAccept(0))))
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next_skip_ack()
 
@@ -108,8 +108,8 @@ Client displays the response
 
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format", CoAPOptionAccept(41))))
-        CMID2 = self._frame.coap["mid"]
-        CTOK2 = self._frame.coap["tok"]
+        CMID2 = self.get_coap_layer()["mid"]
+        CTOK2 = self.get_coap_layer()["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")

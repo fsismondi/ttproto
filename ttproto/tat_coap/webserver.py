@@ -1061,11 +1061,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Get the result of the analysis
             analysis_results = Analyzer('tat_coap').analyse(
                                 pcap_path,
-                                testcase_id,
-                                None,
-                                None,
-                                'client',
-                                True
+                                testcase_id
                             )
 
             # self.log_message("###############################################")
@@ -1077,11 +1073,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             # Error for some test cases that the analysis doesn't manage to get
             try:
                 assert type(analysis_results) == tuple
-                assert len(analysis_results) == 4
+                assert len(analysis_results) == 5
                 assert type(analysis_results[0]) == str
                 assert type(analysis_results[1]) == str
                 assert type(analysis_results[2]) == list
                 assert type(analysis_results[3]) == str
+                assert type(analysis_results[4]) == str
                 assert analysis_results[0] == test_case['tc_basic']['id']
             except AssertionError:
                 self.api_error(

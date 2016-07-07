@@ -54,7 +54,7 @@ Client displays the received information
         self.match ("client", CoAP (type="non", code="delete",
                         opt = self.uri ("/test")))
 
-        CTOK = self._frame.coap["tok"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next()
 

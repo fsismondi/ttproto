@@ -1,5 +1,6 @@
 import unittest
 
+from os import getcwd, path
 from ttproto.core.analyzer import Analyzer
 from tests.test_tools.struct_checker import StructureChecker
 
@@ -98,6 +99,16 @@ class AnalyzerTestCase(unittest.TestCase):
             tc = self.analyzer.get_implemented_testcases(
                 self.UNKNOWN_TEST_CASE_ID
             )
+
+    # ##### analyse
+    def test_analyse_basic_pass_PCAPs(self):
+        for tc in self.analyzer.get_implemented_testcases()[0]:
+            filename = getcwd() + '/tests/test_dumps/' + tc[0] + '_PASS.pcap'
+            # check if there's a pcap_pass_test for the testcase
+            if path.isfile(filename):
+                print('verifying test case: ' + tc[0])
+                tc_name, verdict, _, log, excepts = self.analyzer.analyse(filename, tc[0])
+                self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + verdict + '\nLOG:\n' + log)
 
 
 # #################### Main run the tests #########################

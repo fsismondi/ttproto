@@ -64,10 +64,10 @@ Client displays the response
                         type = "con",
                         opt = uri_path_opt))
 
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriPath)), self._frame.coap["opt"]))
+        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriPath)), self.get_coap_layer()["opt"]))
 
         if len (opts) > 1:
             self.set_verdict ("pass", "multiple UriPath options")

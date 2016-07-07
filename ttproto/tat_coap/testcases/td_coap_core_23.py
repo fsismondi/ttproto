@@ -90,7 +90,7 @@ Client displays the response
 """
     request_uri = "/create1"
 
-    def _run(self):
+    def run(self):
         # Part A
 
         self.match("client", CoAP(type="con", code="put",
@@ -101,8 +101,8 @@ Client displays the response
                                        ),
                                        pl=Not(b"")))
 
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next_skip_ack()
 
@@ -125,8 +125,8 @@ Client displays the response
                                            CoAPOptionIfNoneMatch(),
                                        ),
                                        pl=Not(b"")))
-        CMID2 = self._frame.coap["mid"]
-        CTOK2 = self._frame.coap["tok"]
+        CMID2 = self.get_coap_layer()["mid"]
+        CTOK2 = self.get_coap_layer()["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")

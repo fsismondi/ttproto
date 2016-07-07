@@ -587,5 +587,10 @@ if __name__ == "__main__":
     # print(frame_list[0][CoAP])
     # print(frame_list[0][CoAP]['type'])
     print(frame_list[0][CoAP]['pl'])
+    for frame in frame_list:
+        try:
+            print(frame[CoAP]['opt'][CoAPOptionMaxAge]['val'])
+        except KeyError:
+            pass
     # print(frame_list[0]['Unknown'])
     pass

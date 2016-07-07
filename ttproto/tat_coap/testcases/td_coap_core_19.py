@@ -67,8 +67,8 @@ Client displays the response
                                            "/location-query",
                                            CoAPOptionContentFormat(),
                                        )))
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next_skip_ack()
 

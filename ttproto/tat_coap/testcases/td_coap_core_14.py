@@ -60,10 +60,10 @@ Client displays the response
         self.match ("client", CoAP (code = "get",
                         type = "con",
                         opt = uri_query_opt))
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self._frame.coap["opt"]))
+        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.get_coap_layer()["opt"]))
 
         if len (opts) < 2:
             self.set_verdict ("inconc", "expect multiple UriQuery options")

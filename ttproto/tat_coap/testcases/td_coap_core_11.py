@@ -70,7 +70,7 @@ Verify
 Client displays the response
 """
 
-    def _run (self):
+    def run (self):
         self.match ("client", CoAP (	type="con",
                             code = "get",
                             tok = Not (b""),
@@ -78,8 +78,8 @@ Client displays the response
                 ))
         self.match ("client", CoAP (tok = Length (bytes, (1, 8))
                 ), "fail")
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next()
 
@@ -96,7 +96,7 @@ Client displays the response
                         tok= CTOK,
                         )
                 , "fail")
-        SMID = self._frame.coap["mid"]
+        SMID = self.get_coap_layer()["mid"]
 
         self.next()
 

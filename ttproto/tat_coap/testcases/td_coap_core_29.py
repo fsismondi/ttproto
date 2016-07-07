@@ -76,7 +76,7 @@ Response contains:
 	"""
     reverse_proxy = True
 
-    def _run(self):
+    def run(self):
         # Step 2
         self.match("client", CoAP(type="con", code="get",
                                        opt=All(
@@ -92,7 +92,7 @@ Response contains:
                                               pl=Not(b""))):
             raise self.Stop()
 
-        maxage = self._frame.coap["opt"][CoAPOptionMaxAge]["val"]
+        maxage = self.get_coap_layer()["opt"][CoAPOptionMaxAge]["val"]
 
         ts = self._frame.ts
 

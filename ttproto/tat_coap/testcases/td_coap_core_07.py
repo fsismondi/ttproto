@@ -63,7 +63,7 @@ Client displays the received response
                         pl  = Not (b''),
                         opt = Opt (CoAPOptionContentFormat()),
                 ), "fail")
-        CTOK = self._frame.coap["tok"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next()
 

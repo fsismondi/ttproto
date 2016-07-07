@@ -59,8 +59,8 @@ Client displays the received response
         self.match ("client", CoAP (
                         opt = Opt (CoAPOptionContentFormat()),
                 ), "fail")
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
         self.next()
 
         self.match ("server", CoAP (

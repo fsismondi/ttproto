@@ -50,7 +50,7 @@ Verify 	Client displays that the "Ping" was successful
 
     def run (self):
         self.match ("client", CoAP (type="con", code = 0,tok=b"",pl=b""))
-        CMID = self._frame.coap["mid"]
+        CMID = self.get_coap_layer()["mid"]
 
         self.next_skip_ack()
 

@@ -117,15 +117,15 @@ Verify
 Client displays the response
 """
 
-    def _run(self):
+    def run(self):
         # Part A
         self.match("client", CoAP(type="con", code="get",
                                        opt=All(
                                            Opt(CoAPOptionUriPath("validate")),
                                            NoOpt(CoAPOptionETag()),
                                        )))
-        CMID = self._frame.coap["mid"]
-        CTOK = self._frame.coap["tok"]
+        CMID = self.get_coap_layer()["mid"]
+        CTOK = self.get_coap_layer()["tok"]
 
         self.next_skip_ack()
 
@@ -137,8 +137,8 @@ Client displays the response
                                               pl=Not(b""))):
             raise self.Stop()
 
-        ETAG1 = self._frame.coap["opt"][CoAPOptionETag]["val"]
-        pl3 = self._frame.coap["pl"]
+        ETAG1 = self.get_coap_layer()["opt"][CoAPOptionETag]["val"]
+        pl3 = self.get_coap_layer()["pl"]
 
         self.next_skip_ack(optional=True)
 
@@ -150,8 +150,8 @@ Client displays the response
                                            CoAPOptionUriPath("validate"),
                                            CoAPOptionETag(ETAG1),
                                        )))
-        CMID2 = self._frame.coap["mid"]
-        CTOK2 = self._frame.coap["tok"]
+        CMID2 = self.get_coap_layer()["mid"]
+        CTOK2 = self.get_coap_layer()["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
@@ -186,8 +186,8 @@ Client displays the response
                                            CoAPOptionUriPath("validate"),
                                            CoAPOptionETag(ETAG1),
                                        )))
-        CMID3 = self._frame.coap["mid"]
-        CTOK3 = self._frame.coap["tok"]
+        CMID3 = self.get_coap_layer()["mid"]
+        CTOK3 = self.get_coap_layer()["tok"]
         if CMID3 is Not(b''):
             if CMID3 == CMID or CMID3 == CMID2:
                 self.set_verdict("fail", "Message ID should be different")

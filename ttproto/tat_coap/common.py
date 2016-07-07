@@ -31,38 +31,28 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import traceback
-import sys
-import time
 import re
 import socket
+import sys
+import time
+import traceback
 
 from .data import *
-from contextlib import contextmanager
-from lib2to3.fixes.fix_print import parend_expr
-from ttproto.core.analyzer import TestCase, is_verdict
+from ttproto.core.analyzer import TestCase, Verdict, is_verdict
 from ttproto.core.dissector import Frame
-from ttproto.core.packet import PacketValue
-from ttproto.core.xmlgen import XHTML10Generator
-from ttproto.core.list import ListValue
 from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
-from ttproto.utils.version_git import get_git_version
-from ttproto.core.lib.ports.pcap import PcapReader
 from urllib import parse
 
+
+# CoAP constants
 RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
 MAX_RETRANSMIT = 4
-
 MAX_TIMEOUT = 10 + round(
         (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT
     )
-
-
-TOOL_VERSION = get_git_version()
-TEST_VERSION = "td-coap4_&_IRISA"
 
 
 def duct_tape(frame):
@@ -113,6 +103,7 @@ class CoAPTestCase(TestCase):
     The test case extension representing a CoAP test case
     """
 
+    # Some default parameters
     reverse_proxy = False
     urifilter = False
 
@@ -128,40 +119,16 @@ class CoAPTestCase(TestCase):
         :param frame_list: The list of frames to analyze
         :type frame_list: [Frame]
         """
-        super().__init__(frame_list)
+
+        # Initialize its verdict instance and its list of frame
+        self.__verdict = Verdict()
+        self.__frames = frame_list
 
         # Prepare the parameters
         self.__conversations = []
-        self._text = ''
-        self._failed_frames = []
-        self.__review_frames_log = []
-
-        # self.run()
-
-        # Ensure we're at the end of the communication
-        # try:
-        #     self.log(next(self.__iter))
-        #     self.set_verdict("inconc", "unexpected frame")
-        # except StopIteration:
-        #     pass
-
-        # except self.Stop:
-        #     # ignore this testcase result if the first frame gives an inconc
-        #     # verdict
-        #     if all((
-        #         self.__verdict.get_value() == "inconc",
-        #         self.frame == self.conversation[0]
-        #     )):
-        #         # no match
-        #         self.verdict = None
-
-        # except Exception:
-        #     if self.__iter:
-        #         self.set_verdict("error", "unhandled exception")
-        #         self.exception = traceback.format_exc()
-        #         self.log(self.exception)
-
-        # assert self.verdict in self.__verdicts
+        self.__text = ''
+        self.__failed_frames = []
+        self.__exceptions = ''
 
     @typecheck
     def match(
@@ -177,7 +144,7 @@ class CoAPTestCase(TestCase):
         :param sender: The sender of the packet
         :param template: The template to confront with current frame value
         :param verdict: The verdict to put if it matches
-        :param msg: The message to associate with the verdict
+        :param msg: The message to associated with the verdict
         :type sender: str
         :type template: Value
         :type verdict: str
@@ -198,25 +165,16 @@ class CoAPTestCase(TestCase):
             )
 
             # Add this frame's id to the failed frames
-            self._failed_frames.append(self._frame.get_id())
-            self.log('ENCOUNTER FAILED FRAME! : ' + str(self._frame.get_id()))
+            self.__failed_frames.append(self.__frame.get_id())
+            self.log('ENCOUNTER FAILED FRAME! : ' + str(self.__frame.get_id()))
 
             # Frame value didn't match the template (error in fact)
             return False
 
-        # FIXME:                /!\ WARNING /!\
-        # TODO:                 /!\ WARNING /!\
-        #        Before we were iterating between the conversations outside of
-        #        the TC class but now we will have to do it into the TC class
-        #        so it will be done automatically without having to do it
-        #        externally. Better interface but more things to do then into
-        #        this class which will be like a manager of the real TC implem
-
         # Check the sender
-        src = self._frame.src[0]
+        src = self.__frame.src[0]
 
         # Check that the src is the same that the conversation's client/server
-        # FIXME: CF upper
         if src != getattr(self.__current_conversation, sender):
 
             # If a verdict is given, put it
@@ -227,18 +185,18 @@ class CoAPTestCase(TestCase):
                 )
 
             # Add this frame's id to the failed frames
-            self._failed_frames.append(self._frame.id)
-            self.log('ENCOUNTER FAILED FRAME! : ' + self._frame.id)
+            self.__failed_frames.append(self.__frame.get_id())
+            self.log('ENCOUNTER FAILED FRAME! : ' + self.__frame.get_id())
 
             # Frame value didn't match the template (error in fact)
             return False
 
         # Check the template
         if template:
-            diff_list = DifferenceList(self._frame[CoAP])
+            diff_list = DifferenceList(self.__frame[CoAP])
 
             # If it matches
-            if template.match(self._frame[CoAP], diff_list):
+            if template.match(self.__frame[CoAP], diff_list):
                 if verdict is not None:
                     self.set_verdict('pass', 'Match: %s' % template)
 
@@ -270,7 +228,7 @@ class CoAPTestCase(TestCase):
                     diff_list.describe(callback)
 
                 # Add this frame's id to the failed frames
-                self._failed_frames.append(self._frame.get_id())
+                self.__failed_frames.append(self.__frame.get_id())
 
                 # Frame value didn't match the template
                 return False
@@ -289,7 +247,7 @@ class CoAPTestCase(TestCase):
         try:
             f = next(self.__iter)
             self.log(f)
-            self._frame = f
+            self.__frame = f
             return f
         except StopIteration:
             if not optional:
@@ -313,30 +271,32 @@ class CoAPTestCase(TestCase):
 
         # While there is one and that it's an ack, pass it
         while all((
-            self._frame is not None,
-            self._frame[CoAP] in CoAP(type='ack', code=0)
+            self.__frame is not None,
+            self.__frame[CoAP] in CoAP(type='ack', code=0)
         )):
             self.next(optional)
 
         # Return the next non ack frame
-        return self._frame
+        return self.__frame
 
     @typecheck
     def log(self, msg):
         """
         Log a message
+
+        :param msg: The message to log, can be of any type
+        :type msg: object
         """
         text = str(msg)
-        self._text += text if text.endswith("\n") else (text + "\n")
-        self.__review_frames_log.append(text)
+        self.__text += text if text.endswith("\n") else (text + "\n")
 
     @classmethod
     @typecheck
-    def get_objective(self) -> str:
+    def get_test_purpose(self) -> str:
         """
-        Get the objective of this test case
+        Get the purpose of this test case
 
-        :return: The objective of this test case
+        :return: The purpose of this test case
         :rtype: str
 
         .. note:: Find a cleaner way to do this
@@ -360,70 +320,111 @@ class CoAPTestCase(TestCase):
         :type verdict: str
         :type msg: str
         """
-        # if all((
-        #     self._verdict.get_value() == 'none',
-        #     verdict == 'inconc',
-        #     not self.force
-        # )):
-        #     raise self.Stop()
-
         # Update the verdict
-        self._verdict.update(verdict, msg)
+        self.__verdict.update(verdict, msg)
 
         # TODO: Check that the log function will be used like this
         self.log("  [%s] %s" % (format(verdict, "^6s"), msg))
 
     @typecheck
-    def pre_process(self) -> list_of(Frame):
+    def pre_process(self) -> list_of((str, list_of(Frame))):
         """
         Function for each TC to preprocess its list of frames
 
-        :return: The list of ignored frames
-        :rtype: [Frame]
+        :return: The list of ignored frames associated to the ignoring reason
+        :rtype: (str, [Frame])
         """
 
+        # Get malformed frames
+        malformed = [frame for frame in self.__frames if frame.is_malformed()]
+
+        # Remove them from current frames
+        self.__frames = [f for f in self.__frames if f not in malformed]
+
         # Parse every frame with the duct tape
-        for frame in self._frames:
+        # FIXME: This will be removed when we have a cleaner way to put the
+        #        main informations of every frame layer
+        for frame in self.__frames:
             duct_tape(frame)
 
         # Create the tracker from the frames which will create conversations
         # and at the same time filter the ignored frames
-        tracker = CoAPTracker(self._frames)
-        self.__conversations = tracker.conversations
+        tracker = CoAPTracker(self.__frames)
 
-        # Get the conversations by pair
-        self.__conversations_by_pair = group_conversations_by_pair(
-            self.__conversations
+        # Put the conversations by pair
+        self.__conversations = group_conversations_by_pair(
+            tracker.conversations
         )
 
-        # Get the current conversation
-        # FIXME: To remove when the problem of having many conversations
-        #        is fixed ()
-        self.__current_conversation = self.__conversations[0]
-        self.__iter = iter(self.__current_conversation)
-
-        # Put iterator on the first frame
-        self.next()
+        # Create the returned list of ignored frames and their reason
+        ignored = []
+        ignored.append(('malformed', malformed))
+        ignored.append(('non_coap', tracker.ignored_frames))
 
         # Return the ignored frames
-        return tracker.ignored_frames
+        return ignored
 
     @typecheck
-    def run(self):
+    def run_test_case(self) -> (str, list_of(int), str, str):
         """
         Run the test case
 
-        :return: A tuple with the informations about the running which are
+        :return: A tuple with the informations about the test results which are
                  - The verdict as a string
-                 - The list of the review frames
+                 - The list of the result important frames
                  - A string for extra informations
-                 - A list of Exceptions that could have occured during the run
-        :rtype: (str, [int], str, [Exception])
+                 - A string representing the exceptions that could have occured
+        :rtype: (str, [int], str, str)
         """
-        try:
-            self._run()
-        except self.Stop:
-            pass
+
+        # For every conversation's pair
+        for pair, conversation in self.__conversations.items():
+
+            # Get the first conversation
+            # Note: We don't need to parse the conversations because the
+            # chain() function will do it for us
+            self.__current_conversation = conversation[0]
+            self.__iter = iter(self.__current_conversation)
+
+            # Put iterator on the first frame
+            self.next()
+
+            try:
+
+                # Run the test case
+                self.run()
+
+                # Ensure we're at the end of the communication
+                try:
+                    self.log(next(self.__iter))
+                    self.set_verdict('inconc', 'unexpected frame')
+                except StopIteration:
+                    pass
+
+            except self.Stop:
+                # Ignore this testcase result if the first frame gives an
+                # inconc verdict
+                if all((
+                    self.__verdict.get_value() == 'inconc',
+                    self.__frame == self.__current_conversation[0]
+                )):
+                    # No match
+                    self.set_verdict('none', 'no match')
+
+            except Exception:
+                if self.__iter:
+                    self.set_verdict('error', 'unhandled exception')
+                    exception = traceback.format_exc()
+                    self.__exceptions += exception
+                    self.log(exception)
+
+        # Return the results
+        return (
+            self.__verdict.get_value(),
+            self.__failed_frames,
+            self.__text,
+            self.__exceptions
+        )
 
     @typecheck
     def chain(self, optional: bool = False) -> bool:
@@ -452,7 +453,6 @@ class CoAPTestCase(TestCase):
 
         # Next conversation
         try:
-            # FIXME: The same problem with many conversations before
             next_conv = self.__current_conversation.next
         except AttributeError:
             if optional:
@@ -478,34 +478,44 @@ class CoAPTestCase(TestCase):
 
         # Put the iterator on the first frame of this conv
         self.next()
-        if self._frame.ts < last_frame.ts:
+
+        # If concurrency issue
+        if self.__frame.ts < last_frame.ts:
             self.set_verdict(
                 "inconc",
                 "concurrency issue: frame %d was received earlier than frame %d"
                 %
-                (self.frame.get_id(), last_frame.get_id())
+                (self.__frame.get_id(), last_frame.get_id())
             )
             raise self.Stop()
 
         # True: We managed to chain the conversations
         return True
 
-    # NOTE: Seems to be never used
-    @contextmanager
-    def nolog(self):
-        text = self.text
-        self.text = ""
-        try:
-            yield
-        finally:
-            self.text = text
+    @typecheck
+    def get_coap_layer(self) -> CoAP:
+        """
+        Get the coap layer of the current frame
 
-    def uri(self, uri, *other_opts):
-        """filter for disabling a template if URI-Filter is disabled
+        :return: The coap layer of the current frame
+        :rtype: CoAP
+        """
+        return self.__frame[CoAP]
 
-        *other_opts elemements may be either:
-            CoAPOption datas    -> will be fed into a Opt() together with the Uri options
-            CoAPOptionList datas -> will be combined with the Opt() within a All() template
+    @typecheck
+    def uri(self, uri: str, *other_opts):
+        """
+        Filter for disabling a template if URI-Filter is disabled
+
+        :param uri: The uri
+        :param other_opts: More options
+            Elemements may be either:
+                - CoAPOption datas
+                    -> will be fed into a Opt() together with the Uri options
+                - CoAPOptionList datas
+                    -> will be combined with the Opt() within a All() template
+        :type uri: str
+        :type other_opts: tuple of more parameters
         """
         opt = []
         opt_list = []
@@ -517,18 +527,22 @@ class CoAPTestCase(TestCase):
             else:
                 raise ValueError
 
-        # if self.urifilter:
-        #     u = urllib.parse.urlparse(uri)
-        #     if u.path:
-        #         assert not any(isinstance(v, CoAPOptionUriPath) for v in other_opts)
-        #         for elem in u.path.split("/"):
-        #             if elem:
-        #                 opt.append(CoAPOptionUriPath(elem))
-        #     if u.query:
-        #         assert not any(isinstance(v, CoAPOptionUriQuery) for v in other_opts)
-        #         for elem in u.query.split("&"):
-        #             if elem:
-        #                 opt.append(CoAPOptionUriQuery(elem))
+        if self.urifilter:
+            u = urllib.parse.urlparse(uri)
+            if u.path:
+                assert not any(
+                    isinstance(v, CoAPOptionUriPath) for v in other_opts
+                )
+                for elem in u.path.split("/"):
+                    if elem:
+                        opt.append(CoAPOptionUriPath(elem))
+            if u.query:
+                assert not any(
+                    isinstance(v, CoAPOptionUriQuery) for v in other_opts
+                )
+                for elem in u.query.split("&"):
+                    if elem:
+                        opt.append(CoAPOptionUriQuery(elem))
 
         if opt:
             opt_list.append(Opt(*opt))
@@ -539,145 +553,6 @@ class CoAPTestCase(TestCase):
             return opt_list[0]
         else:
             return All(*opt_list)
-
-    def get_max_age(self):
-        try:
-            return self.frame[CoAP]["opt"][CoAPOptionMaxAge]["val"]
-        except KeyError:
-            # option not present
-            return 60
-
-    def match_link_format(self, filter=None, value=None,
-                          path=(CoAPOptionUriPath(".well-known"), CoAPOptionUriPath("core"))):
-
-        if filter is None:
-            opt = All(Opt(*path), NoOpt(CoAPOptionUriQuery()))
-        else:
-            opt = Opt(CoAPOptionUriQuery(), *path)
-
-            if self.frame[CoAP] in CoAP(code="get", opt=opt):
-
-                q = self.frame[CoAP]["opt"][CoAPOptionUriQuery]["val"]
-                i = q.find("=")
-                if i < 0:
-                    self.set_verdict("fail", "malformed Uri-Query option: %r" % q)
-                    return
-
-                n, v = q[:i], q[i + 1:]
-
-                verdict = "pass"
-                msg = "link-format request with filter on %s" % filter
-
-                # filter by query name
-                if n not in store_data(filter):
-                    verdict = "inconc"
-
-                if value is not None:
-                    # filter by query value
-                    msg += " matching %s" % value
-                    if v not in store_data(value):
-                        verdict = "inconc"
-
-                self.set_verdict(verdict, msg)
-
-                self.link_filter_name, self.link_filter = n, v
-
-                opt = Opt(CoAPOptionUriQuery(q), *path)
-
-        szx = None
-        pl = None
-        blocks = {}
-        while True:
-            if not self.match_coap("client", CoAP(code="get", opt=opt)):
-                raise self.Stop()
-            self.next_skip_ack()
-
-            if not self.match_coap("server", CoAP(code=2.05, opt=Opt(CoAPOptionContentFormat(40)))):
-                raise self.Stop()
-
-            try:
-                bl2 = self.frame[CoAP]["opt"][CoAPOptionBlock2]
-            except KeyError:
-                # single block
-                pl = self.frame[CoAP]["pl"]
-                break
-            else:
-                # multiple blocks
-                if szx is None:
-                    # first block
-                    szx = bl2["szx"]
-                elif bl2["szx"] != szx:
-                    # block size was modified
-                    if bl2["szx"] > szx:
-                        self.set_verdict("inconc", "block size seems to be increasing")
-                        raise self.Stop()
-
-                    # block size was reduced
-                    # -> rehash
-                    size = 2 ** (bl2["szx"] + 4)
-                    new_blocks = {}
-                    mult = 2 ** (szx - bl2["szx"])
-                    for num, b in blocks.items():
-                        new_num = num * mult
-                        for i in range(mult):
-                            new_blocks[new_num + i] = b[i * size:(i + 1) * size]
-
-                    szx = bl2["szx"]
-                    blocks = new_blocks
-
-                blocks[bl2["num"]] = self.frame[CoAP]["pl"]
-
-                if not bl2["m"]:
-                    # final block
-                    break
-
-            self.next_skip_ack()
-
-        self.next_skip_ack(optional=True)
-
-        if pl is None:
-            pl = []
-            bad = False
-            for i in range(0, bl2["num"] + 1):
-                b = blocks.get(i)
-                if b is None:
-                    bad = True
-                    self.set_verdict("inconc", "block #%d is missing" % i)
-                else:
-                    pl.append(b)
-            if bad:
-                raise self.Stop()
-            pl = b"".join(pl)
-        try:
-            self.link = Link(pl)
-        except Link.FormatError as e:
-            self.set_verdict("fail", "link-format payload is not well-formatted (%s: %s)" % (type(e).__name__, e))
-            raise self.Stop()
-
-        self.raw_link = pl
-
-    def link_values(self):
-        self.log("<Processing link-format payload>")
-        entries = set()
-        PAR_WIDTH = 16
-        for lv in self.link:
-            pars = ["%s=%r" % v for v in lv]
-            offset = 0
-            for i in range(len(pars)):
-                p = pars[i]
-                overflow = len(p) - PAR_WIDTH
-                if overflow > -offset:
-                    offset += overflow
-                else:
-                    pars[i] = p + " " * (-overflow - offset)
-                    offset = 0
-
-            self.log("           %-20r %s" % (lv.uri, "  ".join(pars)))
-            entry = lv.uri, lv.get("anchor"), lv.get("rel")
-            if entry in entries:
-                self.log("WARNING: duplicate link ")
-            entries.add(entry)
-            yield lv
 
 
 class CoAPConversation(list):
@@ -1366,6 +1241,9 @@ class CoAPTracker:
     def append(self, frames: list_of(Frame)):
         """
         Put the frames into the tracker lists
+
+        :param frames: The frame to put into the tracker lists
+        :type frame: [Frame]
         """
         for f in frames:
 
@@ -1402,6 +1280,12 @@ def group_conversations_by_pair(
 
     :return: A dict mapping of the client/server @ pair and the list ofconv
     :rtype: {(Value, Value): [CoAPConversation]}
+
+    .. note::
+        - As we only run a test case into analyze function, we don't need to
+          group them by pair anymore
+        - We still need this at least for putting the next variable which links
+          conversations between them
     """
     d = {}
     for t in conversations:
@@ -1414,88 +1298,6 @@ def group_conversations_by_pair(
         except KeyError:
             d[pair] = [t]
     return d
-
-
-def analyze_fix():
-
-    # Parse the conversations grouped by pair
-    # pair => A tuple (client, server)
-    # conversations => A list of corresponding conversations put by
-    #                  pair and in temporal order
-    for pair, conversations in conversations_by_pair.items():
-
-        # The results also by pair
-        pair_results = []
-
-        # For every test cases found (most of the time, there will be
-        # only one)
-        for tc_type in test_cases:
-
-            # Results for each tc
-            tc_results = []
-
-            # We run the testcase for each conversation, meaning that
-            # one type of TC can have more than one result!
-            for tr in conversations:
-
-                # Create the CoAPTestCase object from parameters
-                tc = tc_type(tr, None, True)
-
-                # If there's a result
-                if tc.verdict:
-                    tc_results.append(tc)
-
-                    # If exception, add it to the function parameter
-                    if all((
-                        hasattr(tc, "exception"),
-                        exceptions is not None
-                    )):
-                        exceptions.append(tc)
-
-            # Append the results of each test case confronted to this
-            # conversation pair
-            pair_results.append(tc_results)
-
-    # Get only the results of the test case that we requested
-    # You can look upper and see that we loop on ALL the test cases,
-    # whereas here we only loop on the requested ones (can be many)
-    for tc_type, tc_results in filter(
-        lambda x: tc_id in x[0].__name__,
-        zip(test_cases, pair_results)
-    ):
-        # (tc_type, tc_results) = filter(
-        #     lambda x: tc_id == x[0].__name__,  # Take only the requested tc
-        #     zip(test_cases, pair_results)  # Parse the 2 lists in parallel
-        # )
-
-        # Prepare the review frames list
-        review_frames = []
-
-        # Current verdict (inconc)
-        v = 0
-
-        # For every results
-        for tc in tc_results:
-
-            # All the failed frames for a TC, even if they are from
-            # different conversations!
-            review_frames = tc.failed_frames
-
-            # Get the new verdict and update current one if the new has
-            # higher priority
-            new_v = self.verdicts.index(tc.verdict)
-            if new_v > v:
-                v = new_v
-
-        # Get the text value of the verdict
-        v_txt = self.verdicts[v]
-        if v_txt is None:
-            v_txt = "none"
-
-        # Compute the extra informations
-        extra_info = tc.text if verbose else ''
-
-    pass
 
 
 if __name__ == "__main__":
@@ -1516,6 +1318,8 @@ if __name__ == "__main__":
             'messages.pcap'
         ))
     ))
+
+    from ttproto.core.lib.ports.pcap import PcapReader
     frame_list = Frame.create_list(PcapReader(filename))
 
     for frame in frame_list:
