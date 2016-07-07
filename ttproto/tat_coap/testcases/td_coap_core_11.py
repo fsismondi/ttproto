@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_11 (CoAPTestcase):
+class TD_COAP_CORE_11 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_11
 Objective:
@@ -70,36 +70,36 @@ Verify
 Client displays the response
 """
 
-    def run (self):
-        self.match_coap ("client", CoAP (	type="con",
+    def _run (self):
+        self.match ("client", CoAP (	type="con",
                             code = "get",
                             tok = Not (b""),
                             opt = self.uri ("/separate"),
                 ))
-        self.match_coap ("client", CoAP (tok = Length (bytes, (1, 8))
+        self.match ("client", CoAP (tok = Length (bytes, (1, 8))
                 ), "fail")
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
         self.next()
 
         # FIXME: may be out-of-order
-        if not self.match_coap	("server", CoAP (type="ack", code=0, mid=CMID,pl=b"")):
+        if not self.match	("server", CoAP (type="ack", code=0, mid=CMID,pl=b"")):
             raise self.Stop()
 
         self.next()
 
          # FIXME: this is in a different conversation
-        self.match_coap ("server", CoAP (type="con", code=2.05))
-        self.match_coap ("server", CoAP (
+        self.match ("server", CoAP (type="con", code=2.05))
+        self.match ("server", CoAP (
                         pl = Not (b''),
                         tok= CTOK,
                         )
                 , "fail")
-        SMID = self.frame.coap["mid"]
+        SMID = self._frame.coap["mid"]
 
         self.next()
 
-        self.match_coap ("client", CoAP (type="ack", code=0, mid=SMID,pl=b""))
+        self.match ("client", CoAP (type="ack", code=0, mid=SMID,pl=b""))
 
 

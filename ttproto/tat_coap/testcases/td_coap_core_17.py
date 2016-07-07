@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_17 (CoAPTestcase):
+class TD_COAP_CORE_17 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_17
 Objective:
@@ -56,18 +56,18 @@ Verify
 Client displays the response
 """
     def run (self):
-        self.match_coap ("client", CoAP (type="non", code = "get",
+        self.match ("client", CoAP (type="non", code = "get",
                     opt=self.uri("/separate")))
 
         self.next()
 
         #FIXME: may be out-of-order
-        if self.frame.coap in CoAP (type="ack"):
-            self.setverdict ("fail", "server must no send any ack")
+        if self._frame.coap in CoAP (type="ack"):
+            self.set_verdict ("fail", "server must no send any ack")
             self.next()
 
-        if self.match_coap ("server", CoAP (type="non", code=2.05)):
-            self.match_coap ("server", CoAP (
+        if self.match ("server", CoAP (type="non", code=2.05)):
+            self.match ("server", CoAP (
                         pl = Not (b''),
                         opt= Opt(CoAPOptionContentFormat())
                 ), "fail")

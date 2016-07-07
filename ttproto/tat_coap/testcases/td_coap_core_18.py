@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_18 (CoAPTestcase):
+class TD_COAP_CORE_18 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_18
 Objective:
@@ -57,7 +57,7 @@ Client displays the response
     request_uri = "/test"
 
     def run (self):
-        self.match_coap ("client", CoAP (type="con", code = "post",pl=Not(b""),
+        self.match ("client", CoAP (type="con", code = "post",pl=Not(b""),
                     opt=self.uri(
                         self.request_uri,
                         CoAPOptionContentFormat(),
@@ -65,7 +65,7 @@ Client displays the response
 
         self.next_skip_ack()
 
-        self.match_coap ("server", CoAP (code=2.01,
+        self.match ("server", CoAP (code=2.01,
                         opt=Opt(
                             CoAPOptionLocationPath ("location1"),
                             CoAPOptionLocationPath ("location2"),

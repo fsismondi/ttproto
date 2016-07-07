@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_31 (CoAPTestcase):
+class TD_COAP_CORE_31 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_31
 Objective:
@@ -49,13 +49,13 @@ Verify 	Client displays that the "Ping" was successful
     """
 
     def run (self):
-        self.match_coap ("client", CoAP (type="con", code = 0,tok=b"",pl=b""))
-        CMID = self.frame.coap["mid"]
+        self.match ("client", CoAP (type="con", code = 0,tok=b"",pl=b""))
+        CMID = self._frame.coap["mid"]
 
         self.next_skip_ack()
 
-        if self.match_coap ("server", CoAP (type=3)):
-            self.match_coap ("server", CoAP (
+        if self.match ("server", CoAP (type=3)):
+            self.match ("server", CoAP (
                         code=0,
                         tok=b"",
                         pl=b"",

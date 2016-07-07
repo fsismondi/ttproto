@@ -390,6 +390,10 @@ class Frame:
     def get_value(self) -> is_layer_value:
         return self.__msg.get_value()
 
+    @typecheck
+    def get_id(self) -> int:
+        return self.__id
+
 
 class Dissector:
     """
@@ -559,14 +563,14 @@ if __name__ == "__main__":
     # print(dis.dissect(CoAP))
     # print('#####')
     # print(Dissector.get_implemented_protocols())
-    # frame_list = Frame.create_list(PcapReader(
-    #     '/'.join((
-    #         'tests',
-    #         'test_dumps',
-    #         'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
-    #     ))
-    # ))
-    # frame_list, _ = Frame.filter_frames(frame_list, CoAP)
+    frame_list = Frame.create_list(PcapReader(
+        '/'.join((
+            'tests',
+            'test_dumps',
+            'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+        ))
+    ))
+    frame_list, _ = Frame.filter_frames(frame_list, CoAP)
     # print(frame_list[0].get_layer(IPv4))
     # print(frame_list[0].get_timestamp())
     # print(frame_list[0].get_value())
@@ -582,5 +586,6 @@ if __name__ == "__main__":
     #     print(e)
     # print(frame_list[0][CoAP])
     # print(frame_list[0][CoAP]['type'])
+    print(frame_list[0][CoAP]['pl'])
     # print(frame_list[0]['Unknown'])
     pass

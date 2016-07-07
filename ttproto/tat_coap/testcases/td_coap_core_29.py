@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_29(CoAPTestcase):
+class TD_COAP_CORE_29(CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_29
 Objective:
@@ -76,9 +76,9 @@ Response contains:
 	"""
     reverse_proxy = True
 
-    def run(self):
+    def _run(self):
         # Step 2
-        self.match_coap("client", CoAP(type="con", code="get",
+        self.match("client", CoAP(type="con", code="get",
                                        opt=All(
                                            Opt(CoAPOptionUriPath("validate")),
                                            NoOpt(CoAPOptionETag()),
@@ -86,28 +86,28 @@ Response contains:
 
         self.next_skip_ack()
 
-        if not self.match_coap("server", CoAP(type=Any(CoAPType("con"), "ack"),
+        if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=2.05,
                                               opt=Opt(CoAPOptionETag(), CoAPOptionMaxAge()),
                                               pl=Not(b""))):
             raise self.Stop()
 
-        maxage = self.frame.coap["opt"][CoAPOptionMaxAge]["val"]
+        maxage = self._frame.coap["opt"][CoAPOptionMaxAge]["val"]
 
-        ts = self.frame.ts
+        ts = self._frame.ts
 
         self.next_skip_ack(optional=True)
 
         while self.chain(optional=True):
-            interval = self.frame.ts - ts
+            interval = self._frame.ts - ts
 
             if interval >= maxage:
                 break
 
-            if self.match_coap("client", CoAP(type="con", code="get",
+            if self.match("client", CoAP(type="con", code="get",
                                               opt=Opt(CoAPOptionUriPath("validate"))),
                                None):
-                raise self.setverdict("inconc",
+                raise self.set_verdict("inconc",
                                       "Proxy sent a new GET request after %.1f seconds whereas Max-Age is set to %d seconds" % (
                                       interval, maxage))
                 raise self.Stop()
@@ -115,4 +115,4 @@ Response contains:
             while self.next(optional=True):
                 pass
 
-        self.setverdict("pass", "No further GET requests were observed within Max-Age (%d) seconds" % maxage)
+        self.set_verdict("pass", "No further GET requests were observed within Max-Age (%d) seconds" % maxage)

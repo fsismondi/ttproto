@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_23(CoAPTestcase):
+class TD_COAP_CORE_23(CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_23
 Objective:
@@ -90,10 +90,10 @@ Client displays the response
 """
     request_uri = "/create1"
 
-    def run(self):
+    def _run(self):
         # Part A
 
-        self.match_coap("client", CoAP(type="con", code="put",
+        self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
                                            CoAPOptionUriPath(self.request_uri[1:]),
@@ -101,16 +101,16 @@ Client displays the response
                                        ),
                                        pl=Not(b"")))
 
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
         self.next_skip_ack()
 
-        if not self.match_coap("server", CoAP(type=Any(CoAPType("con"), "ack"),
+        if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=2.01, mid=CMID, tok=CTOK)):
             raise self.Stop()
-        if self.match_coap("server", CoAP(pl=Not(b"")), None):
-            self.match_coap("server", CoAP(
+        if self.match("server", CoAP(pl=Not(b"")), None):
+            self.match("server", CoAP(
                 opt=Opt(CoAPOptionContentFormat()),
             ), "fail")
         self.next_skip_ack(optional=True)
@@ -118,25 +118,25 @@ Client displays the response
         # Part B
         self.chain()
 
-        self.match_coap("client", CoAP(type="con", code="put",
+        self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
                                            CoAPOptionUriPath(self.request_uri[1:]),
                                            CoAPOptionIfNoneMatch(),
                                        ),
                                        pl=Not(b"")))
-        CMID2 = self.frame.coap["mid"]
-        CTOK2 = self.frame.coap["tok"]
+        CMID2 = self._frame.coap["mid"]
+        CTOK2 = self._frame.coap["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
-                self.setverdict("fail", "Message ID should be different")
+                self.set_verdict("fail", "Message ID should be different")
         if CTOK2 is Not(b''):
             if CTOK2 == CTOK:
-                self.setverdict("fail", "Token should be different")
+                self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
 
-        if not self.match_coap("server", CoAP(type=Any(CoAPType("con"), "ack"),
+        if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=4.12,
                                               mid=CMID2,
                                               tok=CTOK2,

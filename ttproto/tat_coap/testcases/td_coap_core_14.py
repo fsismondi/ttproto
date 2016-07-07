@@ -2,7 +2,7 @@
 
 from ..common import *
 
-class TD_COAP_CORE_14 (CoAPTestcase):
+class TD_COAP_CORE_14 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_14
 Objective:
@@ -57,20 +57,20 @@ Client displays the response
         else:
             uri_query_opt = Opt(CoAPOptionUriQuery(), superset=True)
 
-        self.match_coap ("client", CoAP (code = "get",
+        self.match ("client", CoAP (code = "get",
                         type = "con",
                         opt = uri_query_opt))
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.frame.coap["opt"]))
+        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self._frame.coap["opt"]))
 
         if len (opts) < 2:
-            self.setverdict ("inconc", "expect multiple UriQuery options")
+            self.set_verdict ("inconc", "expect multiple UriQuery options")
 
         self.next_skip_ack()
 
-        self.match_coap ("server", CoAP (	code = 2.05,
+        self.match ("server", CoAP (	code = 2.05,
                             mid=CMID,
                             tok=CTOK,
                             pl = Not (b""),

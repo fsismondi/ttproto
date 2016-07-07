@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_05 (CoAPTestcase):
+class TD_COAP_CORE_05 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_05
 Objective:
@@ -50,18 +50,18 @@ Verify
 Client displays the received information
 """
     def run (self):
-        self.match_coap ("client", CoAP (type="non", code="get",
+        self.match ("client", CoAP (type="non", code="get",
                         opt = self.uri ("/test")))
-        CTOK = self.frame.coap["tok"]
+        CTOK = self._frame.coap["tok"]
 
         self.next()
 
-        if self.match_coap ("server", CoAP (
+        if self.match ("server", CoAP (
                         type = "non",
                         code = 2.05,
                         tok = CTOK,
                 )):
-            self.match_coap ("server", CoAP (
+            self.match ("server", CoAP (
                         opt = Opt (CoAPOptionContentFormat())
                 ), "fail")
 

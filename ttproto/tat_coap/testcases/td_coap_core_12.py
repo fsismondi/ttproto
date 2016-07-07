@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_12(CoAPTestcase):
+class TD_COAP_CORE_12(CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_12
 Objective:
@@ -48,14 +48,14 @@ Client displays the response
 """
 
     def run(self):
-        self.match_coap("client", CoAP(type="con", code="get",
+        self.match("client", CoAP(type="con", code="get",
                                        tok=b"",
                                        opt=self.uri("/test")))
 
         self.next_skip_ack()
 
-        if self.match_coap("server", CoAP(code=2.05,
+        if self.match("server", CoAP(code=2.05,
                                           pl=Not(b""),
                                           opt=Opt(CoAPOptionContentFormat()),
                                           )):
-            self.match_coap("server", CoAP(tok=b""), "fail")
+            self.match("server", CoAP(tok=b""), "fail")

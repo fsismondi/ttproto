@@ -164,7 +164,7 @@ class TestCase:
         self._frames = frame_list
 
     @typecheck
-    def match(self, verdict: is_verdict = 'inconc', msg: str = '', *args):
+    def match(self, sender, template, verdict: is_verdict = 'inconc', msg: str = '', *args):
         """
         Abstract function to match a packet value with a template
 
@@ -177,14 +177,17 @@ class TestCase:
         """
         raise NotImplementedError
 
-    def next_frame(self):
+    @typecheck
+    def next(self, optional: bool = False):
         """
         Switch to the next frame
+
+        :param optional: If we have to get a next frame or not
+        :type optional: bool
         """
         raise NotImplementedError
 
-    @typecheck
-    def log(self, msg: str):
+    def log(self, msg):
         """
         Log a message
 
@@ -212,7 +215,10 @@ class TestCase:
         :return: The list of ignored frames
         :rtype: [Frame]
 
-        .. note:: Maybe it will be better to return the reason?
+        .. note:: Maybe it will be better to return the reason for the ignored?
+                  Same, maybe it will be better to put this into the __init__
+                  function so we don't have to call it implicitely and put
+                  another method to get ignored frames?
         """
         raise NotImplementedError
 
@@ -228,6 +234,9 @@ class TestCase:
         """
         self._verdict.update(verdict, msg)
 
+        # TODO: Check that the log function will be used like this
+        self.log("  [%s] %s" % (format(verdict, "^6s"), msg))
+
     def run(self) -> (str, list_of(int), str, list_of(Exception)):
         """
         Run the test case
@@ -238,6 +247,10 @@ class TestCase:
                  - A string for extra informations
                  - A list of Exceptions that could have occured during the run
         :rtype: (str, [int], str, [Exception])
+
+        .. note:: Maybe a decorator will be better to use because the TC run
+                  method is implemented at the lowest level and we could need
+                  to do some things before and after
         """
         raise NotImplementedError
 
@@ -482,13 +495,21 @@ class Analyzer:
             print('##### Ignored')
             print(ignored)
             print('#####')
-            raise Exception
 
             # Here we execute the test case and return the result
-            res = test_case.run()
+            test_case.run()
+            print('##### Verdict given')
+            print(test_case._verdict)
+            print('#####')
+            print('##### Review frames')
+            print(test_case._failed_frames)
+            print('#####')
+            print('##### Text')
+            print(test_case._text)
+            print('#####')
 
             # Return the result
-            return (tc_id, res[0], res[1], res[2])
+            return (tc_id, test_case._verdict.get_value(), test_case._failed_frames, test_case._text)
             # return (tc_id, v_txt, list(review_frames), extra_info)
 
 
@@ -516,15 +537,37 @@ if __name__ == "__main__":
     #     print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
     # except NotADirectoryError as e:
     #     print(e)
-    print(
-        Analyzer('tat_coap').analyse(
-            '/'.join((
-                'tests',
-                'test_files',
-                'DissectorTests',
-                'CoAP_plus_random_UDP_messages.pcap'
-            )),
-            'TD_COAP_CORE_01'
+    # print(
+    #     Analyzer('tat_coap').analyse(
+    #         '/'.join((
+    #             'tests',
+    #             'test_files',
+    #             'DissectorTests',
+    #             'CoAP_plus_random_UDP_messages.pcap'
+    #         )),
+    #         'TD_COAP_CORE_01'
+    #     )
+    # )
+    # print(
+    #     Analyzer('tat_coap').analyse(
+    #         '/'.join((
+    #             'tests',
+    #             'test_dumps',
+    #             'TD_COAP_CORE_01_PASS.pcap'
+    #         )),
+    #         'TD_COAP_CORE_02'
+    #     )
+    # )
+    tcs = Analyzer('tat_coap').get_implemented_testcases()
+    for tc in tcs[0]:
+        print(
+            Analyzer('tat_coap').analyse(
+                '/'.join((
+                    'tests',
+                    'test_dumps',
+                    'TD_COAP_CORE_01_PASS.pcap'
+                )),
+                tc[0]
+            )
         )
-    )
     pass

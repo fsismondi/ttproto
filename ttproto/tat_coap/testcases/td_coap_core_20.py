@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_20(CoAPTestcase):
+class TD_COAP_CORE_20(CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_20
 Objective:
@@ -85,17 +85,17 @@ Verify
 Client displays the response
 """
 
-    def run(self):
-        self.match_coap("client", CoAP(type="con", code="get",
+    def _run(self):
+        self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format") if self.urifilter else Opt(CoAPOptionAccept())))
-        self.match_coap("client", CoAP(type="con", code="get",
+        self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(CoAPOptionAccept(0))))
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
         self.next_skip_ack()
 
-        self.match_coap("server", CoAP(type=Any(CoAPType("con"), "ack"),
+        self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID,
                                        tok=CTOK,
@@ -106,20 +106,20 @@ Client displays the response
 
         self.chain()
 
-        self.match_coap("client", CoAP(type="con", code="get",
+        self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format", CoAPOptionAccept(41))))
-        CMID2 = self.frame.coap["mid"]
-        CTOK2 = self.frame.coap["tok"]
+        CMID2 = self._frame.coap["mid"]
+        CTOK2 = self._frame.coap["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
-                self.setverdict("fail", "Message ID should be different")
+                self.set_verdict("fail", "Message ID should be different")
         if CTOK2 is Not(b''):
             if CTOK2 == CTOK:
-                self.setverdict("fail", "Token should be different")
+                self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
 
-        self.match_coap("server", CoAP(type=Any(CoAPType("con"), "ack"),
+        self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID2,
                                        tok=CTOK2,

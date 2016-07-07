@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-#from ttproto.tat_coap.proto_specific import CoAPTestcase
+#from ttproto.tat_coap.proto_specific import CoAPTestCase
 # from ttproto.tat_coap.proto_templates import *
 from ttproto.tat_coap.testcases.td_coap_core_22 import TD_COAP_CORE_22
 

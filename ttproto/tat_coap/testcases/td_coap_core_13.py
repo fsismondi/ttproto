@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_13 (CoAPTestcase):
+class TD_COAP_CORE_13 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_13
 Objective:
@@ -60,28 +60,28 @@ Client displays the response
         else:
             uri_path_opt = Opt(CoAPOptionUriPath(), superset=True)
 
-        self.match_coap ("client", CoAP (code = "get",
+        self.match ("client", CoAP (code = "get",
                         type = "con",
                         opt = uri_path_opt))
 
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriPath)), self.frame.coap["opt"]))
+        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriPath)), self._frame.coap["opt"]))
 
         if len (opts) > 1:
-            self.setverdict ("pass", "multiple UriPath options")
+            self.set_verdict ("pass", "multiple UriPath options")
         else:
-            self.setverdict ("inconc", "only one UriPath option")
+            self.set_verdict ("inconc", "only one UriPath option")
 
         # TODO: move this checks outside the testcases
         for o in opts:
             if "/" in str (o["val"]):
-                self.setverdict ("fail", "option %s contains a '/'" % repr (o))
+                self.set_verdict ("fail", "option %s contains a '/'" % repr (o))
 
         self.next_skip_ack()
 
-        self.match_coap ("server", CoAP (	code = 2.05,
+        self.match ("server", CoAP (	code = 2.05,
                             type = Any (CoAPType("con"), "ack"),
                             mid=CMID,
                             tok=CTOK,

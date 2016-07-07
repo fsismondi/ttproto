@@ -45,7 +45,7 @@ from ttproto.core.dissector import Frame
 from ttproto.core.packet import PacketValue
 from ttproto.core.xmlgen import XHTML10Generator
 from ttproto.core.list import ListValue
-from ttproto.core.templates import All, Not
+from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
 from ttproto.utils.version_git import get_git_version
@@ -106,6 +106,578 @@ def duct_tape(frame):
                 pass
 
         break
+
+
+class CoAPTestCase(TestCase):
+    """
+    The test case extension representing a CoAP test case
+    """
+
+    reverse_proxy = False
+    urifilter = False
+
+    class Stop(Exception):
+        pass
+
+    @typecheck
+    def __init__(self, frame_list: list_of(Frame)):
+        """
+        Initialize a test case, the only thing that it needs for
+        interoperability testing is a list of frame
+
+        :param frame_list: The list of frames to analyze
+        :type frame_list: [Frame]
+        """
+        super().__init__(frame_list)
+
+        # Prepare the parameters
+        self.__conversations = []
+        self._text = ''
+        self._failed_frames = []
+        self.__review_frames_log = []
+
+        # self.run()
+
+        # Ensure we're at the end of the communication
+        # try:
+        #     self.log(next(self.__iter))
+        #     self.set_verdict("inconc", "unexpected frame")
+        # except StopIteration:
+        #     pass
+
+        # except self.Stop:
+        #     # ignore this testcase result if the first frame gives an inconc
+        #     # verdict
+        #     if all((
+        #         self.__verdict.get_value() == "inconc",
+        #         self.frame == self.conversation[0]
+        #     )):
+        #         # no match
+        #         self.verdict = None
+
+        # except Exception:
+        #     if self.__iter:
+        #         self.set_verdict("error", "unhandled exception")
+        #         self.exception = traceback.format_exc()
+        #         self.log(self.exception)
+
+        # assert self.verdict in self.__verdicts
+
+    @typecheck
+    def match(
+        self,
+        sender: either(str, type(None)),
+        template: Value,
+        verdict: optional(is_verdict) = 'inconc',
+        msg: str = ''
+    ) -> bool:
+        """
+        Abstract function to match the current frame value with a template
+
+        :param sender: The sender of the packet
+        :param template: The template to confront with current frame value
+        :param verdict: The verdict to put if it matches
+        :param msg: The message to associate with the verdict
+        :type sender: str
+        :type template: Value
+        :type verdict: str
+        :type msg: str
+
+        :return: True if the current frame value matched the given template
+        :rtype: bool
+        """
+
+        # Specific to CoAP
+        assert sender in (None, 'client', 'server')
+
+        # If we're expecting a frame but it's the end of conversation
+        if not self.__iter:
+            self.set_verdict(
+                verdict,
+                'expected %s from the %s' % (template, sender)
+            )
+
+            # Add this frame's id to the failed frames
+            self._failed_frames.append(self._frame.get_id())
+            self.log('ENCOUNTER FAILED FRAME! : ' + str(self._frame.get_id()))
+
+            # Frame value didn't match the template (error in fact)
+            return False
+
+        # FIXME:                /!\ WARNING /!\
+        # TODO:                 /!\ WARNING /!\
+        #        Before we were iterating between the conversations outside of
+        #        the TC class but now we will have to do it into the TC class
+        #        so it will be done automatically without having to do it
+        #        externally. Better interface but more things to do then into
+        #        this class which will be like a manager of the real TC implem
+
+        # Check the sender
+        src = self._frame.src[0]
+
+        # Check that the src is the same that the conversation's client/server
+        # FIXME: CF upper
+        if src != getattr(self.__current_conversation, sender):
+
+            # If a verdict is given, put it
+            if verdict is not None:
+                self.set_verdict(
+                    verdict,
+                    'Expected %s from the %s' % (template, sender)
+                )
+
+            # Add this frame's id to the failed frames
+            self._failed_frames.append(self._frame.id)
+            self.log('ENCOUNTER FAILED FRAME! : ' + self._frame.id)
+
+            # Frame value didn't match the template (error in fact)
+            return False
+
+        # Check the template
+        if template:
+            diff_list = DifferenceList(self._frame[CoAP])
+
+            # If it matches
+            if template.match(self._frame[CoAP], diff_list):
+                if verdict is not None:
+                    self.set_verdict('pass', 'Match: %s' % template)
+
+            # If it didn't match
+            else:
+                if verdict is not None:
+                    def callback(path, mismatch, describe):
+                        self.log(
+                            "             %s: %s\n"
+                            %
+                            (
+                                ".".join(path),
+                                type(mismatch).__name__
+                            )
+                        )
+                        self.log(
+                            "                 got:        %s\n"
+                            %
+                            mismatch.describe_value(describe)
+                        )
+                        self.log(
+                            "                 expected: %s\n"
+                            %
+                            mismatch.describe_expected(describe)
+                        )
+
+                    # Put the verdict
+                    self.set_verdict(verdict, 'Mismatch: %s' % template)
+                    diff_list.describe(callback)
+
+                # Add this frame's id to the failed frames
+                self._failed_frames.append(self._frame.get_id())
+
+                # Frame value didn't match the template
+                return False
+
+        # If it matched, return True
+        return True
+
+    @typecheck
+    def next(self, optional: bool = False):
+        """
+        Switch to the next frame
+
+        :param optional: If we have to get a next frame or not
+        :type optional: bool
+        """
+        try:
+            f = next(self.__iter)
+            self.log(f)
+            self._frame = f
+            return f
+        except StopIteration:
+            if not optional:
+                self.__iter = None
+                self.log('<Frame  ?>')
+                self.set_verdict('inconc', 'premature end of conversation')
+        except TypeError:
+            raise self.Stop()
+
+    @typecheck
+    def next_skip_ack(self, optional: bool = False):
+        """
+        Call self.next() but skips possibly interleaved ACKs
+
+        :param optional: If we have to get a next frame or not
+        :type optional: bool
+        """
+
+        # Goes to next frame
+        self.next(optional)
+
+        # While there is one and that it's an ack, pass it
+        while all((
+            self._frame is not None,
+            self._frame[CoAP] in CoAP(type='ack', code=0)
+        )):
+            self.next(optional)
+
+        # Return the next non ack frame
+        return self._frame
+
+    @typecheck
+    def log(self, msg):
+        """
+        Log a message
+        """
+        text = str(msg)
+        self._text += text if text.endswith("\n") else (text + "\n")
+        self.__review_frames_log.append(text)
+
+    @classmethod
+    @typecheck
+    def get_objective(self) -> str:
+        """
+        Get the objective of this test case
+
+        :return: The objective of this test case
+        :rtype: str
+
+        .. note:: Find a cleaner way to do this
+        """
+        if self.__doc__:
+            ok = False
+            for line in self.__doc__.splitlines():
+                if ok:
+                    return line
+                if line == "Objective:":
+                    ok = True
+        return ''
+
+    @typecheck
+    def set_verdict(self, verdict: is_verdict, msg: str = ''):
+        """
+        Update the current verdict of the current test case
+
+        :param verdict: The new verdict
+        :param msg: The message to associate with the verdict
+        :type verdict: str
+        :type msg: str
+        """
+        # if all((
+        #     self._verdict.get_value() == 'none',
+        #     verdict == 'inconc',
+        #     not self.force
+        # )):
+        #     raise self.Stop()
+
+        # Update the verdict
+        self._verdict.update(verdict, msg)
+
+        # TODO: Check that the log function will be used like this
+        self.log("  [%s] %s" % (format(verdict, "^6s"), msg))
+
+    @typecheck
+    def pre_process(self) -> list_of(Frame):
+        """
+        Function for each TC to preprocess its list of frames
+
+        :return: The list of ignored frames
+        :rtype: [Frame]
+        """
+
+        # Parse every frame with the duct tape
+        for frame in self._frames:
+            duct_tape(frame)
+
+        # Create the tracker from the frames which will create conversations
+        # and at the same time filter the ignored frames
+        tracker = CoAPTracker(self._frames)
+        self.__conversations = tracker.conversations
+
+        # Get the conversations by pair
+        self.__conversations_by_pair = group_conversations_by_pair(
+            self.__conversations
+        )
+
+        # Get the current conversation
+        # FIXME: To remove when the problem of having many conversations
+        #        is fixed ()
+        self.__current_conversation = self.__conversations[0]
+        self.__iter = iter(self.__current_conversation)
+
+        # Put iterator on the first frame
+        self.next()
+
+        # Return the ignored frames
+        return tracker.ignored_frames
+
+    @typecheck
+    def run(self):
+        """
+        Run the test case
+
+        :return: A tuple with the informations about the running which are
+                 - The verdict as a string
+                 - The list of the review frames
+                 - A string for extra informations
+                 - A list of Exceptions that could have occured during the run
+        :rtype: (str, [int], str, [Exception])
+        """
+        try:
+            self._run()
+        except self.Stop:
+            pass
+
+    @typecheck
+    def chain(self, optional: bool = False) -> bool:
+        """
+        Chain the conversations
+
+        :param optional: True if a next conv is required, False if not
+        :type optional: bool
+
+        :raises Stop: If the conversation chaining isn't as expected
+
+        :return: True if we managed to chain correctly, False if not
+        :rtype: bool
+        """
+
+        # Ensure we're at the end of the current conversation
+        try:
+            self.log(next(self.__iter))
+            self.set_verdict('inconc', 'unexpected frame')
+            raise self.Stop()
+        except StopIteration:
+            pass
+
+        # Get the last frame
+        last_frame = self.__current_conversation[-1]
+
+        # Next conversation
+        try:
+            # FIXME: The same problem with many conversations before
+            next_conv = self.__current_conversation.next
+        except AttributeError:
+            if optional:
+                return False
+            else:
+                self.log('<Frame  ?>')
+                self.set_verdict(
+                    'inconc',
+                    'expected another CoAP conversation'
+                )
+                raise self.Stop()
+
+        # Chain to the next conversation
+        self.__current_conversation = next_conv
+        self.__iter = iter(self.__current_conversation)
+
+        # Little logging
+        self.log(
+            "Chaining to conversation %d %s"
+            %
+            (next_conv.id, next_conv.tag)
+        )
+
+        # Put the iterator on the first frame of this conv
+        self.next()
+        if self._frame.ts < last_frame.ts:
+            self.set_verdict(
+                "inconc",
+                "concurrency issue: frame %d was received earlier than frame %d"
+                %
+                (self.frame.get_id(), last_frame.get_id())
+            )
+            raise self.Stop()
+
+        # True: We managed to chain the conversations
+        return True
+
+    # NOTE: Seems to be never used
+    @contextmanager
+    def nolog(self):
+        text = self.text
+        self.text = ""
+        try:
+            yield
+        finally:
+            self.text = text
+
+    def uri(self, uri, *other_opts):
+        """filter for disabling a template if URI-Filter is disabled
+
+        *other_opts elemements may be either:
+            CoAPOption datas    -> will be fed into a Opt() together with the Uri options
+            CoAPOptionList datas -> will be combined with the Opt() within a All() template
+        """
+        opt = []
+        opt_list = []
+        for o in other_opts:
+            if issubclass(o.get_type(), CoAPOption):
+                opt.append(o)
+            elif issubclass(o.get_type(), CoAPOptionList):
+                opt_list.append(o)
+            else:
+                raise ValueError
+
+        # if self.urifilter:
+        #     u = urllib.parse.urlparse(uri)
+        #     if u.path:
+        #         assert not any(isinstance(v, CoAPOptionUriPath) for v in other_opts)
+        #         for elem in u.path.split("/"):
+        #             if elem:
+        #                 opt.append(CoAPOptionUriPath(elem))
+        #     if u.query:
+        #         assert not any(isinstance(v, CoAPOptionUriQuery) for v in other_opts)
+        #         for elem in u.query.split("&"):
+        #             if elem:
+        #                 opt.append(CoAPOptionUriQuery(elem))
+
+        if opt:
+            opt_list.append(Opt(*opt))
+
+        if not opt_list:
+            return None
+        elif len(opt_list) == 1:
+            return opt_list[0]
+        else:
+            return All(*opt_list)
+
+    def get_max_age(self):
+        try:
+            return self.frame[CoAP]["opt"][CoAPOptionMaxAge]["val"]
+        except KeyError:
+            # option not present
+            return 60
+
+    def match_link_format(self, filter=None, value=None,
+                          path=(CoAPOptionUriPath(".well-known"), CoAPOptionUriPath("core"))):
+
+        if filter is None:
+            opt = All(Opt(*path), NoOpt(CoAPOptionUriQuery()))
+        else:
+            opt = Opt(CoAPOptionUriQuery(), *path)
+
+            if self.frame[CoAP] in CoAP(code="get", opt=opt):
+
+                q = self.frame[CoAP]["opt"][CoAPOptionUriQuery]["val"]
+                i = q.find("=")
+                if i < 0:
+                    self.set_verdict("fail", "malformed Uri-Query option: %r" % q)
+                    return
+
+                n, v = q[:i], q[i + 1:]
+
+                verdict = "pass"
+                msg = "link-format request with filter on %s" % filter
+
+                # filter by query name
+                if n not in store_data(filter):
+                    verdict = "inconc"
+
+                if value is not None:
+                    # filter by query value
+                    msg += " matching %s" % value
+                    if v not in store_data(value):
+                        verdict = "inconc"
+
+                self.set_verdict(verdict, msg)
+
+                self.link_filter_name, self.link_filter = n, v
+
+                opt = Opt(CoAPOptionUriQuery(q), *path)
+
+        szx = None
+        pl = None
+        blocks = {}
+        while True:
+            if not self.match_coap("client", CoAP(code="get", opt=opt)):
+                raise self.Stop()
+            self.next_skip_ack()
+
+            if not self.match_coap("server", CoAP(code=2.05, opt=Opt(CoAPOptionContentFormat(40)))):
+                raise self.Stop()
+
+            try:
+                bl2 = self.frame[CoAP]["opt"][CoAPOptionBlock2]
+            except KeyError:
+                # single block
+                pl = self.frame[CoAP]["pl"]
+                break
+            else:
+                # multiple blocks
+                if szx is None:
+                    # first block
+                    szx = bl2["szx"]
+                elif bl2["szx"] != szx:
+                    # block size was modified
+                    if bl2["szx"] > szx:
+                        self.set_verdict("inconc", "block size seems to be increasing")
+                        raise self.Stop()
+
+                    # block size was reduced
+                    # -> rehash
+                    size = 2 ** (bl2["szx"] + 4)
+                    new_blocks = {}
+                    mult = 2 ** (szx - bl2["szx"])
+                    for num, b in blocks.items():
+                        new_num = num * mult
+                        for i in range(mult):
+                            new_blocks[new_num + i] = b[i * size:(i + 1) * size]
+
+                    szx = bl2["szx"]
+                    blocks = new_blocks
+
+                blocks[bl2["num"]] = self.frame[CoAP]["pl"]
+
+                if not bl2["m"]:
+                    # final block
+                    break
+
+            self.next_skip_ack()
+
+        self.next_skip_ack(optional=True)
+
+        if pl is None:
+            pl = []
+            bad = False
+            for i in range(0, bl2["num"] + 1):
+                b = blocks.get(i)
+                if b is None:
+                    bad = True
+                    self.set_verdict("inconc", "block #%d is missing" % i)
+                else:
+                    pl.append(b)
+            if bad:
+                raise self.Stop()
+            pl = b"".join(pl)
+        try:
+            self.link = Link(pl)
+        except Link.FormatError as e:
+            self.set_verdict("fail", "link-format payload is not well-formatted (%s: %s)" % (type(e).__name__, e))
+            raise self.Stop()
+
+        self.raw_link = pl
+
+    def link_values(self):
+        self.log("<Processing link-format payload>")
+        entries = set()
+        PAR_WIDTH = 16
+        for lv in self.link:
+            pars = ["%s=%r" % v for v in lv]
+            offset = 0
+            for i in range(len(pars)):
+                p = pars[i]
+                overflow = len(p) - PAR_WIDTH
+                if overflow > -offset:
+                    offset += overflow
+                else:
+                    pars[i] = p + " " * (-overflow - offset)
+                    offset = 0
+
+            self.log("           %-20r %s" % (lv.uri, "  ".join(pars)))
+            entry = lv.uri, lv.get("anchor"), lv.get("rel")
+            if entry in entries:
+                self.log("WARNING: duplicate link ")
+            entries.add(entry)
+            yield lv
 
 
 class CoAPConversation(list):
@@ -202,607 +774,312 @@ class CoAPConversation(list):
             return frame.dst, frame.src
 
 
-class CoAPTestcase(TestCase):
+class Link(list):
     """
-    The test case extension representing a CoAP test case
+    Class representing the link values for CoAP
+
+    .. example:: coap://[adress][/uri]?[par_name]=[par_token]
+    .. note:: In the whole class, the string representation of the link value
+              got by parsing the payload of the CoAP packet is stored into the
+              's' variable
     """
 
-    reverse_proxy = False
+    __re_uri = re.compile(r"<([^>]*)>")
+    __re_par_name = re.compile(r";([0-9A-Za-z!#$%&+^_`{}~-]+)(=?)")
+    __re_ptoken = re.compile(r"[]!#$%&'()*+./:<=>?@[^_`{|}~0-9A-Za-z-]+")
 
-    class Stop(Exception):
+    class FormatError(Exception):
+        """
+        Error thrown when there is a format error during parsing the uri value
+        """
         pass
 
     @typecheck
-    def __init__(self, frame_list: list_of(Frame)):
+    def is_compiled_regex(arg):
         """
-        Initialize a test case, the only thing that it needs for
-        interoperability testing is a list of frame
+        Check if a parameter is a valid regex compiled object.
+        This function is used for the typechecker decorator.
 
-        :param frame_list: The list of frames to analyze
-        :type frame_list: [Frame]
+        :return: True if a valid compiled regex, False if not
+        :rtype: bool
         """
-        super().__init__(frame_list)
-
-        # Prepare the parameters
-        self.__conversations = []
-        self.__text = ''
-        # self.failed_frames = set()
-        # self.review_frames_log = []
-        # try:
-        # self.__current_conversation = self.conversations
-        # self.__iter = iter(self.__current_conversation)
-        # self.next()
-
-        # self.run()
-
-        # Ensure we're at the end of the communication
-        # try:
-        #     self.log(next(self.__iter))
-        #     self.setverdict("inconc", "unexpected frame")
-        # except StopIteration:
-        #     pass
-
-        # except self.Stop:
-        #     # ignore this testcase result if the first frame gives an inconc
-        #     # verdict
-        #     if all((
-        #         self.__verdict.get_value() == "inconc",
-        #         self.frame == self.conversation[0]
-        #     )):
-        #         # no match
-        #         self.verdict = None
-
-        # except Exception:
-        #     if self.__iter:
-        #         self.setverdict("error", "unhandled exception")
-        #         self.exception = traceback.format_exc()
-        #         self.log(self.exception)
-
-        # assert self.verdict in self.__verdicts
+        return all((
+            arg is not None,
+            isinstance(arg, type(re.compile('dummy_pattern')))
+        ))
 
     @typecheck
-    def match(self, verdict: is_verdict = 'inconc', msg: str = '', *args):
+    def __init__(self, pl: bytes):
         """
-        Abstract function to match a packet value with a template
+        Initialize the link representation
 
-        :param verdict: The verdict to put if it matches
-        :param msg: The message to associate with the verdict
-        :param args: More arguments if needed into implementations
-        :type verdict: str
-        :type msg: str
-        :type args: tuple
-        """
-        raise NotImplementedError
-
-    def next_frame(self):
-        """
-        Switch to the next frame
-        """
-        raise NotImplementedError
-
-    @typecheck
-    def log(self, msg: str):
-        """
-        Log a message
-
-        :param msg: The message to log
-        :type msg: str
-        """
-        text = str(msg)
-        self.text += text if text.endswith("\n") else (text + "\n")
-        self.review_frames_log.append(text)
-
-    @classmethod
-    @typecheck
-    def get_objective(self) -> str:
-        """
-        Get the objective of this test case
-
-        :return: The objective of this test case
-        :rtype: str
-
-        .. note:: Find a cleaner way to do this
-        """
-        if self.__doc__:
-            ok = False
-            for line in self.__doc__.splitlines():
-                if ok:
-                    return line
-                if line == "Objective:":
-                    ok = True
-        return ""
-
-    @typecheck
-    def set_verdict(self, verdict: is_verdict, msg: str = ''):
-        """
-        Update the current verdict of the current test case
-
-        :param verdict: The new verdict
-        :param msg: The message to associate with the verdict
-        :type verdict: str
-        :type msg: str
-        """
-        if all((
-            self._verdict.get_value() == 'none',
-            verdict == 'inconc',
-            not self.force
-        )):
-            raise self.Stop()
-
-        # Update the verdict
-        self._verdict.update(verdict, msg)
-
-        # TODO: Check that the log function will be used like this
-        self.log("  [%s] %s" % (format(v, "^6s"), text))
-
-    @typecheck
-    def pre_process(self) -> list_of(Frame):
-        """
-        Function for each TC to preprocess its list of frames
-
-        :return: The list of ignored frames
-        :rtype: [Frame]
+        :param pl: The payload of the CoAP layer
+        :type pl: bytes
         """
 
-        # Parse every frame with the duct tape
-        for frame in self._frames:
-            duct_tape(frame)
+        @typecheck
+        def error(msg: str, in_string=None):
+            """
+            Function to manage format errors
 
-        # Create the tracker from the frames which will create conversations
-        # and at the same time filter the ignored frames
-        tracker = CoAPTracker(self._frames)
-        self.__conversations = tracker.conversations
+            :param msg: The string that we were seeking
+            :param in_string: The object in which we were seeking
+            :type msg: str
+            :type in_string: anything
 
-        # Get the conversations by pair
-        self.__conversations_by_pair = group_conversations_by_pair(
-            self.__conversations
-        )
-
-        return tracker.ignored_frames
-
-    def run(self) -> (str, list_of(int), str, list_of(Exception)):
-        """
-        Run the test case
-
-        :return: A tuple with the informations about the running which are
-                 - The verdict as a string
-                 - The list of the review frames
-                 - A string for extra informations
-                 - A list of Exceptions that could have occured during the run
-        :rtype: (str, [int], str, [Exception])
-        """
-        raise NotImplementedError
-
-    def next(self, optional=False):
-        try:
-            f = next(self.__iter)
-            self.log(f)
-            self.frame = f
-            return f
-        except StopIteration:
-            if not optional:
-                self.__iter = None
-                self.log("<Frame  ?>")
-                self.setverdict("inconc", "premature end of conversation")
-        except TypeError:
-            raise self.Stop()
-
-    def chain(self, optional=False):
-        # ensure we're at the end of the current conversation
-        try:
-            self.log(next(self.__iter))
-            self.setverdict("inconc", "unexpected frame")
-            raise self.Stop()
-        except StopIteration:
-            pass
-
-        last_frame = self.__current_conversation[-1]
-
-        try:
-            # next conversation
-            c = self.__current_conversation.next
-        except AttributeError:
-            if optional:
-                return False
-            else:
-                self.log("<Frame  ?>")
-                self.setverdict("inconc", "expected another CoAP conversation")
-                raise self.Stop()
-
-        # Chain to the next conversation
-        self.__current_conversation = c
-        self.__iter = iter(self.__current_conversation)
-
-        self.log("Chaining to conversation %d %s" % (c.id, c.tag))
-        self.next()
-        if self.frame.ts < last_frame.ts:
-            self.setverdict(
-                "inconc",
-                "concurrency issue: frame %d was received earlier than frame %d"
-                %
-                (self.frame.id, last_frame.id)
-            )
-            raise self.Stop()
-
-        return True
-
-    # NOTE: Seems to be never used
-    @contextmanager
-    def nolog(self):
-        text = self.text
-        self.text = ""
-        try:
-            yield
-        finally:
-            self.text = text
-
-    def next_skip_ack(self, optional=False):
-        """Call self_next(), but skips possibly interleaved ACKs"""
-        self.next(optional)
-        while all((
-            self.frame is not None,
-            self.frame[CoAP] in CoAP(type="ack", code=0)
-        )):
-            self.next(optional)
-
-        return self.frame
-
-    def match_coap(self, sender, template, verdict="inconc"):
-        assert sender in (None, "client", "server")
-
-        if not self.__iter:
-            # end of conversation
-            self.setverdict(verdict, "expected %s from the %s" % (template, sender))
-            self.failed_frames.add(self.frame.id)
-            self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
-            return False
-
-        # check the sender
-        src = self.frame.src[0]
-        if sender == "client":
-            if src != self.conversation.client:
-                if verdict is not None:
-                    self.setverdict(verdict, "expected %s from the client" % template)
-                self.failed_frames.add(self.frame.id)
-                self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
-                return False
-        elif sender == "server":
-            if src != self.conversation.server:
-                if verdict is not None:
-                    self.setverdict(verdict, "expected %s from the server" % template)
-                self.failed_frames.add(self.frame.id)
-                self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
-                return False
-        else:
-            assert sender is None
-
-        # check the template
-        if template:
-            diff_list = DifferenceList(self.frame[CoAP])
-            if template.match(self.frame[CoAP], diff_list):
-                # pass
-                if verdict is not None:
-                    self.setverdict("pass", "match: %s" % template)
-
-            else:
-                if verdict is not None:
-                    def callback(path, mismatch, describe):
-                        self.log("             %s: %s\n" % (".".join(path), type(mismatch).__name__))
-                        self.log("                 got:        %s\n" % mismatch.describe_value(describe))
-                        self.log("                 expected: %s\n" % mismatch.describe_expected(describe))
-
-                    self.setverdict(verdict, "mismatch: %s" % template)
-                    diff_list.describe(callback)
-                self.failed_frames.add(self.frame.id)
-                return False
-
-        return True
-
-    def uri(self, uri, *other_opts):
-        """filter for disabling a template if URI-Filter is disabled
-
-        *other_opts elemements may be either:
-            CoAPOption datas    -> will be fed into a Opt() together with the Uri options
-            CoAPOptionList datas -> will be combined with the Opt() within a All() template
-        """
-        opt = []
-        opt_list = []
-        for o in other_opts:
-            if issubclass(o.get_type(), CoAPOption):
-                opt.append(o)
-            elif issubclass(o.get_type(), CoAPOptionList):
-                opt_list.append(o)
-            else:
-                raise ValueError
-
-        if self.urifilter:
-            u = urllib.parse.urlparse(uri)
-            if u.path:
-                assert not any(isinstance(v, CoAPOptionUriPath) for v in other_opts)
-                for elem in u.path.split("/"):
-                    if elem:
-                        opt.append(CoAPOptionUriPath(elem))
-            if u.query:
-                assert not any(isinstance(v, CoAPOptionUriQuery) for v in other_opts)
-                for elem in u.query.split("&"):
-                    if elem:
-                        opt.append(CoAPOptionUriQuery(elem))
-
-        if opt:
-            opt_list.append(Opt(*opt))
-
-        if not opt_list:
-            return None
-        elif len(opt_list) == 1:
-            return opt_list[0]
-        else:
-            return All(*opt_list)
-
-    def get_max_age(self):
-        try:
-            return self.frame[CoAP]["opt"][CoAPOptionMaxAge]["val"]
-        except KeyError:
-            # option not present
-            return 60
-
-    def match_link_format(self, filter=None, value=None,
-                          path=(CoAPOptionUriPath(".well-known"), CoAPOptionUriPath("core"))):
-
-        if filter is None:
-            opt = All(Opt(*path), NoOpt(CoAPOptionUriQuery()))
-        else:
-            opt = Opt(CoAPOptionUriQuery(), *path)
-
-            if self.frame[CoAP] in CoAP(code="get", opt=opt):
-
-                q = self.frame[CoAP]["opt"][CoAPOptionUriQuery]["val"]
-                i = q.find("=")
-                if i < 0:
-                    self.setverdict("fail", "malformed Uri-Query option: %r" % q)
-                    return
-
-                n, v = q[:i], q[i + 1:]
-
-                verdict = "pass"
-                msg = "link-format request with filter on %s" % filter
-
-                # filter by query name
-                if n not in store_data(filter):
-                    verdict = "inconc"
-
-                if value is not None:
-                    # filter by query value
-                    msg += " matching %s" % value
-                    if v not in store_data(value):
-                        verdict = "inconc"
-
-                self.setverdict(verdict, msg)
-
-                self.link_filter_name, self.link_filter = n, v
-
-                opt = Opt(CoAPOptionUriQuery(q), *path)
-
-        szx = None
-        pl = None
-        blocks = {}
-        while True:
-            if not self.match_coap("client", CoAP(code="get", opt=opt)):
-                raise self.Stop()
-            self.next_skip_ack()
-
-            if not self.match_coap("server", CoAP(code=2.05, opt=Opt(CoAPOptionContentFormat(40)))):
-                raise self.Stop()
-
-            try:
-                bl2 = self.frame[CoAP]["opt"][CoAPOptionBlock2]
-            except KeyError:
-                # single block
-                pl = self.frame[CoAP]["pl"]
-                break
-            else:
-                # multiple blocks
-                if szx is None:
-                    # first block
-                    szx = bl2["szx"]
-                elif bl2["szx"] != szx:
-                    # block size was modified
-                    if bl2["szx"] > szx:
-                        self.setverdict("inconc", "block size seems to be increasing")
-                        raise self.Stop()
-
-                    # block size was reduced
-                    # -> rehash
-                    size = 2 ** (bl2["szx"] + 4)
-                    new_blocks = {}
-                    mult = 2 ** (szx - bl2["szx"])
-                    for num, b in blocks.items():
-                        new_num = num * mult
-                        for i in range(mult):
-                            new_blocks[new_num + i] = b[i * size:(i + 1) * size]
-
-                    szx = bl2["szx"]
-                    blocks = new_blocks
-
-                blocks[bl2["num"]] = self.frame[CoAP]["pl"]
-
-                if not bl2["m"]:
-                    # final block
-                    break
-
-            self.next_skip_ack()
-
-        self.next_skip_ack(optional=True)
-
-        if pl is None:
-            pl = []
-            bad = False
-            for i in range(0, bl2["num"] + 1):
-                b = blocks.get(i)
-                if b is None:
-                    bad = True
-                    self.setverdict("inconc", "block #%d is missing" % i)
-                else:
-                    pl.append(b)
-            if bad:
-                raise self.Stop()
-            pl = b"".join(pl)
-        try:
-            self.link = Link(pl)
-        except Link.FormatError as e:
-            self.setverdict("fail", "link-format payload is not well-formatted (%s: %s)" % (type(e).__name__, e))
-            raise self.Stop()
-
-        self.raw_link = pl
-
-    def link_values(self):
-        self.log("<Processing link-format payload>")
-        entries = set()
-        PAR_WIDTH = 16
-        for lv in self.link:
-            pars = ["%s=%r" % v for v in lv]
-            offset = 0
-            for i in range(len(pars)):
-                p = pars[i]
-                overflow = len(p) - PAR_WIDTH
-                if overflow > -offset:
-                    offset += overflow
-                else:
-                    pars[i] = p + " " * (-overflow - offset)
-                    offset = 0
-
-            self.log("           %-20r %s" % (lv.uri, "  ".join(pars)))
-            entry = lv.uri, lv.get("anchor"), lv.get("rel")
-            if entry in entries:
-                self.log("WARNING: duplicate link ")
-            entries.add(entry)
-            yield lv
-
-
-class Link (list):
-    __re_uri        = re.compile (r"<([^>]*)>")
-    __re_par_name = re.compile (r";([0-9A-Za-z!#$%&+^_`{}~-]+)(=?)")
-    __re_ptoken     = re.compile (r"[]!#$%&'()*+./:<=>?@[^_`{|}~0-9A-Za-z-]+")
-
-    class FormatError (Exception):
-        pass
-
-    def __init__ (self, pl):    # may throw exceptions in case of bad format
-
-        def error (msg, in_string = None):
+            :raises FormatError: Always raises this exception because it's the
+                                 main purpose of this function
+            """
             if in_string:
-                raise self.FormatError ("%s in %r" % (msg, in_string))
+                raise self.FormatError("%s in %r" % (msg, in_string))
             else:
-                raise self.FormatError ("%s at %r..." % (msg, s[:40]))
+                raise self.FormatError("%s at %r..." % (msg, s[:40]))
 
-        mo = None
+        @typecheck
+        def have(string: str) -> bool:
+            """
+            Check if the link value contains the entered parameter
+
+            :param string: The string to seek in the link value
+            :type string: str
+
+            :return: True if the string is contained into the link value
+            :rtype: bool
+            """
+            return s and s.startswith(string)
+
+        @typecheck
+        def percent_unquote(string: str) -> str:
+            """
+            Replace '%xx' url encoded special characters by their string value
+
+            :param string: The uri value from which we will replace those
+            :type string: str
+
+            :raises FormatError: If the urllib was unable to replace the '%xx'
+                                 characters
+
+            :return: The uri with the special characters as normal char
+            :rtype: str
+            """
+            try:
+                return urllib.parse.unquote(string, errors='strict')
+            except UnicodeDecodeError as e:
+                error(str(e), string)
+
+        # Try to parse the given payload into utf-8 string representation
         try:
-            s  = str (pl, "utf-8")
+            s = str(pl, 'utf-8')
         except UnicodeDecodeError as e:
-            error (str(e), pl)
+            error(str(e), pl)
 
-        def have (string):
-            return s and s.startswith (string)
+        # Match object used here
+        mo = None
 
-        def consume (pattern, subject):
+        @typecheck
+        def consume(pattern: either(str, is_compiled_regex), subject: str):
+            """
+            Consume a part of the link value (stored into s variable)
+
+            :param pattern: The pattern to consume
+            :param subject: The name of the subject to consume
+            :type pattern: either(str, _sre.SRE_Pattern)
+            :type subject: str
+            """
+
+            # Get the extern s (for uri current value) and mo (match object)
             nonlocal s, mo
-            if isinstance (pattern, str):
-                # str
-                if s.startswith (pattern):
+
+            # If the pattern is a string
+            if isinstance(pattern, str):
+                if s.startswith(pattern):
                     s = s[len(pattern):]
                     return
+
+            # If the pattern is a compiled regex
             else:
-                # regex
-                mo = re.match (pattern, s)
+                mo = re.match(pattern, s)
                 if mo:
                     s = s[mo.end(0):]
                     return
-            error ("malformed %s" % subject)
 
-        def percent_unquote (string):
-            try:
-                return urllib.parse.unquote (string, errors="strict")
-            except UnicodeDecodeError as e:
-                error (str(e), string)
+            # If it didn't match with the current uri value
+            error("malformed %s" % subject)
 
+        # If it managed to get a string (uri value) from the payload
         if s:
             while True:
-                # link-value
-                consume (self.__re_uri, "uri")
-                uri = percent_unquote (mo.group (1))
 
-                link_value = self.LinkValue (uri)
+                # Link-value
+                consume(self.__re_uri, 'uri')
 
-                while have (";"):
-                    # link-param
-                    consume (self.__re_par_name, "parmname")
-                    name = mo.group (1)
+                # Get the uri value without the encoded special chars
+                uri = percent_unquote(mo.group(1))
 
-                    if not mo.group (2):
+                # Store the value of it
+                link_value = self.LinkValue(uri)
+
+                # While there is a ";" we can process the parameter
+                while have(";"):
+
+                    # Link-param
+                    consume(self.__re_par_name, 'parmname')
+
+                    # Get the name of the parameter
+                    name = mo.group(1)
+
+                    # If no value associated to it
+                    if not mo.group(2):
                         value = None
 
-                    elif (have ('"')):
-                        # quoted-string
-                        #  -> read and unquote it
+                    # If it does have a value associated
+                    elif have('"'):
+
+                        # Quoted-string => Read and unquote it
                         value = []
                         esc = False
-                        for i in range (1, len (s)):
+
+                        # Parse the whole uri left
+                        for i in range(1, len(s)):
+
+                            # Get each character
                             c = s[i]
+
+                            # If it's not escaped
                             if not esc:
+
+                                # If it's escaped now
                                 if c == '\\':
                                     esc = True
+
+                                # End of string
                                 elif c == '"':
-                                    # end of string
                                     break
+
+                                # Other chars
+                                # TODO: Normalise LWS
                                 else:
-                                    # TODO: normalise LWS
-                                    value.append (c)
+                                    value.append(c)
+
+                            # If it is escaped
                             else:
                                 esc = False
 
+                                # Quoted char
                                 if c == '"' or c == '\\':
-                                    # quoted char
-                                    value.append (c)
+                                    value.append(c)
+
+                                # Was an unquoted \
                                 else:
-                                    # was an unquoted \
-                                    value.append ('\\' + c)
+                                    value.append('\\' + c)
+
+                        # Error: unterminated quoted-string
                         else:
-                            error ("attribute value for %r is an unterminated quoted-string" % name)
+                            error(
+                                "attribute value for %r is %s"
+                                %
+                                (
+                                    name,
+                                    'an unterminated quoted-string'
+                                )
+                            )
 
-                        value = "".join (value)
+                        # Transform the value char list into a single string
+                        value = ''.join(value)
+
+                        # If still empty
                         if not value:
-                            error ("attribute value for %r is empty" % name)
+                            error("attribute value for %r is empty" % name)
+
+                        # Consume the read part
                         s = s[i+1:]
+
+                    # If it doesn't begin with a quote, it's a token
                     else:
-                        # ptoken
-                        consume (self.__re_ptoken, "ptoken")
-                        value = percent_unquote (mo.group (0))
 
-                    link_value.append ((name, value))
+                        # Consume it
+                        consume(self.__re_ptoken, 'ptoken')
 
-                self.append (link_value)
+                        # And generate its value
+                        value = percent_unquote(mo.group(0))
 
+                    # Add the link value pair
+                    link_value.append((name, value))
+
+                # In the end, append the link value to the link list
+                self.append(link_value)
+
+                # If we finished reading the whole uri, s is now empty
                 if not s:
                     break
 
-                # next link-value
-                consume (",", "delimiter, expected ','")
+                # Next link-value
+                consume(",", "delimiter, expected ','")
 
-    class LinkValue (list):
-        def __init__ (self, uri):
+    class LinkValue(list):
+        """
+        A class representing the link values which consist into a parameter
+        name associated a parameter value
+        """
+
+        @typecheck
+        def __init__(self, uri: str):
+            """
+            Initialize the link value object
+
+            :param uri: The basic uri
+            :type uri: str
+            """
             self.uri = uri
 
-        def get (self, par_name, testcase = None):
+        @typecheck
+        def get(
+            self,
+            par_name: str,
+            testcase: optional(CoAPTestCase) = None
+        ) -> either(str, type(None)):
+            """
+            Get the value of a link value from its parameter name
+
+            :param par_name: The parameter name
+            :param testcase: The TestCase object to put its verdict to 'fail'
+            :type par_name: str
+            :type testcase: optional(CoAPTestCase)
+
+            :return: The parameter value associated to this parameter name if
+                     one found, None if none found
+            :rtype: either(str, NoneType)
+            """
+
+            # The result to return, None at the beginning to check if a link
+            # value has multiple values for a single parameter name
             result = None
+
+            # For each couple (name => value) inside this list
             for name, value in self:
+
+                # If the parameter name is found
                 if name == par_name:
+
+                    # If no result found until here, ok and put it
                     if result is None:
                         result = value
+
+                    # If a value was already put and another one if found
                     else:
-                        msg = "link-value contains multiple %r parameters" % par_name
+                        msg = (
+                            "link-value contains multiple %r parameters"
+                            %
+                            par_name
+                        )
+
+                        # If a test case object is given, its verdict fails
                         if testcase:
-                            testcase.setverdict ("fail", msg)
+                            testcase.set_verdict('fail', msg)
                         else:
-                            raise Exception (msg)
+                            raise Exception(msg)
+
+            # Return the value if one found, if none found just return None
             return result
 
 
@@ -1137,34 +1414,6 @@ def group_conversations_by_pair(
         except KeyError:
             d[pair] = [t]
     return d
-
-
-class Resolver:
-    __cache = {}
-
-    def __new__(cls, ip_addr):
-        try:
-            return cls.__cache[ip_addr]
-        except KeyError:
-            pass
-
-        try:
-            name = socket.gethostbyaddr(str(ip_addr))[0]
-        except socket.herror:
-            name = None
-
-        cls.__cache[ip_addr] = name
-
-        return name
-
-    @classmethod
-    def format(cls, ip_addr):
-        name = cls(ip_addr)
-
-        if name:
-            return "%s (%s)" % (name, ip_addr)
-        else:
-            return ip_addr
 
 
 def analyze_fix():

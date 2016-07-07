@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_19(CoAPTestcase):
+class TD_COAP_CORE_19(CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_19
 Objective:
@@ -62,17 +62,17 @@ Client displays the response
 """
 
     def run(self):
-        self.match_coap("client", CoAP(type="con", code="post",
+        self.match("client", CoAP(type="con", code="post",
                                        opt=self.uri(
                                            "/location-query",
                                            CoAPOptionContentFormat(),
                                        )))
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
         self.next_skip_ack()
 
-        self.match_coap("server", CoAP(type=Any(CoAPType("con"), "ack"),
+        self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.01,
                                        mid=CMID,
                                        tok=CTOK,
@@ -80,8 +80,8 @@ Client displays the response
                                            CoAPOptionLocationQuery("first=1"),
                                            CoAPOptionLocationQuery("second=2"),
                                        )))
-        if self.match_coap("server", CoAP(pl=Not(b"")), None):
-            self.match_coap("server", CoAP(
+        if self.match("server", CoAP(pl=Not(b"")), None):
+            self.match("server", CoAP(
                 opt=Opt(CoAPOptionContentFormat()),
             ), "fail")
         self.next_skip_ack(optional=True)

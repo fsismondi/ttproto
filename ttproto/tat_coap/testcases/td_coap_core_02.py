@@ -2,7 +2,7 @@
 
 from ..common import *
 
-class TD_COAP_CORE_02 (CoAPTestcase):
+class TD_COAP_CORE_02 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_02
 Objective:
@@ -47,7 +47,7 @@ Server sends response containing:
 Verify
 Client displays the received information
 """
-class TD_COAP_CORE_02 (CoAPTestcase):
+class TD_COAP_CORE_02 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_02
 Objective:
@@ -92,7 +92,7 @@ Server sends response containing:
 Verify
 Client displays the received information
 """
-class TD_COAP_CORE_02 (CoAPTestcase):
+class TD_COAP_CORE_02 (CoAPTestCase):
     """Identifier:
 TD_COAP_CORE_02
 Objective:
@@ -138,16 +138,16 @@ Verify
 Client displays the received information
 """
     def run (self):
-        self.match_coap ("client", CoAP (type="con", code="delete",
+        self.match ("client", CoAP (type="con", code="delete",
                         opt=self.uri ("/test")))
-        CMID = self.frame.coap["mid"]
-        CTOK = self.frame.coap["tok"]
+        CMID = self._frame.coap["mid"]
+        CTOK = self._frame.coap["tok"]
 
         self.next()
 
-        self.match_coap ("server", CoAP (code = 2.02, mid = CMID,tok=CTOK,))
-        if self.match_coap ("server", CoAP(pl = Not(b"")),None):
-            self.match_coap ("server", CoAP (
+        self.match ("server", CoAP (code = 2.02, mid = CMID,tok=CTOK,))
+        if self.match ("server", CoAP(pl = Not(b"")),None):
+            self.match ("server", CoAP (
                         opt = Opt (CoAPOptionContentFormat()),
                 ), "fail")
 
