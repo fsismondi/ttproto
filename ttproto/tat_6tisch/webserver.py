@@ -175,33 +175,15 @@ def get_test_cases(
 
     # New way by analyzer tool
     test_cases = OrderedDict()
+    # ommit obsolets TCs
     raw_tcs, _ = Analyzer('tat_6tisch').get_implemented_testcases(testcase_id)
-
-    # # Build the clean results list from test cases objects
-    # for raw_tc in raw_tcs:
-    #
-    #     tc_name = raw_tc.__name__
-    #     tc_basic = OrderedDict()
-    #     tc_basic['_type'] = 'tc_basic'
-    #     tc_basic['id'] = tc_name
-    #     tc_basic['objective'] = raw_tc.get_objective()
-    #
-    #     tc_implementation = OrderedDict()
-    #     tc_implementation['_type'] = 'tc_implementation'
-    #     tc_implementation['implementation'] = inspect.getsource(raw_tc)
-    #
-    #     # Tuple, basic + implementation
-    #     test_cases[tc_name] = OrderedDict()
-    #     test_cases[tc_name]['tc_basic'] = tc_basic
-    #     test_cases[tc_name]['tc_implementation'] = tc_implementation
-
 
     # Build the clean results list
     for raw_tc in raw_tcs:
-
+        tc_name = raw_tc[0]
         tc_basic = OrderedDict()
         tc_basic['_type'] = 'tc_basic'
-        tc_basic['id'] = raw_tc[0]
+        tc_basic['id'] = tc_name
         tc_basic['objective'] = raw_tc[1]
 
         tc_implementation = OrderedDict()
@@ -209,9 +191,9 @@ def get_test_cases(
         tc_implementation['implementation'] = raw_tc[2]
 
         # Tuple, basic + implementation
-        test_cases[raw_tc[0]] = OrderedDict()
-        test_cases[raw_tc[0]]['tc_basic'] = tc_basic
-        test_cases[raw_tc[0]]['tc_implementation'] = tc_implementation
+        test_cases[tc_name] = OrderedDict()
+        test_cases[tc_name]['tc_basic'] = tc_basic
+        test_cases[tc_name]['tc_implementation'] = tc_implementation
 
     # If a single element is asked
     if testcase_id:

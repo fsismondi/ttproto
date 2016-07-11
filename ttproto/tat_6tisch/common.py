@@ -121,7 +121,11 @@ class SixTischTestCase(TestCase):
         self.__verdict = Verdict()
         self.__frames = frame_list
 
-        # TODO implement
+        self.__text = ''
+        self.__failed_frames = set()
+        self.__review_frames_log = []
+        self.__exceptions = ''
+
 
     @typecheck
     def match(
@@ -262,7 +266,7 @@ class SixTischTestCase(TestCase):
         # Return the results
         return (
             self.__verdict.get_value(),
-            self.__failed_frames,
+            list(self.__failed_frames),
             self.__text,
             self.__exceptions
         )

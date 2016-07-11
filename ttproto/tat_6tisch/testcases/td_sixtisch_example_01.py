@@ -2,6 +2,17 @@
 
 from ttproto.tat_6tisch.common import *
 
+"""
+NOTE
+
+for each TC class you must either
+-include:
+
+    Objective:
+    Description of the purpose of the test
+
+- overwrite method get_test_purpose method
+"""
 
 class TD_SIXTISCH_EXAMPLE_01 (SixTischTestCase):
     """Identifier:
@@ -49,24 +60,9 @@ Verify
 Client displays the received information
 """
 
-    # TODO The get objective or purpose can be retrieved automatically from the docstring, make this a convention?
-    @classmethod
-    def get_objective(self):
-        return 'Perform DELETE transaction (CON mode)'
 
 
     def run (self):
-        # self.match ("client", CoAP (type="con", code="delete",
-        #                 opt=self.uri ("/test")))
-        # CMID = self.get_coap_layer()["mid"]
-        # CTOK = self.get_coap_layer()["tok"]
-        #
-        # self.next()
-        #
-        # self.match ("server", CoAP (code = 2.02, mid = CMID,tok=CTOK,))
-        # if self.match ("server", CoAP(pl = Not(b"")),None):
-        #     self.match ("server", CoAP (
-        #                 opt = Opt (CoAPOptionContentFormat()),
-        #         ), "fail")
-        pass
+        # analyse sth and then emit a verdict, note if using match then the verdict should be updated using verdict param
+        self.set_verdict('pass', 'I am the walrus!')
 
