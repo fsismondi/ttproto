@@ -251,7 +251,6 @@ class TestCase:
         :return: The purpose of this test case
         :rtype: str
 
-        .. note:: Find a cleaner way to do this
         """
         raise NotImplementedError
 
@@ -263,6 +262,7 @@ class TestCase:
         :return: The list of ignored frames associated to the ignoring reason
         :rtype: (str, [Frame])
         """
+        # TODO re-engineer this, the pre process should return a list of the frames to be precessed and the ommited ones
         raise NotImplementedError
 
     @typecheck
@@ -277,6 +277,9 @@ class TestCase:
         """
         raise NotImplementedError
 
+
+    # TODO why exceptions as string? maybe better handling directly the objects at this level, we flatten to
+    # TODO string if needed to be passed trough the web API
     @typecheck
     def run_test_case(self) -> (str, list_of(int), str, str):
         """
@@ -326,7 +329,7 @@ class Analyzer:
         self.__test_env = test_env
 
     @typecheck
-    def BCKPget_implemented_testcases(
+    def PATCH_get_implemented_testcases(
         self,
         testcase_id: optional(str) = None,
         verbose: optional(bool) = False
@@ -572,41 +575,50 @@ class Analyzer:
                         the rest is inconc
         """
 
-        # Get the test case
-        try:
-            implemented_tcs, obsoletes = self.get_implemented_testcases(tc_id)
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                "Testcase : " + tc_id + " couldn't be found"
-            )
+        # # Get the test case
+        # try:
+        #     implemented_tcs, obsoletes = self.get_implemented_testcases(tc_id)
+        # except FileNotFoundError:
+        #     raise FileNotFoundError(
+        #         "Testcase : " + tc_id + " couldn't be found"
+        #     )
+        #
+        # # Check that we received only one
+        # assert len(implemented_tcs) + len(obsoletes) == 1
+        #
+        # # If the test case is obsolete
+        # if len(obsoletes) == 1:
+        #     assert obsoletes[0][0] == tc_id
+        #     raise ObsoleteTestCase(
+        #         "Testcase : " + tc_id + " is obsolete"
+        #     )
+        #
+        # # Correct test case
+        # assert implemented_tcs[0][0] == tc_id
+        # modname = implemented_tcs[0][0]
+        # mod_real_name = '.'.join([
+        #     TTPROTO_DIR,
+        #     self.__test_env,
+        #     TESTCASES_SUBDIR,
+        #     modname.lower()
+        # ])
 
-        # Check that we received only one
-        assert len(implemented_tcs) + len(obsoletes) == 1
+        # TODO Napoun here (followin three lines) we have the same snippet in two places, redundant code,
+        # TODO let's use the appraoch I was using before with two separete functions, one for import,
+        # TODO the other, get_tc_info for getting infos from TCs,
+        # TODO get_tc_info MUST use import_test_cases
 
-        # If the test case is obsolete
-        if len(obsoletes) == 1:
-            assert obsoletes[0][0] == tc_id
-            raise ObsoleteTestCase(
-                "Testcase : " + tc_id + " is obsolete"
-            )
+        # # Load the test case class
+        # # Note that the module is always lower case and the plugin (class)
+        # # is upper case (ETSI naming convention)
+        # test_case_class = getattr(
+        #     import_module(mod_real_name),
+        #     modname.upper()
+        # )
 
-        # Correct test case
-        assert implemented_tcs[0][0] == tc_id
-        modname = implemented_tcs[0][0]
-        mod_real_name = '.'.join([
-            TTPROTO_DIR,
-            self.__test_env,
-            TESTCASES_SUBDIR,
-            modname.lower()
-        ])
-
-        # Load the test case class
-        # Note that the module is always lower case and the plugin (class)
-        # is upper case (ETSI naming convention)
-        test_case_class = getattr(
-            import_module(mod_real_name),
-            modname.upper()
-        )
+        # self.PATCH_get_implemented_testcases[0][0] is class SixtischTestcase
+        test_case_class, _ = self.PATCH_get_implemented_testcases(tc_id)
+        test_case_class = test_case_class[0]
 
         # Disable name resolution for performance improvment
         with Data.disable_name_resolution():
@@ -618,7 +630,8 @@ class Analyzer:
             test_case = test_case_class(frames)
 
             # Preprocess the list of frames which returns the list of ignored
-            ignored = test_case.pre_process()
+            # TODO pre_process MUST return two objects a list of conversations related to the TC, and the ignored ones
+            #ignored = test_case.pre_process()
             # print('##### Ignored')
             # print(ignored)
             # print('#####')
