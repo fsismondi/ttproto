@@ -49,6 +49,7 @@ import base64
 import requests
 import email.feedparser
 import email.message
+import inspect
 
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
@@ -174,10 +175,26 @@ def get_test_cases(
 
     # New way by analyzer tool
     test_cases = OrderedDict()
-    raw_tcs = Analyzer('tat_coap').get_implemented_testcases(testcase_id)
+    raw_tcs, _ = Analyzer('tat_6tisch').get_implemented_testcases(testcase_id)
 
-    # Get only the correct ones (not the obsoletes)
-    raw_tcs = raw_tcs[0]
+    # # Build the clean results list from test cases objects
+    # for raw_tc in raw_tcs:
+    #
+    #     tc_name = raw_tc.__name__
+    #     tc_basic = OrderedDict()
+    #     tc_basic['_type'] = 'tc_basic'
+    #     tc_basic['id'] = tc_name
+    #     tc_basic['objective'] = raw_tc.get_objective()
+    #
+    #     tc_implementation = OrderedDict()
+    #     tc_implementation['_type'] = 'tc_implementation'
+    #     tc_implementation['implementation'] = inspect.getsource(raw_tc)
+    #
+    #     # Tuple, basic + implementation
+    #     test_cases[tc_name] = OrderedDict()
+    #     test_cases[tc_name]['tc_basic'] = tc_basic
+    #     test_cases[tc_name]['tc_implementation'] = tc_implementation
+
 
     # Build the clean results list
     for raw_tc in raw_tcs:
@@ -424,7 +441,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 test_cases = get_test_cases()
             except FileNotFoundError as fnfe:
                 self.api_error(
-                    'Problem during fetching the test cases list:\n' + fnfe
+                    'Problem during fetching the test cases list:\n' + str(fnfe)
                 )
                 return
 
