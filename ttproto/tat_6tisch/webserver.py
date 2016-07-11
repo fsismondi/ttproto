@@ -930,7 +930,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     return
 
             # Get the result of the analysis
-            analysis_results = Analyzer('tat_coap').analyse(
+            analysis_results = Analyzer('tat_6tisch').analyse(
                                 pcap_path,
                                 testcase_id
                             )

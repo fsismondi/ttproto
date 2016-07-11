@@ -630,7 +630,7 @@ class Analyzer:
             test_case = test_case_class(frames)
 
             # Preprocess the list of frames which returns the list of ignored
-            # TODO pre_process MUST return two objects a list of conversations related to the TC, and the ignored ones
+            # TODO pre_process MUST return two objects: a list of conversations related to the TC, and the ignored ones
             #ignored = test_case.pre_process()
             # print('##### Ignored')
             # print(ignored)
