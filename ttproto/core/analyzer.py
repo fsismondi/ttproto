@@ -250,8 +250,6 @@ class TestCase:
 
         :return: The purpose of this test case
         :rtype: str
-
-        .. note:: Find a cleaner way to do this
         """
         raise NotImplementedError
 
@@ -263,6 +261,7 @@ class TestCase:
         :return: The list of ignored frames associated to the ignoring reason
         :rtype: (str, [Frame])
         """
+        # TODO re-engineer this, the pre process should return a list of the frames to be precessed and the ommited ones
         raise NotImplementedError
 
     @typecheck
@@ -277,6 +276,8 @@ class TestCase:
         """
         raise NotImplementedError
 
+    # TODO why exceptions as string? maybe better handling directly the objects at this level, we flatten to
+    # TODO string if needed to be passed trough the web API
     @typecheck
     def run_test_case(self) -> (str, list_of(int), str, str):
         """
@@ -326,10 +327,97 @@ class Analyzer:
         self.__test_env = test_env
 
     @typecheck
-    def get_implemented_testcases(
+    def PATCH_get_implemented_testcases(
         self,
         testcase_id: optional(str) = None,
         verbose: optional(bool) = False
+    ):
+        """
+        Imports test cases classes from TESTCASES_DIR named td_*
+
+        :param testcase_id: The id of the test case if only one is asked
+        :param verbose: True if we want the TC implementation code
+        :type testcase_id: optional(str)
+        :type verbose: bool
+
+        :return: List of descriptions of test cases
+                 1st list is the correct ones, the 2nd is the obsoletes one
+                 Each element of the list is composed of:
+                     -tc_identifier
+                     -tc_objective
+                     -tc_sourcecode
+        # TODO this was patched for the case of 6tisch test cases, we need a common approach for every protocol
+        # TODO is it interesting enough to handle obsoletes testcases??
+        :rtype: ([(str, str, str)], [(str, str, str)])
+
+        :raises FileNotFoundError: If the test case is not found
+
+        .. note::
+                Assumptions v1:
+                    - test cases are defined inside a file, each file contains
+                      only one test case
+                    - names of the file and class must match
+                    - all test cases must be named td_*
+                Assumptions v2:
+                    - All test cases are contained into ttproto/[env]/testcases
+                    - Filenames corresponds to the TC id in lower case
+                    - Class names corresponds to the TC id
+
+        .. todo:: Take a list as a param and return corresponding testcases
+                  classes respecting the order.
+        """
+
+        # TODO take a list as a param and return corresponding testcases classes respecting the order.
+        SEARCH_STRING = 'td*.py'
+        tc_plugins = {}
+        testcases = []
+        obsoletes = []
+        TESTCASES_SUBDIR = "ttproto/tat_6tisch/testcases"
+        import os, sys
+        prv_wd = os.getcwd()
+        os.chdir(prv_wd + '/' + TESTCASES_SUBDIR)
+
+        #  find files named "TD*" or testcase_id (if provided) in TESTCASES_DIR
+        dir_list = glob.glob(SEARCH_STRING)
+        modname_test_list = [path.basename(f)[:-3] for f in dir_list if path.isfile(f)]
+        modname_test_list.sort()
+
+        if testcase_id:
+            if testcase_id.lower() in modname_test_list:
+                modname_test_list = [testcase_id]
+
+                # filename not found in dir
+            else:
+                # move back to the previously dir
+                os.chdir(prv_wd)
+                raise FileNotFoundError("Testcase : " + testcase_id + " couldn't be found")
+
+        # import sorted list
+        for modname in modname_test_list:
+            # note that the module is always lower case and the plugin (class) is upper case (ETSI naming convention)
+            tc_plugins[modname] = getattr(import_module(modname.lower()), modname.upper())
+            if tc_plugins[modname].obsolete:
+                obsoletes.append(tc_plugins[modname])
+            else:
+                testcases.append(tc_plugins[modname])
+
+        # move back to the previously dir
+        os.chdir(prv_wd)
+
+        assert all(isinstance(t, type) and issubclass(t, TestCase) for t in testcases)
+
+        if obsoletes:
+            sys.stderr.write("%d obsolete testcases:\n" % len(obsoletes))
+            for tc_type in obsoletes:
+                sys.stderr.write("\t%s\n" % tc_type.__name__)
+
+        return testcases, obsoletes
+
+    @typecheck
+    def get_implemented_testcases(
+            self,
+            testcase_id: optional(str) = None,
+            verbose: optional(bool) = False
     ) -> (list_of((str, str, str)), list_of((str, str, str))):
         """
         Imports test cases classes from TESTCASES_DIR named td_*
@@ -429,7 +517,7 @@ class Analyzer:
             )
 
             # If verbose is asked, we provide the source code too
-            more_info = inspect.getsource(tc) if verbose else ''
+            more_info = '' if not verbose else inspect.getsource(tc)
 
             # The tuple to add
             tc_tuple = (tc.__name__, tc.get_test_purpose(), more_info)
@@ -445,7 +533,7 @@ class Analyzer:
         #     self.log(EventObsoleteTCFound, obsoletes)
 
         # Return the final value
-        return (testcases, obsoletes)
+        return testcases, obsoletes
 
     @typecheck
     def analyse(
@@ -484,41 +572,50 @@ class Analyzer:
                         the rest is inconc
         """
 
-        # Get the test case
-        try:
-            implemented_tcs, obsoletes = self.get_implemented_testcases(tc_id)
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                "Testcase : " + testcase_id + " couldn't be found"
-            )
+        # # Get the test case
+        # try:
+        #     implemented_tcs, obsoletes = self.get_implemented_testcases(tc_id)
+        # except FileNotFoundError:
+        #     raise FileNotFoundError(
+        #         "Testcase : " + tc_id + " couldn't be found"
+        #     )
+        #
+        # # Check that we received only one
+        # assert len(implemented_tcs) + len(obsoletes) == 1
+        #
+        # # If the test case is obsolete
+        # if len(obsoletes) == 1:
+        #     assert obsoletes[0][0] == tc_id
+        #     raise ObsoleteTestCase(
+        #         "Testcase : " + tc_id + " is obsolete"
+        #     )
+        #
+        # # Correct test case
+        # assert implemented_tcs[0][0] == tc_id
+        # modname = implemented_tcs[0][0]
+        # mod_real_name = '.'.join([
+        #     TTPROTO_DIR,
+        #     self.__test_env,
+        #     TESTCASES_SUBDIR,
+        #     modname.lower()
+        # ])
 
-        # Check that we received only one
-        assert len(implemented_tcs) + len(obsoletes) == 1
+        # TODO Napoun here (followin three lines) we have the same snippet in two places, redundant code,
+        # TODO let's use the appraoch I was using before with two separete functions, one for import,
+        # TODO the other, get_tc_info for getting infos from TCs,
+        # TODO get_tc_info MUST use import_test_cases
 
-        # If the test case is obsolete
-        if len(obsoletes) == 1:
-            assert obsoletes[0][0] == tc_id
-            raise ObsoleteTestCase(
-                "Testcase : " + testcase_id + " is obsolete"
-            )
+        # # Load the test case class
+        # # Note that the module is always lower case and the plugin (class)
+        # # is upper case (ETSI naming convention)
+        # test_case_class = getattr(
+        #     import_module(mod_real_name),
+        #     modname.upper()
+        # )
 
-        # Correct test case
-        assert implemented_tcs[0][0] == tc_id
-        modname = implemented_tcs[0][0]
-        mod_real_name = '.'.join([
-            TTPROTO_DIR,
-            self.__test_env,
-            TESTCASES_SUBDIR,
-            modname.lower()
-        ])
-
-        # Load the test case class
-        # Note that the module is always lower case and the plugin (class)
-        # is upper case (ETSI naming convention)
-        test_case_class = getattr(
-            import_module(mod_real_name),
-            modname.upper()
-        )
+        # self.PATCH_get_implemented_testcases[0][0] is class SixtischTestcase
+        test_case_class, _ = self.PATCH_get_implemented_testcases(tc_id)
+        test_case_class = test_case_class[0]
 
         # Disable name resolution for performance improvment
         with Data.disable_name_resolution():
@@ -530,7 +627,9 @@ class Analyzer:
             test_case = test_case_class(frames)
 
             # Preprocess the list of frames which returns the list of ignored
-            ignored = test_case.pre_process()
+            # TODO pre_process MUST return two objects: a list of conversations related to the TC, and the ignored ones
+            #ignored = test_case.pre_process()
+
             # print('##### Ignored')
             # print(ignored)
             # print('#####')
@@ -600,6 +699,42 @@ if __name__ == "__main__":
             'TD_COAP_CORE_01'
         )
     )
+    try:
+        print(
+            Analyzer('tat_6tisch').get_implemented_testcases()
+        )
+    except FileNotFoundError as e:
+        print(e)
+    try:
+        print(Analyzer('tat_6tisch').get_implemented_testcases())
+    except NotADirectoryError as e:
+        print(e)
+    try:
+        print(Analyzer('tat_6tisch').get_implemented_testcases())
+    except NotADirectoryError as e:
+        print(e)
+    # print(
+    #     Analyzer('tat_coap').analyse(
+    #         '/'.join((
+    #             'tests',
+    #             'test_dumps',
+    #             '_'.join((
+    #                 'TD',
+    #                 'COAP',
+    #                 'CORE',
+    #                 '07',
+    #                 'FAIL',
+    #                 'No',
+    #                 'CoAPOptionContentFormat',
+    #                 'plus',
+    #                 'random',
+    #                 'UDP',
+    #                 'messages.pcap'
+    #             ))
+    #         )),
+    #         'TD_COAP_CORE_01'
+    #     )
+    # )
     # print(
     #     Analyzer('tat_coap').analyse(
     #         '/'.join((
