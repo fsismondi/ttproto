@@ -38,6 +38,7 @@ interoperability testing
 
 import glob
 import inspect
+import traceback
 
 from collections import OrderedDict
 from importlib import import_module
@@ -60,7 +61,8 @@ __all__ = [
 
 TESTCASES_SUBDIR = 'testcases'
 TTPROTO_DIR = 'ttproto'
-SEARCH_STRING = 'td_*.py'
+TC_FILE_EXTENSION = '.py'
+EVERY_TC_WILDCARD = 'td_*' + TC_FILE_EXTENSION
 
 
 @typecheck
@@ -183,9 +185,6 @@ class TestCase:
     A class handling a test case for an analysis
     """
 
-    # Attribute to know if this TC is obsolete or not
-    obsolete = False
-
     @typecheck
     def __init__(self, frame_list: list_of(Frame)):
         """
@@ -276,10 +275,13 @@ class TestCase:
         """
         raise NotImplementedError
 
-    # TODO why exceptions as string? maybe better handling directly the objects at this level, we flatten to
-    # TODO string if needed to be passed trough the web API
     @typecheck
-    def run_test_case(self) -> (str, list_of(int), str, str):
+    def run_test_case(self) -> (
+        str,
+        list_of(int),
+        str,
+        list_of((type, Exception, object))
+    ):
         """
         Run the test case
 
@@ -287,8 +289,12 @@ class TestCase:
                  - The verdict as a string
                  - The list of the result important frames
                  - A string for extra informations
-                 - A string representing the exceptions that could have occured
-        :rtype: (str, [int], str, str)
+                 - A list of the exceptions' informations that occured
+        :rtype: (str, [int], str, [(type, Exception, object)])
+
+        .. todo:: Find the type of the traceback object, if we execute type
+                  function on it, it just says <class 'traceback'> but the
+                  isinstance function always return False
         """
         raise NotImplementedError
 
@@ -318,7 +324,7 @@ class Analyzer:
         )
         if not path.isdir(test_dir):
             raise NotADirectoryError(
-                'The test environment wasn\'t found at %s'
+                "The test environment wasn't found at %s"
                 %
                 test_dir
             )
@@ -327,213 +333,146 @@ class Analyzer:
         self.__test_env = test_env
 
     @typecheck
-    def PATCH_get_implemented_testcases(
-        self,
-        testcase_id: optional(str) = None,
-        verbose: optional(bool) = False
-    ):
+    def __fetch_from_pathname(self, testcases: list_of(type), search: str):
         """
-        Imports test cases classes from TESTCASES_DIR named td_*
+        Fetch test cases from the test suite plugin
 
-        :param testcase_id: The id of the test case if only one is asked
-        :param verbose: True if we want the TC implementation code
-        :type testcase_id: optional(str)
-        :type verbose: bool
-
-        :return: List of descriptions of test cases
-                 1st list is the correct ones, the 2nd is the obsoletes one
-                 Each element of the list is composed of:
-                     -tc_identifier
-                     -tc_objective
-                     -tc_sourcecode
-        # TODO this was patched for the case of 6tisch test cases, we need a common approach for every protocol
-        # TODO is it interesting enough to handle obsoletes testcases??
-        :rtype: ([(str, str, str)], [(str, str, str)])
-
-        :raises FileNotFoundError: If the test case is not found
-
-        .. note::
-                Assumptions v1:
-                    - test cases are defined inside a file, each file contains
-                      only one test case
-                    - names of the file and class must match
-                    - all test cases must be named td_*
-                Assumptions v2:
-                    - All test cases are contained into ttproto/[env]/testcases
-                    - Filenames corresponds to the TC id in lower case
-                    - Class names corresponds to the TC id
-
-        .. todo:: Take a list as a param and return corresponding testcases
-                  classes respecting the order.
+        :param testcases: List in which we will add the test cases
+        :param search: The research query, can be a single TC or the wildcard
+                       to select all the test cases
+        :type testcases: [type]
+        :type search: str
         """
 
-        # TODO take a list as a param and return corresponding testcases classes respecting the order.
-        SEARCH_STRING = 'td*.py'
-        tc_plugins = {}
-        testcases = []
-        obsoletes = []
-        TESTCASES_SUBDIR = "ttproto/tat_6tisch/testcases"
-        import os, sys
-        prv_wd = os.getcwd()
-        os.chdir(prv_wd + '/' + TESTCASES_SUBDIR)
-
-        #  find files named "TD*" or testcase_id (if provided) in TESTCASES_DIR
-        dir_list = glob.glob(SEARCH_STRING)
-        modname_test_list = [path.basename(f)[:-3] for f in dir_list if path.isfile(f)]
-        modname_test_list.sort()
-
-        if testcase_id:
-            if testcase_id.lower() in modname_test_list:
-                modname_test_list = [testcase_id]
-
-                # filename not found in dir
-            else:
-                # move back to the previously dir
-                os.chdir(prv_wd)
-                raise FileNotFoundError("Testcase : " + testcase_id + " couldn't be found")
-
-        # import sorted list
-        for modname in modname_test_list:
-            # note that the module is always lower case and the plugin (class) is upper case (ETSI naming convention)
-            tc_plugins[modname] = getattr(import_module(modname.lower()), modname.upper())
-            if tc_plugins[modname].obsolete:
-                obsoletes.append(tc_plugins[modname])
-            else:
-                testcases.append(tc_plugins[modname])
-
-        # move back to the previously dir
-        os.chdir(prv_wd)
-
-        assert all(isinstance(t, type) and issubclass(t, TestCase) for t in testcases)
-
-        if obsoletes:
-            sys.stderr.write("%d obsolete testcases:\n" % len(obsoletes))
-            for tc_type in obsoletes:
-                sys.stderr.write("\t%s\n" % tc_type.__name__)
-
-        return testcases, obsoletes
-
-    @typecheck
-    def get_implemented_testcases(
-            self,
-            testcase_id: optional(str) = None,
-            verbose: optional(bool) = False
-    ) -> (list_of((str, str, str)), list_of((str, str, str))):
-        """
-        Imports test cases classes from TESTCASES_DIR named td_*
-
-        :param testcase_id: The id of the test case if only one is asked
-        :param verbose: True if we want the TC implementation code
-        :type testcase_id: optional(str)
-        :type verbose: bool
-
-        :return: List of descriptions of test cases
-                 1st list is the correct ones, the 2nd is the obsoletes one
-                 Each element of the list is composed of:
-                     -tc_identifier
-                     -tc_objective
-                     -tc_sourcecode
-        :rtype: ([(str, str, str)], [(str, str, str)])
-
-        :raises FileNotFoundError: If the test case is not found
-
-        .. note::
-                Assumptions v1:
-                    - test cases are defined inside a file, each file contains
-                      only one test case
-                    - names of the file and class must match
-                    - all test cases must be named td_*
-                Assumptions v2:
-                    - All test cases are contained into ttproto/[env]/testcases
-                    - Filenames corresponds to the TC id in lower case
-                    - Class names corresponds to the TC id
-
-        .. todo:: Take a list as a param and return corresponding testcases
-                  classes respecting the order.
-        """
-
-        # The return values
-        testcases = []
-        obsoletes = []
-
-        # The search query
+        # Build the search query
         search_query = path.join(
             TTPROTO_DIR,
             self.__test_env,
             TESTCASES_SUBDIR,
-            SEARCH_STRING
+            search
         )
 
-        # Find files named td_* or testcase_id if provided in TESTCASES_SUBDIR
-        dir_list = glob.glob(search_query)
+        # Fetch files using the search query
+        result = glob.glob(search_query)
 
-        # If none found
-        if (len(dir_list) == 0):
-            # self.log(EventNoTestCasesFound, search_query)
+        # If no test case found
+        if len(result) == 0:
             raise FileNotFoundError(
-                'No test case found using %s search query'
-                %
-                search_query
+                'No test case found using "%s" search query' % search_query
             )
 
-        # Get all the module name by removing the extension '.py' and sort them
-        modname_test_list = [
-            path.basename(file)[:-3]
-            for file in dir_list
-            if path.isfile(file)
-        ]
-        modname_test_list.sort()
+        # If the search query is the wildcard, sort the list
+        elif search == EVERY_TC_WILDCARD:
+            result.sort()
 
-        # If a testcase_id is specified
-        if testcase_id:
+        # For every file found
+        for filepath in result:
 
-            # If it's found into the module names, single list element
-            if testcase_id.lower() in modname_test_list:
-                modname_test_list = [testcase_id]
+            # Get the name of the file
+            filename = path.basename(filepath)
 
-            # If not found, raise an error
-            else:
-                # logger.log_event(EventFileNotFound(self, testcase_id))
-                raise FileNotFoundError(
-                    "Testcase : " + testcase_id + " couldn't be found"
-                )
-
-        # Import sorted list
-        for modname in modname_test_list:
+            # Get the name of the module
+            modname = filename[:(-1 * len(TC_FILE_EXTENSION))]
 
             # Build the module relative name
             mod_rel_name = '.'.join([
                 TTPROTO_DIR,
                 self.__test_env,
                 TESTCASES_SUBDIR,
-                modname.lower()
+                modname
             ])
 
             # Note that the module is always lower case and the plugin (class)
             # is upper case (ETSI naming convention)
-            tc = getattr(
+            tc_class = getattr(
                 import_module(mod_rel_name),
                 modname.upper()
             )
+            testcases.append(tc_class)
+
+    @typecheck
+    def import_test_cases(
+        self,
+        testcases: optional(list_of(str)) = None
+    ) -> list:
+        """
+        Imports test cases classes from TESTCASES_DIR
+
+        :param testcases: The wanted test cases as a list of string
+        :type testcase_id: optional([str])
+
+        :return: List of test cases class in the same order than the param list
+        :rtype: [TestCase]
+
+        :raises FileNotFoundError: If no test case was found
+
+        .. note:: Assumptions are the following:
+                    - Test cases are defined inside a file, each file contains
+                      only one test case
+                    - All test cases must be named td_*
+                    - All test cases are contained into ttproto/[env]/testcases
+                    - Filenames corresponds to the TC id in lower case
+                    - Class names corresponds to the TC id
+        """
+
+        # The return values
+        tc_fetched = []
+
+        # If no TCs provided, fetch all the test cases found
+        if not testcases:
+            self.__fetch_from_pathname(tc_fetched, EVERY_TC_WILDCARD)
+
+        # If testcases list are provided, fetch those
+        else:
+
+            # For every test case given
+            for test_case_name in testcases:
+                tc_name_query = test_case_name.lower() + TC_FILE_EXTENSION
+                self.__fetch_from_pathname(tc_fetched, tc_name_query)
+
+        # Return the test cases classes
+        return tc_fetched
+
+    @typecheck
+    def get_implemented_testcases(
+        self,
+        testcases: optional(list_of(str)) = None,
+        verbose: bool = False
+    ) -> list_of((str, str, str)):
+        """
+        Get more informations about the test cases
+
+        :param testcases: A list of test cases to get their informations
+        :param verbose: True if we want the TC implementation code
+        :type testcase_id: optional([str])
+        :type verbose: bool
+
+        :raises FileNotFoundError: If one of the test case is not found
+
+        :return: List of descriptions of test cases composed of:
+                    -tc_identifier
+                    -tc_objective
+                    -tc_sourcecode
+        :rtype: [(str, str, str)]
+        """
+
+        # The return value
+        ret = []
+
+        # Get the tc classes
+        tc_classes = self.import_test_cases(testcases)
+
+        # Add the infos of each of them to the return value
+        for tc in tc_classes:
 
             # If verbose is asked, we provide the source code too
             more_info = '' if not verbose else inspect.getsource(tc)
 
-            # The tuple to add
-            tc_tuple = (tc.__name__, tc.get_test_purpose(), more_info)
+            # Add the tuple to the return value
+            ret.append((tc.__name__, tc.get_test_purpose(), more_info))
 
-            # Check if obsolete or not
-            if tc.obsolete:
-                obsoletes.append(tc_tuple)
-            else:
-                testcases.append(tc_tuple)
-
-        # Log a message if obsolete tcs are found
-        # if obsoletes:
-        #     self.log(EventObsoleteTCFound, obsoletes)
-
-        # Return the final value
-        return testcases, obsoletes
+        # Return the list of tuples
+        return ret
 
     @typecheck
     def analyse(
@@ -572,49 +511,9 @@ class Analyzer:
                         the rest is inconc
         """
 
-        # # Get the test case
-        # try:
-        #     implemented_tcs, obsoletes = self.get_implemented_testcases(tc_id)
-        # except FileNotFoundError:
-        #     raise FileNotFoundError(
-        #         "Testcase : " + tc_id + " couldn't be found"
-        #     )
-        #
-        # # Check that we received only one
-        # assert len(implemented_tcs) + len(obsoletes) == 1
-        #
-        # # If the test case is obsolete
-        # if len(obsoletes) == 1:
-        #     assert obsoletes[0][0] == tc_id
-        #     raise ObsoleteTestCase(
-        #         "Testcase : " + tc_id + " is obsolete"
-        #     )
-        #
-        # # Correct test case
-        # assert implemented_tcs[0][0] == tc_id
-        # modname = implemented_tcs[0][0]
-        # mod_real_name = '.'.join([
-        #     TTPROTO_DIR,
-        #     self.__test_env,
-        #     TESTCASES_SUBDIR,
-        #     modname.lower()
-        # ])
-
-        # TODO Napoun here (followin three lines) we have the same snippet in two places, redundant code,
-        # TODO let's use the appraoch I was using before with two separete functions, one for import,
-        # TODO the other, get_tc_info for getting infos from TCs,
-        # TODO get_tc_info MUST use import_test_cases
-
-        # # Load the test case class
-        # # Note that the module is always lower case and the plugin (class)
-        # # is upper case (ETSI naming convention)
-        # test_case_class = getattr(
-        #     import_module(mod_real_name),
-        #     modname.upper()
-        # )
-
-        # self.PATCH_get_implemented_testcases[0][0] is class SixtischTestcase
-        test_case_class, _ = self.PATCH_get_implemented_testcases(tc_id)
+        # Get the test case class
+        test_case_class = self.import_test_cases([tc_id])
+        assert len(test_case_class) == 1
         test_case_class = test_case_class[0]
 
         # Disable name resolution for performance improvment
@@ -627,30 +526,31 @@ class Analyzer:
             test_case = test_case_class(frames)
 
             # Preprocess the list of frames which returns the list of ignored
-            # TODO pre_process MUST return two objects: a list of conversations related to the TC, and the ignored ones
-            #ignored = test_case.pre_process()
+            # TODO pre_process MUST return two objects: a list of conversations
+            #      related to the TC, and the ignored ones
+            ignored = test_case.pre_process()
 
             # print('##### Ignored')
             # print(ignored)
             # print('#####')
 
             # Here we execute the test case and return the result
-            res = test_case.run_test_case()
+            verdict, rev_frames, extra, exceptions = test_case.run_test_case()
             # print('##### Verdict given')
-            # print(res[0])
+            # print(verdict)
             # print('#####')
             # print('##### Review frames')
-            # print(res[1])
+            # print(rev_frames)
             # print('#####')
             # print('##### Text')
-            # print(res[2])
+            # print(extra)
             # print('#####')
             # print('##### Exceptions')
-            # print(res[3])
+            # print(exceptions)
             # print('#####')
 
             # Return the result
-            return (tc_id, res[0], res[1], res[2], res[3])
+            return (tc_id, verdict, rev_frames, extra, 'exceptions')
 
 
 class ObsoleteTestCase(Error):
@@ -658,14 +558,32 @@ class ObsoleteTestCase(Error):
 
 
 if __name__ == "__main__":
+    # print(Analyzer('tat_coap').import_test_cases())
+    # print(Analyzer('tat_6tisch').import_test_cases())
+    # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
+    # print(Analyzer('tat_coap').import_test_cases([
+    #     'TD_COAP_CORE_01',
+    #     'TD_COAP_CORE_02'
+    # ]))
     # print(Analyzer('tat_coap').get_implemented_testcases())
-    # print(Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_24'))
+    # print(Analyzer('tat_6tisch').get_implemented_testcases())
+    # print(Analyzer('tat_coap').get_implemented_testcases(['TD_COAP_CORE_24']))
+    # print(Analyzer('tat_coap').get_implemented_testcases([
+    #     'TD_COAP_CORE_01',
+    #     'TD_COAP_CORE_05',
+    #     'TD_COAP_CORE_09'
+    # ]))
     # print(Analyzer('tat_coap').get_implemented_testcases(
-    #     'TD_COAP_CORE_24', True
+    #     ['TD_COAP_CORE_24'], True
     # ))
+    # print(Analyzer('tat_coap').get_implemented_testcases([
+    #     'TD_COAP_CORE_01',
+    #     'TD_COAP_CORE_05',
+    #     'TD_COAP_CORE_09'
+    # ], True))
     # try:
     #     print(
-    #         Analyzer('tat_coap').get_implemented_testcases('TD_COAP_CORE_42')
+    #         Analyzer('tat_coap').get_implemented_testcases(['TD_COAP_CORE_42'])
     #     )
     # except FileNotFoundError as e:
     #     print(e)
@@ -674,7 +592,43 @@ if __name__ == "__main__":
     # except NotADirectoryError as e:
     #     print(e)
     # try:
-    #     print(Analyzer('unknown').get_implemented_testcases('TD_COAP_CORE_42'))
+    #     print(Analyzer('unknown').get_implemented_testcases(['TD_COAP_CORE_42']))
+    # except NotADirectoryError as e:
+    #     print(e)
+    # print(
+    #     Analyzer('tat_coap').analyse(
+    #         '/'.join((
+    #             'tests',
+    #             'test_dumps',
+    #             '_'.join((
+    #                 'TD',
+    #                 'COAP',
+    #                 'CORE',
+    #                 '07',
+    #                 'FAIL',
+    #                 'No',
+    #                 'CoAPOptionContentFormat',
+    #                 'plus',
+    #                 'random',
+    #                 'UDP',
+    #                 'messages.pcap'
+    #             ))
+    #         )),
+    #         'TD_COAP_CORE_01'
+    #     )
+    # )
+    # try:
+    #     print(
+    #         Analyzer('tat_6tisch').get_implemented_testcases()
+    #     )
+    # except FileNotFoundError as e:
+    #     print(e)
+    # try:
+    #     print(Analyzer('tat_6tisch').get_implemented_testcases())
+    # except NotADirectoryError as e:
+    #     print(e)
+    # try:
+    #     print(Analyzer('tat_6tisch').get_implemented_testcases())
     # except NotADirectoryError as e:
     #     print(e)
     print(
@@ -699,42 +653,6 @@ if __name__ == "__main__":
             'TD_COAP_CORE_01'
         )
     )
-    try:
-        print(
-            Analyzer('tat_6tisch').get_implemented_testcases()
-        )
-    except FileNotFoundError as e:
-        print(e)
-    try:
-        print(Analyzer('tat_6tisch').get_implemented_testcases())
-    except NotADirectoryError as e:
-        print(e)
-    try:
-        print(Analyzer('tat_6tisch').get_implemented_testcases())
-    except NotADirectoryError as e:
-        print(e)
-    # print(
-    #     Analyzer('tat_coap').analyse(
-    #         '/'.join((
-    #             'tests',
-    #             'test_dumps',
-    #             '_'.join((
-    #                 'TD',
-    #                 'COAP',
-    #                 'CORE',
-    #                 '07',
-    #                 'FAIL',
-    #                 'No',
-    #                 'CoAPOptionContentFormat',
-    #                 'plus',
-    #                 'random',
-    #                 'UDP',
-    #                 'messages.pcap'
-    #             ))
-    #         )),
-    #         'TD_COAP_CORE_01'
-    #     )
-    # )
     # print(
     #     Analyzer('tat_coap').analyse(
     #         '/'.join((
@@ -746,18 +664,21 @@ if __name__ == "__main__":
     #     )
     # )
     # tcs = Analyzer('tat_coap').get_implemented_testcases()
-    # for tc in tcs[0]:
+    # for tc in tcs:
     #     print('#####################  ' + tc[0] + '  #####################')
-    #     print(
-    #         Analyzer('tat_coap').analyse(
-    #             '/'.join((
-    #                 'tests',
-    #                 'test_dumps',
-    #                 'TD_COAP_CORE_01_PASS.pcap'
-    #             )),
-    #             tc[0]
+    #     try:
+    #         print(
+    #             Analyzer('tat_coap').analyse(
+    #                 '/'.join((
+    #                     'tests',
+    #                     'test_dumps',
+    #                     tc[0] + '_PASS.pcap'
+    #                 )),
+    #                 tc[0]
+    #             )
     #         )
-    #     )
+    #     except FileNotFoundError:
+    #         print(tc[0] + " doesn't have a dump file associated to it")
     #     print('############################################################')
     #     print('')
     pass

@@ -54,7 +54,11 @@ class PcapReader:
     def __init__(self, file: str, decode_type: optional(is_type) = None):
 
         self.__pcap_file = open(file, "rb")
-        self.__reader = pure_pcapy.Reader(self.__pcap_file)
+        try:
+            self.__reader = pure_pcapy.Reader(self.__pcap_file)
+        except Exception as e:
+            self.__pcap_file.close()
+            raise e
         # print ("datalink: %d" % self.__reader.datalink())
 
         if not decode_type:
@@ -67,8 +71,10 @@ class PcapReader:
 
     def __del__(self):
         # Close the file only if it was opened before
-        # if hasattr(self, '__pcap_file'):
-        self.__pcap_file.close()
+        try:
+            self.__pcap_file.close()
+        except:
+            pass
 
     def next(self):
 

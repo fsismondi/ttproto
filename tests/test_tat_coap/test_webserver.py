@@ -4,6 +4,7 @@ import http.server
 import os
 import threading
 import requests
+import sys
 
 from collections import OrderedDict
 
@@ -105,6 +106,14 @@ class WebserverTestCase(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
         webserver.log_file.close()
+
+        # Reopen the stdout that was redirected using the dup2 function into
+        # the webserver. The dup2 closes the 2nd fd before redirecting the
+        # first one so we have to reopen it.
+        #
+        # TODO: Use a good structured framework instead of basic http server
+        #       seems to be a good idea, if so remove this line.
+        sys.stdout = os.fdopen(1, 'w')
 
     # #################### Tests functions #########################
 

@@ -2,6 +2,7 @@ import unittest
 
 from os import getcwd, path
 from ttproto.core.analyzer import Analyzer
+from ttproto.core.typecheck3000 import InputParameterError
 from tests.test_tools.struct_checker import StructureChecker
 
 
@@ -64,11 +65,10 @@ class AnalyzerTestCase(unittest.TestCase):
     def test_get_implemented_testcases_single_test_case(self):
 
         # Get implemented test cases and check their values
-        tc = self.analyzer.get_implemented_testcases(self.TEST_CASE_ID)
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tc)
-        self.assertGreaterEqual(len(tc[0]), 0)
-        self.assertGreaterEqual(len(tc[1]), 0)
-        self.assertEqual(len(tc[0]) + len(tc[1]), 1)
+        tcs = self.analyzer.get_implemented_testcases([self.TEST_CASE_ID])
+        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.assertEqual(len(tcs), 1)
+        self.assertEqual(tcs[0][0], self.TEST_CASE_ID)
 
     def test_get_implemented_testcases_verbose_mode(self):
 
@@ -77,32 +77,36 @@ class AnalyzerTestCase(unittest.TestCase):
         self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
 
         # Check that they have the extra informations (the source code)
-        for tc_type in tcs:
-            for tc in tc_type:
-                self.assertGreater(len(tc[2]), 0)
+        for tc in tcs:
+            self.assertGreater(len(tc[2]), 0)
 
     def test_get_implemented_testcases_single_test_case_which_bugged(self):
 
         # Get implemented test cases and check their values
-        tc = self.analyzer.get_implemented_testcases(
-            self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST
+        tcs = self.analyzer.get_implemented_testcases(
+            [self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST]
         )
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tc)
-        self.assertGreaterEqual(len(tc[0]), 0)
-        self.assertGreaterEqual(len(tc[1]), 0)
-        self.assertEqual(len(tc[0]) + len(tc[1]), 1)
+        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.assertEqual(len(tcs), 1)
+        self.assertEqual(tcs[0][0], self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST)
 
     def test_get_implemented_testcases_unknown_test_case(self):
 
         # Get implemented test cases and check their values
         with self.assertRaises(FileNotFoundError):
-            tc = self.analyzer.get_implemented_testcases(
-                self.UNKNOWN_TEST_CASE_ID
+            tcs = self.analyzer.get_implemented_testcases(
+                [self.UNKNOWN_TEST_CASE_ID]
             )
+
+    def test_get_implemented_testcases_str_instead_of_list(self):
+
+        # Get implemented test cases and check their values
+        with self.assertRaises(InputParameterError):
+            tcs = self.analyzer.get_implemented_testcases(self.TEST_CASE_ID)
 
     # ##### analyse
     def test_analyse_basic_pass_PCAPs(self):
-        for tc in self.analyzer.get_implemented_testcases()[0]:
+        for tc in self.analyzer.get_implemented_testcases():
             filename = getcwd() + '/tests/test_dumps/' + tc[0] + '_PASS.pcap'
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):

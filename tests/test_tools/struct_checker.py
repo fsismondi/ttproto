@@ -186,22 +186,16 @@ class StructureChecker(unittest.TestCase):
 
     def check_tc_from_analyzer(self, el):
 
-        # Check that we receive a tuple(test_cases, obsoletes)
-        self.assertEqual(type(el), tuple)
-        self.assertEqual(len(el), 2)
+        # Check that we receive a list of tuple
+        self.assertEqual(type(el), list)
 
-        # Check for each test case type
-        for tc_type in el:
-            self.assertEqual(type(tc_type), list)
+        for tc in el:
+            self.assertEqual(type(tc), tuple)
+            self.assertEqual(len(tc), 3)
 
-            # Get each element of this list as a tuple
-            for tc_tuple in tc_type:
-                self.assertEqual(type(tc_tuple), tuple)
-                self.assertEqual(len(tc_tuple), 3)
-
-                # For each element of this, it should be a string
-                for tuple_el in tc_tuple:
-                    self.assertEqual(type(tuple_el), str)
+            # For each element of this, it should be a string
+            for tuple_el in tc:
+                self.assertEqual(type(tuple_el), str)
 
     def check_tc_from_webserver(self, el):
 

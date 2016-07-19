@@ -174,10 +174,8 @@ def get_test_cases(
 
     # New way by analyzer tool
     test_cases = OrderedDict()
-    raw_tcs = Analyzer('tat_coap').get_implemented_testcases(testcase_id)
-
-    # Get only the correct ones (not the obsoletes)
-    raw_tcs = raw_tcs[0]
+    tc_query = [] if not testcase_id else [testcase_id]
+    raw_tcs = Analyzer('tat_coap').get_implemented_testcases(tc_query)
 
     # Build the clean results list
     for raw_tc in raw_tcs:

@@ -35,7 +35,6 @@ import re
 import socket
 import sys
 import time
-import traceback
 
 from .data import *
 from ttproto.core.analyzer import TestCase, Verdict, is_verdict
@@ -128,7 +127,7 @@ class CoAPTestCase(TestCase):
         self.__conversations = []
         self.__text = ''
         self.__failed_frames = []
-        self.__exceptions = ''
+        self.__exceptions = []
 
     @typecheck
     def match(
@@ -365,7 +364,12 @@ class CoAPTestCase(TestCase):
         return ignored
 
     @typecheck
-    def run_test_case(self) -> (str, list_of(int), str, str):
+    def run_test_case(self) -> (
+        str,
+        list_of(int),
+        str,
+        list_of((type, Exception, object))
+    ):
         """
         Run the test case
 
@@ -373,8 +377,12 @@ class CoAPTestCase(TestCase):
                  - The verdict as a string
                  - The list of the result important frames
                  - A string for extra informations
-                 - A string representing the exceptions that could have occured
-        :rtype: (str, [int], str, str)
+                 - A list of the exceptions' informations that occured
+        :rtype: (str, [int], str, [(type, Exception, object)])
+
+        .. todo:: Find the type of the traceback object, if we execute type
+                  function on it, it just says <class 'traceback'> but the
+                  isinstance function always return False
         """
 
         # For every conversation's pair
@@ -412,11 +420,22 @@ class CoAPTestCase(TestCase):
                     self.set_verdict('none', 'no match')
 
             except Exception:
+
+                # Only if not at the end of the conversation
                 if self.__iter:
+
+                    # Get the execution informations, it's a tuple with
+                    #     - The type of the exception being handled
+                    #     - The exception instance
+                    #     - The traceback object
+                    exc_info = sys.exc_info()
+
+                    # Add those exception informations to the list
+                    self.__exceptions.append(exc_info)
+
+                    # Put the verdict and log the exception
                     self.set_verdict('error', 'unhandled exception')
-                    exception = traceback.format_exc()
-                    self.__exceptions += exception
-                    self.log(exception)
+                    self.log(exc_info[1])
 
         # Return the results
         return (
