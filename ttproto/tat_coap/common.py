@@ -37,7 +37,7 @@ import sys
 import time
 
 from .data import *
-from ttproto.core.analyzer import TestCase, Verdict, is_verdict
+from ttproto.core.analyzer import TestCase, Verdict, is_verdict, is_traceback
 from ttproto.core.dissector import Frame
 from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
@@ -368,7 +368,7 @@ class CoAPTestCase(TestCase):
         str,
         list_of(int),
         str,
-        list_of((type, Exception, object))
+        list_of((type, Exception, is_traceback))
     ):
         """
         Run the test case
@@ -377,12 +377,8 @@ class CoAPTestCase(TestCase):
                  - The verdict as a string
                  - The list of the result important frames
                  - A string for extra informations
-                 - A list of the exceptions' informations that occured
-        :rtype: (str, [int], str, [(type, Exception, object)])
-
-        .. todo:: Find the type of the traceback object, if we execute type
-                  function on it, it just says <class 'traceback'> but the
-                  isinstance function always return False
+                 - A list of typles representing the exceptions that occured
+        :rtype: (str, [int], str, [(type, Exception, traceback)])
         """
 
         # For every conversation's pair

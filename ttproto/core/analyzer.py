@@ -81,6 +81,27 @@ def is_verdict(arg) -> bool:
     ))
 
 
+@typecheck
+def is_traceback(arg) -> bool:
+    """
+    Check if a parameter is a valid traceback object.
+    This function is used for the typechecker decorator.
+
+    :return: True if a valid traceback, False if not
+    :rtype: bool
+
+    .. note:: Didn't find a better way to check this, isinstance or type
+              seems to not work
+    """
+    return all((
+        arg is not None,
+        hasattr(arg, '__class__'),
+        hasattr(arg.__class__, '__name__'),
+        isinstance(arg.__class__.__name__, str),
+        arg.__class__.__name__ == 'traceback'
+    ))
+
+
 class Verdict:
     """
     A class handling the verdict for an analysis
@@ -280,7 +301,7 @@ class TestCase:
         str,
         list_of(int),
         str,
-        list_of((type, Exception, object))
+        list_of((type, Exception, is_traceback))
     ):
         """
         Run the test case
@@ -289,12 +310,8 @@ class TestCase:
                  - The verdict as a string
                  - The list of the result important frames
                  - A string for extra informations
-                 - A list of the exceptions' informations that occured
-        :rtype: (str, [int], str, [(type, Exception, object)])
-
-        .. todo:: Find the type of the traceback object, if we execute type
-                  function on it, it just says <class 'traceback'> but the
-                  isinstance function always return False
+                 - A list of typles representing the exceptions that occured
+        :rtype: (str, [int], str, [(type, Exception, traceback)])
         """
         raise NotImplementedError
 
@@ -479,7 +496,9 @@ class Analyzer:
         self,
         filename: str,
         tc_id: str
-    ) -> (str, str, list_of(int), str, str):
+    ) -> (str, str, list_of(int), str, list_of(
+             (type, Exception, is_traceback)
+         )):
         """
         Analyse a dump file associated to a test case
 
@@ -493,8 +512,8 @@ class Analyzer:
                  - The verdict as a string
                  - The list of the result important frames
                  - A string for extra informations
-                 - A string representing the exceptions that could have occured
-        :rtype: (str, str, [int], str, str)
+                 - A list of typles representing the exceptions that occured
+        :rtype: (str, str, [int], str, [(type, Exception, traceback)])
 
         :raises FileNotFoundError: If the test env of the tc is not found
         :raises PcapError: If the provided file isn't a valid pcap file
@@ -504,7 +523,7 @@ class Analyzer:
             ('TD_COAP_CORE_03', 'fail', [21, 22], 'verdict description', '')
 
         .. note::
-            - Allows multiple ocurrences of the testcase, returns as verdict:
+            Allows multiple ocurrences of the testcase, returns as verdict:
                 - fail: if at least one on the occurrences failed
                 - inconc: if all ocurrences returned a inconv verdict
                 - pass: all occurrences are inconc or at least one is PASS and
@@ -550,7 +569,7 @@ class Analyzer:
             # print('#####')
 
             # Return the result
-            return (tc_id, verdict, rev_frames, extra, 'exceptions')
+            return (tc_id, verdict, rev_frames, extra, exceptions)
 
 
 class ObsoleteTestCase(Error):

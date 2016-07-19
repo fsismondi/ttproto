@@ -1076,7 +1076,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 assert type(analysis_results[1]) == str
                 assert type(analysis_results[2]) == list
                 assert type(analysis_results[3]) == str
-                assert type(analysis_results[4]) == str
+                assert type(analysis_results[4]) == list
+                for exception_tuple in analysis_results[4]:
+                    assert type(exception_tuple) == tuple
+                    assert len(exception_tuple) == 3
+                    assert isinstance(exception_tuple[0], type)
+                    assert isinstance(exception_tuple[1], Exception)
+                    assert isinstance(exception_tuple[2], object)
                 assert analysis_results[0] == test_case['tc_basic']['id']
             except AssertionError:
                 self.api_error(
