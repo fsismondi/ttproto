@@ -132,7 +132,7 @@ class CoAPTestCase(TestCase):
     @typecheck
     def match(
         self,
-        sender: either(str, type(None)),
+        sender: optional(str),
         template: Value,
         verdict: optional(is_verdict) = 'inconc',
         msg: str = ''
@@ -927,7 +927,7 @@ class Link(list):
             self,
             par_name: str,
             testcase: optional(CoAPTestCase) = None
-        ) -> either(str, type(None)):
+        ) -> optional(str):
             """
             Get the value of a link value from its parameter name
 
@@ -938,7 +938,7 @@ class Link(list):
 
             :return: The parameter value associated to this parameter name if
                      one found, None if none found
-            :rtype: either(str, NoneType)
+            :rtype: optional(str)
             """
 
             # The result to return, None at the beginning to check if a link

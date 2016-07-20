@@ -38,6 +38,7 @@ from ttproto.core.data import *
 from ttproto.core import exceptions, port, clock
 
 from ttproto.core.lib.ethernet import Ethernet
+from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.encap import *
 
 import ttproto.utils.pure_pcapy as pure_pcapy
@@ -46,6 +47,8 @@ _map_link_type = {
     pure_pcapy.DLT_EN10MB: Ethernet,
     pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
     pure_pcapy.DLT_NULL: NullLoopback,
+    pure_pcapy.DLT_IEEE802_15_4_NOFCS: Ieee802154,
+    # pure_pcapy.DLT_IEEE802_15_4: Ieee802154
 }
 
 
@@ -92,6 +95,9 @@ class PcapReader:
             m = Message(b, self.__decode_type)
             exc = None
         except Exception as e:
+            import sys
+            import traceback
+            print(str(e) + '\n')
             m = Message(b)
             exc = e
 

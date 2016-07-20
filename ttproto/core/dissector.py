@@ -395,6 +395,16 @@ class Frame:
         return self.__id
 
 
+def add_subclass(impl_list, new_class):
+    subclasses = new_class.__subclasses__()
+    # print(new_class.__name__ + ':')
+    # print(subclasses)
+    impl_list += subclasses
+    # print('#####################')
+    for subclass in subclasses:
+        add_subclass(impl_list, subclass)
+
+
 class Dissector:
     """
         Class for the dissector tool
@@ -439,6 +449,8 @@ class Dissector:
             cls.__implemented_protocols = []
             cls.__implemented_protocols += PacketValue.__subclasses__()
             cls.__implemented_protocols += InetPacketValue.__subclasses__()
+
+            # add_subclass(cls.__implemented_protocols, PacketValue)
 
             # Remove the InetPacketValue class
             cls.__implemented_protocols.remove(InetPacketValue)
@@ -539,7 +551,7 @@ class Dissector:
 
             # Filter the frames for the selected protocol
             if protocol is not None:
-                frames, _ = Frame.filter_frames(frames, protocol)
+                frames, ignored = Frame.filter_frames(frames, protocol)
 
             # Then append them in the frame list
             for frame in frames:
@@ -563,14 +575,15 @@ if __name__ == "__main__":
     # print(dis.dissect(CoAP))
     # print('#####')
     # print(Dissector.get_implemented_protocols())
-    frame_list = Frame.create_list(PcapReader(
-        '/'.join((
-            'tests',
-            'test_dumps',
-            'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
-        ))
-    ))
-    frame_list, _ = Frame.filter_frames(frame_list, CoAP)
+    # frame_list = Frame.create_list(PcapReader(
+    #     '/'.join((
+    #         'tests',
+    #         'test_dumps',
+    #         'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    #     ))
+    # ))
+    # frame_list, _ = Frame.filter_frames(frame_list, CoAP)
+    # print(frame_list[0].get_value())
     # print(frame_list[0].get_layer(IPv4))
     # print(frame_list[0].get_timestamp())
     # print(frame_list[0].get_value())
@@ -586,11 +599,42 @@ if __name__ == "__main__":
     #     print(e)
     # print(frame_list[0][CoAP])
     # print(frame_list[0][CoAP]['type'])
-    print(frame_list[0][CoAP]['pl'])
-    for frame in frame_list:
-        try:
-            print(frame[CoAP]['opt'][CoAPOptionMaxAge]['val'])
-        except KeyError:
-            pass
+    # print(frame_list[0][CoAP]['pl'])
+    # for frame in frame_list:
+    #     try:
+    #         print(frame[CoAP]['opt'][CoAPOptionMaxAge]['val'])
+    #     except KeyError:
+    #         pass
     # print(frame_list[0]['Unknown'])
+    # frame_list = Frame.create_list(PcapReader(
+    #     '/'.join((
+    #         'tests',
+    #         'test_dumps',
+    #         'wireshark_official_6lowpan_sample.pcap'
+    #     ))
+    # ))
+    # frame_list = Frame.create_list(PcapReader(
+    #     '/'.join((
+    #         'tests',
+    #         'test_dumps',
+    #         'wireshardk_dump_2.pcap'
+    #     ))
+    # ))
+    frame_list = Frame.create_list(PcapReader(
+        '/'.join((
+            'tests',
+            'test_dumps',
+            'www.cloudshark.org_captures_46a9a369e6a9.pcap'
+        ))
+    ))
+    # frame_list, ignored = Frame.filter_frames(frame_list, Ethernet)
+    print('The frame list contains %d elements:' % len(frame_list))
+    c = 0
+    for f in frame_list:
+        print('%d: %s' % (c, f.get_value()))
+        c += 1
+    # c = 0
+    # for i in ignored:
+    #     print('%d: %s' % (c, i.get_value()))
+    #     c += 1
     pass

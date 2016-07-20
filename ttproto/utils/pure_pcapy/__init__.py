@@ -53,6 +53,12 @@ DLT_LOOP = 108
 DLT_LINUX_SLL = 113
 DLT_LTALK = 114
 
+# For IEEE 802.15.4 DLT codes
+DLT_IEEE802_11_RADIO = 127
+DLT_IEEE802_15_4 = 195
+DLT_IEEE802_15_4_NOFCS = 230
+
+
 class PcapError(Exception):
 	""" General Pcap module exception class """
 	pass
