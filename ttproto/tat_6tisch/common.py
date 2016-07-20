@@ -196,7 +196,7 @@ class SixTischTestCase(TestCase):
         :return: The purpose of this test case
         :rtype: str
 
-        .. note:: Find a cleaner way to do this
+        .. note:: For a faster and cleaner solution contributor can overwrite method in each TC implementation
         """
         if self.__doc__:
             ok = False
