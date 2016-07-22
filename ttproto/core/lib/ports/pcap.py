@@ -47,8 +47,9 @@ _map_link_type = {
     pure_pcapy.DLT_EN10MB: Ethernet,
     pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
     pure_pcapy.DLT_NULL: NullLoopback,
-    pure_pcapy.DLT_IEEE802_15_4_NOFCS: Ieee802154,
-    # pure_pcapy.DLT_IEEE802_15_4: Ieee802154
+    pure_pcapy.DLT_IEEE802_15_4: Ieee802154,
+    # pure_pcapy.DLT_IEEE802_15_4_NOFCS: Ieee802154,
+    # pure_pcapy.DLT_IEEE802_15_4_NONASK_PHY: Ieee802154
 }
 
 
@@ -62,7 +63,7 @@ class PcapReader:
         except Exception as e:
             self.__pcap_file.close()
             raise e
-        # print ("datalink: %d" % self.__reader.datalink())
+        # print("datalink: %d" % self.__reader.datalink())
 
         if not decode_type:
             try:
@@ -95,9 +96,6 @@ class PcapReader:
             m = Message(b, self.__decode_type)
             exc = None
         except Exception as e:
-            import sys
-            import traceback
-            print(str(e) + '\n')
             m = Message(b)
             exc = e
 

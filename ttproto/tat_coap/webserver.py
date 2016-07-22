@@ -1242,7 +1242,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 dissection = Dissector(pcap_path).dissect(eval(prot['name']))
             except TypeError as e:
-                self.api_error('Dissector error:\n' + e)
+                self.api_error('Dissector error: ' + str(e))
                 return
             except pure_pcapy.PcapError:
                 self.api_error(

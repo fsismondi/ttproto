@@ -388,7 +388,7 @@ var FrameBloc = React.createClass({
 			for (var field in prot) {
 
 				// Check that it's not the name of the protocol
-				if (field != 'Protocol' && field != '_type') {
+				if (field != '_protocol' && field != '_type') {
 
 					// If the value is an array (like options for CoAP)
 					if (Array.isArray(prot[field])) {
@@ -414,7 +414,7 @@ var FrameBloc = React.createClass({
 				<div className="panel panel-default">
 					<a className="collapsed" role="button" data-toggle="collapse" href={ '#collapse' + this.state.protocolStackId } aria-expanded="false" aria-controls={ 'collapse' + this.state.protocolStackId }>
 						<span className="panel-heading" role="tab" id={ 'frame' + this.state.protocolStackId }>
-							{prot.Protocol}
+							{prot._protocol}
 						</span>
 					</a>
 
