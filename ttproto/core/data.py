@@ -2144,7 +2144,9 @@ class MessageDescription:
         >>> str(md)
         '[fe80::1234                       -> fe80::5678                      ] UDP 1024 -> domain'
     """
-    __attrs = ("hw_src", "src", "hw_dst", "dst", "info")
+
+    # Added "src_port" and "dst_port" after e6dc5f5b0b77c6bb987374e757e14e9362191c1e
+    __attrs = ("hw_src", "src", "hw_dst", "dst", "src_port", "dst_port", "info")
 
     @typecheck
     def __init__(self, message: Message):

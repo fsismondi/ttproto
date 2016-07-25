@@ -342,57 +342,82 @@ class Frame:
         return (self.__error is not None)
 
     @typecheck
-    def __getitem__(self, prot: is_protocol) -> is_layer_value:
+    def __getitem__(
+        self,
+        item: either(is_protocol, str)
+    ) -> either(int, float, optional(Exception), str, is_layer_value):
         """
-        Get the requested informations of the layer level for this frame
+        Get the requested informations of the layer level for this frame. This
+        function is also used to retrieve flat informations like src, dst, ...
 
-        :param prot: The layer level that we want to retrieve
-        :type prot: type
+        :param prot: The layer level or information that we want to retrieve
+        :type prot: either(type, str)
 
-        :return: The layer level as a Value instance
+        :return: The layer level or the information as a Value instance
         :rtype: Value
+
+        .. seealso:: modules :ttproto:core:data:`̀MessageDescription
         """
 
-        # Check that the layer is a correct protocol
-        if prot not in Dissector.get_implemented_protocols():
-            raise TypeError(prot.__name__ + ' is not a protocol class')
+        # If a single string, fetch the flat informations
+        if isinstance(item, str):
 
-        # Get current value
-        value = self.__msg.get_value()
+            # If one that we get from pcap header
+            if item == 'id':
+                return self.__id
+            elif item == 'ts':
+                return self.__timestamp
+            elif item == 'error':
+                return self.__error
+            elif item == 'value':
+                return self.__msg.get_value()
 
-        # Parse the whole protocol stack
-        while True:
+            # If another one, try to get it from MessageDescription
+            else:
 
-            # If we arrive at the correct layer
-            if isinstance(value, prot):
+                # Get the message description with values stored as attributes
+                md = self.__msg.get_description()
+
+                try:
+                    value = getattr(md, item)
+                except AssertionError:
+                    raise AttributeError(
+                        "%s information was not found into this frame" % item
+                    ) from None  # From None suppress the first exception
+
                 return value
 
-            # Go to the next layer
-            try:
-                value = value['pl']
-                continue
+        # If a protocol, fetch the layer value
+        else:
 
-            # If none found, leave the loop
-            except (KeyError, TypeError):
-                pass
-            break
+            # Check that the layer is a correct protocol
+            if item not in Dissector.get_implemented_protocols():
+                raise TypeError(prot.__name__ + ' is not a protocol class')
 
-        # If this protocol isn't found in the stack
-        raise ProtocolNotFound(
-            "%s protocol wasn't found in this frame" % prot.__name__
-        )
+            # Get current value
+            value = self.__msg.get_value()
 
-    @typecheck
-    def get_timestamp(self) -> float:
-        return self.__timestamp
+            # Parse the whole protocol stack
+            while True:
 
-    @typecheck
-    def get_value(self) -> is_layer_value:
-        return self.__msg.get_value()
+                # If we arrive at the correct layer
+                if isinstance(value, item):
+                    return value
 
-    @typecheck
-    def get_id(self) -> int:
-        return self.__id
+                # Go to the next layer
+                try:
+                    value = value['pl']
+                    continue
+
+                # If none found, leave the loop
+                except (KeyError, TypeError):
+                    pass
+                break
+
+            # If this protocol isn't found in the stack
+            raise ProtocolNotFound(
+                "%s protocol wasn't found in this frame" % prot.__name__
+            )
 
 
 def add_subclass(impl_list, new_class):
@@ -575,13 +600,13 @@ if __name__ == "__main__":
     # print(dis.dissect(CoAP))
     # print('#####')
     # print(Dissector.get_implemented_protocols())
-    # frame_list = Frame.create_list(PcapReader(
-    #     '/'.join((
-    #         'tests',
-    #         'test_dumps',
-    #         'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
-    #     ))
-    # ))
+    frame_list = Frame.create_list(PcapReader(
+        '/'.join((
+            'tests',
+            'test_dumps',
+            'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+        ))
+    ))
     # frame_list, _ = Frame.filter_frames(frame_list, CoAP)
     # print(frame_list[0].get_value())
     # print(frame_list[0].get_layer(IPv4))
@@ -597,9 +622,20 @@ if __name__ == "__main__":
     #     print(frame_list[0][IPv6])
     # except ProtocolNotFound as e:
     #     print(e)
-    # print(frame_list[0][CoAP])
-    # print(frame_list[0][CoAP]['type'])
-    # print(frame_list[0][CoAP]['pl'])
+    for f in frame_list:
+        if CoAP in f:
+            print(f[CoAP])
+            print(f[CoAP]['type'])
+            print(f[CoAP]['pl'])
+            print(f['id'])
+            print(f['ts'])
+            print(f['error'])
+            print(f['src'])
+            print(f['dst'])
+            print(f['hw_src'])
+            print(f['hw_dst'])
+            print(f['src_port'])
+            print(f['dst_port'])
     # for frame in frame_list:
     #     try:
     #         print(frame[CoAP]['opt'][CoAPOptionMaxAge]['val'])
@@ -620,19 +656,19 @@ if __name__ == "__main__":
     #         'wireshardk_dump_2.pcap'
     #     ))
     # ))
-    frame_list = Frame.create_list(PcapReader(
-        '/'.join((
-            'tests',
-            'test_dumps',
-            'www.cloudshark.org_captures_46a9a369e6a9.pcap'
-        ))
-    ))
+    # frame_list = Frame.create_list(PcapReader(
+    #     '/'.join((
+    #         'tests',
+    #         'test_dumps',
+    #         'www.cloudshark.org_captures_46a9a369e6a9.pcap'
+    #     ))
+    # ))
     # frame_list, ignored = Frame.filter_frames(frame_list, Ethernet)
-    print('The frame list contains %d elements:' % len(frame_list))
-    c = 0
-    for f in frame_list:
-        print('%d: %s' % (c, f.get_value()))
-        c += 1
+    # print('The frame list contains %d elements:' % len(frame_list))
+    # c = 0
+    # for f in frame_list:
+    #     print('%d: %s' % (c, f.get_value()))
+    #     c += 1
     # c = 0
     # for i in ignored:
     #     print('%d: %s' % (c, i.get_value()))

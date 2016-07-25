@@ -54,49 +54,6 @@ MAX_TIMEOUT = 10 + round(
     )
 
 
-def duct_tape(frame):
-    frame.src = None
-    frame.dst = None
-
-    v = frame.get_value()
-    frame.ts = frame.get_timestamp()
-    while True:
-        if any((
-            isinstance(v, Ethernet),
-            isinstance(v, IPv6),
-            isinstance(v, IPv4)
-        )):
-            frame.src = v["src"]
-            frame.dst = v["dst"]
-            v = v["pl"]
-            continue
-        elif isinstance(v, UDP):
-            if not isinstance(frame.src, tuple):
-                frame.src = frame.src, v["sport"]
-                frame.dst = frame.dst, v["dport"]
-            v = v["pl"]
-            continue
-        elif isinstance(v, CoAP):
-            frame.coap = v
-        elif isinstance(v, Ieee802154):
-            frame.src = v["src"]
-            frame.dst = v["dst"]
-            v = v["pl"]
-            continue
-        elif any((
-            isinstance(v, SixLowpan),
-            isinstance(v, LinuxCookedCapture),
-            isinstance(v, NullLoopback)
-        )):
-            try:
-                v = v["pl"]
-                continue
-            except KeyError:
-                pass
-
-        break
-
-
 class CoAPTestCase(TestCase):
     """
     The test case extension representing a CoAP test case
@@ -164,14 +121,14 @@ class CoAPTestCase(TestCase):
             )
 
             # Add this frame's id to the failed frames
-            self.__failed_frames.append(self.__frame.get_id())
-            self.log('ENCOUNTER FAILED FRAME! : ' + str(self.__frame.get_id()))
+            self.__failed_frames.append(self.__frame['id'])
+            self.log('ENCOUNTER FAILED FRAME! : ' + str(self.__frame['id']))
 
             # Frame value didn't match the template (error in fact)
             return False
 
         # Check the sender
-        src = self.__frame.src[0]
+        src = self.__frame['src']
 
         # Check that the src is the same that the conversation's client/server
         if src != getattr(self.__current_conversation, sender):
@@ -184,8 +141,8 @@ class CoAPTestCase(TestCase):
                 )
 
             # Add this frame's id to the failed frames
-            self.__failed_frames.append(self.__frame.get_id())
-            self.log('ENCOUNTER FAILED FRAME! : ' + self.__frame.get_id())
+            self.__failed_frames.append(self.__frame['id'])
+            self.log('ENCOUNTER FAILED FRAME! : ' + self.__frame['id'])
 
             # Frame value didn't match the template (error in fact)
             return False
@@ -227,7 +184,7 @@ class CoAPTestCase(TestCase):
                     diff_list.describe(callback)
 
                 # Add this frame's id to the failed frames
-                self.__failed_frames.append(self.__frame.get_id())
+                self.__failed_frames.append(self.__frame['id'])
 
                 # Frame value didn't match the template
                 return False
@@ -339,12 +296,6 @@ class CoAPTestCase(TestCase):
 
         # Remove them from current frames
         self.__frames = [f for f in self.__frames if f not in malformed]
-
-        # Parse every frame with the duct tape
-        # FIXME: This will be removed when we have a cleaner way to put the
-        #        main informations of every frame layer
-        for frame in self.__frames:
-            duct_tape(frame)
 
         # Create the tracker from the frames which will create conversations
         # and at the same time filter the ignored frames
@@ -495,12 +446,12 @@ class CoAPTestCase(TestCase):
         self.next()
 
         # If concurrency issue
-        if self.__frame.ts < last_frame.ts:
+        if self.__frame['ts'] < last_frame['ts']:
             self.set_verdict(
                 "inconc",
                 "concurrency issue: frame %d was received earlier than frame %d"
                 %
-                (self.__frame.get_id(), last_frame.get_id())
+                (self.__frame['id'], last_frame['id'])
             )
             raise self.Stop()
 
@@ -603,8 +554,8 @@ class CoAPConversation(list):
         # self.update_timeout (request_frame)
 
         # Define the 2 entities @ of this conversation
-        self.client = request_frame.src[0]
-        self.server = request_frame.dst[0]
+        self.client = request_frame['src']
+        self.server = request_frame['dst']
 
     @typecheck
     def update_timeout(self, request_frame: Frame):
@@ -617,7 +568,7 @@ class CoAPConversation(list):
                               beginning of the conversation
         :type request_frame: Frame
         """
-        self.timeout = request_frame.ts + MAX_TIMEOUT
+        self.timeout = request_frame['ts'] + MAX_TIMEOUT
 
     @typecheck
     def __hash__(self) -> int:
@@ -659,9 +610,15 @@ class CoAPConversation(list):
         assert CoAP in frame
 
         if frame[CoAP].is_request():
-            return frame.src, frame.dst
+            return (
+                (frame['src'], frame['src_port']),
+                (frame['dst'], frame['dst_port'])
+            )
         else:
-            return frame.dst, frame.src
+            return (
+                (frame['dst'], frame['dst_port']),
+                (frame['src'], frame['src_port'])
+            )
 
 
 class Link(list):
@@ -1162,7 +1119,7 @@ class CoAPTracker:
             if typ == 0 and conv:
 
                 # Record the mid
-                self.by_mid[mid] = conv, frame.ts + MAX_TIMEOUT
+                self.by_mid[mid] = conv, frame['ts'] + MAX_TIMEOUT
 
             # ACK/RST frame w/o known conversation
             elif typ > 1 and not conv:
@@ -1172,7 +1129,7 @@ class CoAPTracker:
                     conv, timeout = self.by_mid[mid]
 
                     # If timeout passed, delete the conv because inconsistant
-                    if frame.ts > timeout:
+                    if frame['ts'] > timeout:
                         del self.by_mid[mid]
                         conv = None
                 except KeyError:
@@ -1232,7 +1189,8 @@ class CoAPTracker:
         """
         assert CoAP in frame
 
-        src, dst = frame.src, frame.dst
+        src = frame['src'], frame['src_port']
+        dst = frame['dst'], frame['dst_port']
 
         return str((src, dst)) if src < dst else str((dst, src))
 
@@ -1336,9 +1294,6 @@ if __name__ == "__main__":
 
     from ttproto.core.lib.ports.pcap import PcapReader
     frame_list = Frame.create_list(PcapReader(filename))
-
-    for frame in frame_list:
-        duct_tape(frame)
 
     tracker = CoAPTracker(frame_list)
     conversations = tracker.conversations
