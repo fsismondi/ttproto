@@ -437,6 +437,7 @@ class Dissector:
 
     # Class variables
     __implemented_protocols = None
+    __frames = None
 
     @typecheck
     def __init__(self, filename: str):
@@ -513,12 +514,12 @@ class Dissector:
         .. note:: With the protocol option we can filter
         """
 
-        # Check the protocol is one entered
-        # if all((
-        #     protocol is not None,
-        #     protocol not in Dissector.get_implemented_protocols()
-        # )):
-        #     raise TypeError(protocol.__name__ + ' is not a protocol class')
+        # Check the protocol
+        if all((
+            protocol is not None,
+            protocol not in Dissector.get_implemented_protocols()
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
 
         # Prepare the response object
         response = []
@@ -527,7 +528,7 @@ class Dissector:
         with Data.disable_name_resolution():
 
             # Read the file and get an iterator on it
-            frames = Frame.create_list(PcapReader(self.__filename))
+            frames = self.get_frames()
 
             # Filter the frames for the selected protocol
             if protocol is not None:
@@ -572,7 +573,7 @@ class Dissector:
         with Data.disable_name_resolution():
 
             # Get the list of frames
-            frames = Frame.create_list(PcapReader(self.__filename))
+            frames = self.get_frames()
 
             # Filter the frames for the selected protocol
             if protocol is not None:
@@ -585,28 +586,46 @@ class Dissector:
         # Then return the frame list
         return frame_list
 
+    @typecheck
+    def get_frames(self) -> list_of(Frame):
+        """
+        Getter of the frames get from the pcap (uses Singleton pattern).
+        It will avoid us to parse the file multiple times if call to functions
+        are close.
+
+        :raises PcapError: If the provided file isn't a valid pcap file
+
+        :return: The list of non filtered frames got from the pcap file
+        :rtype: [Frame]
+
+        .. note:: The frames got here are not filtered
+        """
+        if not self.__frames:
+            self.__frames = Frame.create_list(PcapReader(self.__filename))
+        return self.__frames
+
 
 if __name__ == "__main__":
-    # dis = Dissector(
-    #     'tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
-    # )
-    # print(dis.summary())
-    # print('##### Dissect without filtering #####')
-    # print(dis.dissect())
-    # print('#####')
-    # print('#####')
-    # print('#####')
-    # print('##### Dissect without filtering on CoAP #####')
-    # print(dis.dissect(CoAP))
+    dis = Dissector(
+        'tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    )
+    print(dis.summary())
+    print('#####')
+    print('##### Dissect with filtering on CoAP #####')
+    print(dis.dissect(CoAP))
+    print('#####')
+    print('##### Dissect without filtering #####')
+    print(dis.dissect())
+    print('#####')
     # print('#####')
     # print(Dissector.get_implemented_protocols())
-    frame_list = Frame.create_list(PcapReader(
-        '/'.join((
-            'tests',
-            'test_dumps',
-            'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
-        ))
-    ))
+    # frame_list = Frame.create_list(PcapReader(
+    #     '/'.join((
+    #         'tests',
+    #         'test_dumps',
+    #         'TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    #     ))
+    # ))
     # frame_list, _ = Frame.filter_frames(frame_list, CoAP)
     # print(frame_list[0].get_value())
     # print(frame_list[0].get_layer(IPv4))
@@ -622,20 +641,20 @@ if __name__ == "__main__":
     #     print(frame_list[0][IPv6])
     # except ProtocolNotFound as e:
     #     print(e)
-    for f in frame_list:
-        if CoAP in f:
-            print(f[CoAP])
-            print(f[CoAP]['type'])
-            print(f[CoAP]['pl'])
-            print(f['id'])
-            print(f['ts'])
-            print(f['error'])
-            print(f['src'])
-            print(f['dst'])
-            print(f['hw_src'])
-            print(f['hw_dst'])
-            print(f['src_port'])
-            print(f['dst_port'])
+    # for f in frame_list:
+    #     if CoAP in f:
+    #         print(f[CoAP])
+    #         print(f[CoAP]['type'])
+    #         print(f[CoAP]['pl'])
+    #         print(f['id'])
+    #         print(f['ts'])
+    #         print(f['error'])
+    #         print(f['src'])
+    #         print(f['dst'])
+    #         print(f['hw_src'])
+    #         print(f['hw_dst'])
+    #         print(f['src_port'])
+    #         print(f['dst_port'])
     # for frame in frame_list:
     #     try:
     #         print(frame[CoAP]['opt'][CoAPOptionMaxAge]['val'])
