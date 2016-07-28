@@ -1,7 +1,6 @@
 import unittest
 
-from ttproto.utils.pure_pcapy import PcapError
-from ttproto.core.dissector import Frame, Dissector
+from ttproto.core.dissector import Frame, Dissector, ReaderError
 from ttproto.core.typecheck3000 import InputParameterError
 from ttproto.core.packet import PacketValue
 from ttproto.core.lib.inet.coap import CoAP
@@ -119,9 +118,9 @@ class DissectorTestCase(unittest.TestCase):
         dis_empty_file = Dissector(self.EMPTY_PCAP_FILE)
 
         # Get and check the summary
-        with self.assertRaises(PcapError):
+        with self.assertRaises(ReaderError):
             dis = dis_wrong_file.summary()
-        with self.assertRaises(PcapError):
+        with self.assertRaises(ReaderError):
             dis = dis_empty_file.summary()
 
     # ##### dissect
@@ -185,9 +184,9 @@ class DissectorTestCase(unittest.TestCase):
         dis_empty_file = Dissector(self.EMPTY_PCAP_FILE)
 
         # Get and check the dissect
-        with self.assertRaises(PcapError):
+        with self.assertRaises(ReaderError):
             dis = dis_wrong_file.dissect()
-        with self.assertRaises(PcapError):
+        with self.assertRaises(ReaderError):
             dis = dis_empty_file.dissect()
 
 # #################### Main run the tests #########################

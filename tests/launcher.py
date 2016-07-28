@@ -82,7 +82,8 @@ if __name__ == '__main__':
         for filename in files:
             if all((
                 filename.startswith('test'),
-                filename.endswith('.py')
+                filename.endswith('.py'),
+                filename != 'tests.py'  # We don't check old test files
             )):
                 test_name = os.path.splitext(filename)[0].upper()
                 mod_name = root.replace('/', '.') + '.' + test_name.lower()

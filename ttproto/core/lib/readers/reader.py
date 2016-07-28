@@ -31,46 +31,31 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from ttproto.core.data import *
+
 from ttproto.core.typecheck import *
-from ttproto.core import port, clock
-from ttproto.utils import pure_pcapy
 
 
-class PcapPort(port.RawMessagePort):
+class Reader:
+    """
+    The Reader interface class which will allow us to read capture files
+    """
+
     @typecheck
-    def __init__(self, file: str, decode_type: optional(is_type) = None, clock_: optional(clock.Clock) = None,
-                 endpoint: optional(port.BaseMessagePort) = None):
+    def __init__(self, file: str):
+        """
+        Initialize the reader with the corresponding file
 
-        self.__reader = pure_pcapy.Reader(open(file, "rb"))
-        self.__clock = clock_ if clock_ else clock.Clock.get_instance()
+        :param file: The path to the file to read
+        :type file: str
+        """
+        raise NotImplementedError()
 
-        if not decode_type:
-            try:
-                decode_type = _map_link_type[self.__reader.datalink()]
-            except KeyError:
-                decode_type = bytes
-
-        port.RawMessagePort.__init__(self, decode_type, endpoint)
-
-        self.__schedule_next()
-
-    def __schedule_next(self):
-
-        h, self.__next_packet = self.__reader.next()
-
-        if h:
-            # timestamp
-            ts = h.getts()
-            ts = ts[0] + ts[1] * 0.000001
-
-            # schedule
-            self.__clock.schedule_event_absolute(ts, self.__callback)
-
-    def __callback(self):
-        self._forward(self.__next_packet)
-
-        self.__schedule_next()
-
-    def enqueue(self, msg):
-        raise Exception("PcapPort is receive-only")
+    def __iter__(self):
+        """
+        The only thing that the reader need is that it sould be iterable. Each
+        returned element should be a tuple of
+            - Timestamp represented as a float
+            - The Message object associated to the frame
+            - An Exception if one occured, None if everything went fine
+        """
+        raise NotImplementedError()

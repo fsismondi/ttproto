@@ -37,7 +37,8 @@ import sys
 import time
 
 from .data import *
-from ttproto.core.analyzer import TestCase, Verdict, is_verdict, is_traceback
+from ttproto.core.analyzer import (TestCase, Verdict, is_verdict, is_traceback,
+                                   Conversation, Capture)
 from ttproto.core.dissector import Frame
 from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
@@ -291,25 +292,19 @@ class CoAPTestCase(TestCase):
         :rtype: (str, [Frame])
         """
 
-        # Get malformed frames
-        malformed = [frame for frame in self.__frames if frame.is_malformed()]
-
         # Remove them from current frames
         self.__frames = [f for f in self.__frames if f not in malformed]
 
-        # Create the tracker from the frames which will create conversations
+        # Create the capture from the frames which will create conversations
         # and at the same time filter the ignored frames
-        tracker = CoAPTracker(self.__frames)
+        capture = CoAPCapture(self.__frames)
 
         # Put the conversations by pair
-        self.__conversations = group_conversations_by_pair(
-            tracker.conversations
-        )
+        self.__conversations = capture.get_conversations()
 
         # Create the returned list of ignored frames and their reason
         ignored = []
-        ignored.append(('malformed', malformed))
-        ignored.append(('non_coap', tracker.ignored_frames))
+        ignored.append(('non_coap', capture.get_ignored_frames()))
 
         # Return the ignored frames
         return ignored
@@ -332,13 +327,14 @@ class CoAPTestCase(TestCase):
         :rtype: (str, [int], str, [(type, Exception, traceback)])
         """
 
-        # For every conversation's pair
-        for pair, conversation in self.__conversations.items():
-
-            # Get the first conversation
-            # Note: We don't need to parse the conversations because the
-            # chain() function will do it for us
-            self.__current_conversation = conversation[0]
+        # Get the first conversation
+        # Note: We don't need to parse the conversations because the
+        # chain() function will do it for us
+        c = 1
+        for conv in self.__conversations:
+            print("Conversation number %d is %s" % (c, str(conv.get_entities())))
+            self.__iter_conversations = iter(conv)
+            self.__current_conversation = next(self.__iter_conversations)
             self.__iter = iter(self.__current_conversation)
 
             # Put iterator on the first frame
@@ -361,7 +357,7 @@ class CoAPTestCase(TestCase):
                 # inconc verdict
                 if all((
                     self.__verdict.get_value() == 'inconc',
-                    self.__frame == self.__current_conversation[0]
+                    self.__frame == conv[0][0]
                 )):
                     # No match
                     self.set_verdict('none', 'no match')
@@ -383,6 +379,8 @@ class CoAPTestCase(TestCase):
                     # Put the verdict and log the exception
                     self.set_verdict('error', 'unhandled exception')
                     self.log(exc_info[1])
+
+            c += 1
 
         # Return the results
         return (
@@ -419,7 +417,7 @@ class CoAPTestCase(TestCase):
 
         # Next conversation
         try:
-            next_conv = self.__current_conversation.next
+            next_conv = next(self.__iter_conversations)
         except AttributeError:
             if optional:
                 return False
@@ -439,7 +437,7 @@ class CoAPTestCase(TestCase):
         self.log(
             "Chaining to conversation %d %s"
             %
-            (next_conv.id, next_conv.tag)
+            (self.__conversations.index(next_conv), next_conv.get_entities())
         )
 
         # Put the iterator on the first frame of this conv
@@ -521,20 +519,8 @@ class CoAPTestCase(TestCase):
             return All(*opt_list)
 
 
-class CoAPConversation(list):
-    """
-    Class to represent a CoAP conversation
-    """
-
-    @typecheck
-    def __init__(self, request_frame: Frame):
-        """
-        Initialize a coap conversation using a request frame
-
-        :param request_frame: The request frame to initialize the conversation.
-                              This frame has to be a request or a ping frame.
-        :type request_frame: Frame
-        """
+class Exchange(list):
+    def __init__(self, request_frame):
 
         # Check that there si a CoAP layer in the frame
         assert CoAP in request_frame
@@ -548,12 +534,8 @@ class CoAPConversation(list):
             ))
         ))
 
-        # Generate the tag of this conversation (src, dst) or (dst, src)
         self.tag = self.gen_tag(request_frame)
-        # self.append (request_frame)
-        # self.update_timeout (request_frame)
 
-        # Define the 2 entities @ of this conversation
         self.client = request_frame['src']
         self.server = request_frame['dst']
 
@@ -569,6 +551,25 @@ class CoAPConversation(list):
         :type request_frame: Frame
         """
         self.timeout = request_frame['ts'] + MAX_TIMEOUT
+
+    @staticmethod
+    def gen_tag(frame):
+        assert CoAP in frame
+
+        if frame[CoAP].is_request():
+            return frame['src'], frame['dst']
+        else:
+            return frame['dst'], frame['src']
+
+    @typecheck
+    def get_entities(self) -> (anything, anything):
+        """
+        Get the two entities that are communicating
+
+        :return: The two entities which did this conversation
+        :rtype: (anything, anything)
+        """
+        return self.client, self.server
 
     @typecheck
     def __hash__(self) -> int:
@@ -588,37 +589,420 @@ class CoAPConversation(list):
         :return: True everytime we check this object
         :rtype: bool
 
-        .. note:: Normally Python should always return "True" when checking an
-                  object which is not None. Maybe this should be removed.
+        .. note:: Normally Python should always return "True" when checking
+                  an object which is not None. Maybe this should be removed.
         """
         return True
 
+
+class CoAPConversation(Conversation):
+    """
+    Class to represent a CoAP conversation. A conversation is an ordered
+    exchange of messages between two entities.
+
+    It is composed by the two entities and a list of Frames mostly beginning by
+    a request followed by one or many responses.
+    """
+
+    __exchanges = []
+
+    @typecheck
+    def __init__(self, entities, exchanges):
+        """
+        Initialize a coap conversation using a request frame. The two
+        communicating entities will be set by deduction using this frame.
+
+        This is meant only for initializing entities and doesn't add the frame
+        passed as parameter to the list.
+
+        :param request_frame: The request frame to initialize the conversation.
+                              This frame has to be a request or a ping frame
+                              and won't be added to the frames of this conv.
+        :type request_frame: Frame
+        """
+
+        self.__entities = entities
+        self.__exchanges = exchanges
+
+    def __iter__(self):
+        return iter(self.__exchanges)
+
+    def __getitem__(self, item):
+        return self.__exchanges[item]
+
+    @typecheck
+    def append(self, ex):
+        """
+        Add a frame to this conversation's frames
+
+        :param frame: The frame to add to this conversation
+        :tyep frame: Frame
+        """
+        self.__exchanges.append(ex)
+
+    @typecheck
+    def get_entities(self) -> (anything, anything):
+        """
+        Get the two entities that are communicating
+
+        :return: The two entities which did this conversation
+        :rtype: (anything, anything)
+        """
+        return self.__entities
+
+    @typecheck
+    def get_exchanges(self) -> list_of(Exchange):
+        """
+        Get the list of ordered frames of this conversation
+
+        :return: The frames of this conversation
+        :rtype: [Frame]
+        """
+        return self.__exchanges
+
+    def __repr__(self):
+        display = str(self.__entities)
+        c = 0
+        for ex in self.__exchanges:
+            display += "\n  Exchange %d:" % c
+            for f in ex:
+                display += "\n    %s" % str(f)
+            c += 1
+        return display
+
+
+class CoAPCapture(Capture):
+    """
+    Capture class to create conversations from frame list
+    """
+
+    __conversations = []
+    __exchanges = []
+    __ignored = []
+    __states = {}
+
+    class FlowState:
+        """
+        Tool to link a frame to others in order to generate the final conv
+
+        The main responsability of this tool class is to manage many
+        conversations that can be interleaved. It will map a request
+        with its corresponding response.
+        """
+
+        @typecheck
+        def __init__(self, capture: this_class):
+            """
+            Initialize the flow state with a capture object, its main concern
+            is to provide an easy way to create conversations and maintains a
+            list of ignored frames
+
+            :param capture: The CoAPCapture object which will have its
+                            conversation populated
+            :type capture: CoAPCapture
+            """
+            self.__capture = capture
+
+            # msgid -> (conversation, timeout)
+            self.by_mid = {}
+
+            # token -> conversation
+            self.by_request_token = {}
+
+            # token -> conversation     (Block1)
+            # uri   -> conversation     (Block2)
+            self.by_bl = {}
+
+            # uri -> conversation
+            self.obs_by_uri = {}
+
+            # token -> conversation
+            self.obs_by_token = {}
+
+        @typecheck
+        def append(self, frame: Frame):
+            """
+            Append a new frame to the current flow state
+
+            :param frame: The frame to append
+            :type frame: Frame
+            """
+
+            # Get the token and options
+            token = frame[CoAP]['tok']
+            opt = frame[CoAP]['opt']
+
+            # A temporary value to store the current conversation
+            conv = None
+
+            # REQUEST or PING frame
+            if any((
+                frame[CoAP].is_request(),
+                all((
+                    frame[CoAP]['code'] == 0,
+                    frame[CoAP]['type'] == 0
+                ))
+            )):
+
+                # Get its uri
+                uri = frame[CoAP].get_uri()
+
+                # Handle block options
+                try:
+
+                    # Get block option
+                    block_option = opt[CoAPOptionBlock]
+
+                    # It is a request w/ a block
+                    if isinstance(block_option, CoAPOptionBlock1):
+
+                        # Get the conversation from current dictionnary
+                        conv = self.by_bl.get(token)
+
+                        # Final block of an existing conversation
+                        # Clear the by block dict associated to this token
+                        if conv and not block_option['m']:
+                            del self.by_bl[token]
+
+                        # New block1 conversation w/ more blocks
+                        # Create the by block dict associated to this token
+                        elif block_option['m']:
+                            conv = self.__capture.new_exchange(frame)
+                            self.by_bl[token] = conv
+
+                    # Block2 option (a block option is Block1 or Block2 type)
+                    else:
+
+                        # Get the corresponding conversations from the uri
+                        conv = self.by_bl.get(uri)
+
+                        # If it exists, clear the conv got from the uri mapping
+                        # And map it to its token value
+                        if conv:
+                            del self.by_bl[uri]
+                            self.by_request_token[token] = conv
+
+                # Not a block conversation
+                except KeyError:
+
+                    # If a conversation is found
+                    if conv:
+
+                        # Discard the state in by_bl
+                        if token in self.by_bl:
+                            del self.by_bl[token]
+                        if uri in self.by_bl:
+                            del self.by_bl[uri]
+
+                        # And start a new conversation
+                        conv = None
+
+                # If new conversation
+                if not conv:
+
+                    # Handle observe option
+                    conv = self.obs_by_uri.get(uri)
+
+                    try:
+                        obs = opt[CoAPOptionObserve]
+
+                        # This is a new conversation
+                        if not conv or not conv.__obs_active:
+                            conv = self.__capture.new_exchange(frame)
+                            conv.__obs_active = True
+                            self.obs_by_uri[uri] = conv
+
+                        # Remember the token
+                        self.obs_by_token[token] = conv
+
+                    # Not with observe option
+                    except KeyError:
+
+                        # This observation is no longer active
+                        if conv and conv.__obs_active:
+                            conv.__obs_active = False
+
+                        # Unrelated new conversation
+                        else:
+                            conv = self.__capture.new_exchange(frame)
+
+                        # Map it from its token
+                        self.by_request_token[token] = conv
+
+                # Check that at the end of a request managment, we have a
+                # conversation and an uri. The goal is to match a request
+                # with its corresponding response
+                assert conv
+                conv.__uri = uri
+
+            # Response frame
+            elif frame[CoAP].is_response():
+
+                # Match by token
+                try:
+
+                    # If response of a simple request
+                    try:
+                        conv = self.by_request_token.pop(token)
+
+                    # If observable response
+                    except KeyError:
+                        conv = self.obs_by_token[token]
+
+                    # Track block2 transfers
+                    bl2 = opt[CoAPOptionBlock2]
+
+                    if bl2['M']:
+                        self.by_bl[conv.__uri] = conv
+                except KeyError:
+                    pass
+
+            # Matching by message id for RST & ACK
+            mid = frame[CoAP]['mid']
+            typ = frame[CoAP]['type']
+
+            # CON frame w/ known conversation
+            if typ == 0 and conv:
+
+                # Record the mid
+                self.by_mid[mid] = conv, frame['ts'] + MAX_TIMEOUT
+
+            # ACK/RST frame w/o known conversation
+            elif typ > 1 and not conv:
+
+                # Try matching by message-id
+                try:
+                    conv, timeout = self.by_mid[mid]
+
+                    # If timeout passed, delete the conv because inconsistant
+                    if frame['ts'] > timeout:
+                        del self.by_mid[mid]
+                        conv = None
+                except KeyError:
+                    pass
+
+            # RST frame
+            if typ == 3:
+
+                # Observable not anymore active
+                if conv:
+                    conv.__obs_active = False
+
+                # If another conv was registered, not anymore active too
+                conv2 = self.obs_by_token.get(token)
+                if conv2:
+                    conv2.__obs_active = False
+
+            # If we found a corresponding conv for this response
+            if conv:
+                conv.append(frame)
+
+            # If none, add it to the ignored ones
+            else:
+                self.__capture.ignored_frames.append(frame)
+
+    @typecheck
+    def __init__(self, frames: list_of(Frame) = []):
+        """
+        Initialize the Capture with the frame list. This function will also
+        take care of the filtering of captured frames.
+
+        :param frames: List of frames
+        :type frames: [Frame]
+        """
+
+        # Use the tracker to detect the exchanges
+        for f in frames:
+
+            # Not a coap frame
+            if CoAP not in f:
+                self.__ignored.append(f)
+                continue
+
+            # Get the flow tag of this frame "(src, dst)" or "(dst, src)"
+            tag = self.flow_tag(f)
+
+            # Try to get the corresponding flowstate
+            try:
+                state = self.__states[tag]
+
+            # If none found, create it
+            except KeyError:
+                state = self.FlowState(self)
+                self.__states[tag] = state
+
+            # In the end, add it to the flow state
+            state.append(f)
+
+        # Here we will group the exchanges to create conversations
+        dict_ent_conv = {}
+        for ex in self.__exchanges:
+            pair_of_entities = ex.get_entities()
+            try:
+                dict_ent_conv[pair_of_entities].append(ex)
+            except KeyError:
+                dict_ent_conv[pair_of_entities] = [ex]
+
+        for k in dict_ent_conv:
+            self.__conversations.append(CoAPConversation(k, dict_ent_conv[k]))
+
+        # self.__conversations = self.__exchanges
+
     @staticmethod
     @typecheck
-    def gen_tag(frame: Frame) -> ((Value, int), (Value, int)):
+    def flow_tag(frame: Frame) -> str:
         """
-        Generate a tag from a frame
+        Generate a tag for a flow, consists into displaying the two adresses
 
         :param frame: The frame from which we will generate the tag
         :type frame: Frame
 
-        :return: The tag of this conversation
-                 - ((src_addr, src_port), (dst_addr, dst_port)) for a request
-                 - ((dst_addr, dst_port), (src_addr, src_port)) for a response
-        :rtype: ((Value, int), (Value, int))
+        :return: A tag of the flow consisting into the adresses of the two
+                 communicating entities
+        :rtype: str
         """
         assert CoAP in frame
 
-        if frame[CoAP].is_request():
-            return (
-                (frame['src'], frame['src_port']),
-                (frame['dst'], frame['dst_port'])
-            )
-        else:
-            return (
-                (frame['dst'], frame['dst_port']),
-                (frame['src'], frame['src_port'])
-            )
+        src = frame['src'], frame['src_port']
+        dst = frame['dst'], frame['dst_port']
+
+        return str((src, dst)) if src < dst else str((dst, src))
+
+    @typecheck
+    def new_exchange(self, frame: Frame) -> Exchange:
+        """
+        Generate a new conversation
+
+        :param frame: The first frame of the new conversation
+        :type frame: Frame
+
+        :return: A new conversation containing the entered frame
+        :rtype: CoAPConversation
+        """
+        e = Exchange(frame)
+        self.__exchanges.append(e)
+        print("%d exchange asked from frame %s" % (len(self.__exchanges), str(frame)))
+        return e
+
+    @typecheck
+    def get_conversations(self) -> list_of(Conversation):
+        """
+        Function to get the conversations as a list
+
+        :return: The conversations generated
+        :rtype:[Conversation]
+        """
+        return self.__conversations
+
+    @typecheck
+    def get_ignored_frames(self) -> list_of(Frame):
+        """
+        Function to get the ignored frames as a list
+
+        :return: The ignored frames that were filtered
+        :rtype:[Frame]
+        """
+        return self.__ignored
 
 
 class Link(list):
@@ -930,382 +1314,21 @@ class Link(list):
             return result
 
 
-class CoAPTracker:
-    """
-    Tracker class to create conversations from frame list
-    """
-
-    class FlowState:
-        """
-        Tool to link a frame to others in order to generate the final conv
-
-        The main responsability of this tool class is to manage many
-        conversations that can be interleaved. It will map a request
-        with its corresponding response.
-        """
-
-        @typecheck
-        def __init__(self, tracker: this_class):
-            """
-            Initialize the flow state with a tracker object, its main concern
-            is to provide an easy way to create conversations and maintains a
-            list of ignored frames
-
-            :param tracker: The CoAPTracker object which will have its
-                            conversation populated
-            :type tracker: CoAPTracker
-            """
-            self.__tracker = tracker
-
-            # msgid -> (conversation, timeout)
-            self.by_mid = {}
-
-            # token -> conversation
-            self.by_request_token = {}
-
-            # token -> conversation     (Block1)
-            # uri   -> conversation     (Block2)
-            self.by_bl = {}
-
-            # uri -> conversation
-            self.obs_by_uri = {}
-
-            # token -> conversation
-            self.obs_by_token = {}
-
-        @typecheck
-        def append(self, frame: Frame):
-            """
-            Append a new frame to the current flow state
-
-            :param frame: The frame to append
-            :type frame: Frame
-            """
-
-            # Get the token and options
-            token = frame[CoAP]["tok"]
-            opt = frame[CoAP]["opt"]
-
-            # A temporary value to store the current conversation
-            conv = None
-
-            # REQUEST or PING frame
-            if any((
-                frame[CoAP].is_request(),
-                all((
-                    frame[CoAP]["code"] == 0,
-                    frame[CoAP]["type"] == 0
-                ))
-            )):
-
-                # Get its uri
-                uri = frame[CoAP].get_uri()
-
-                # Handle block options
-                try:
-
-                    # Get block option
-                    block_option = opt[CoAPOptionBlock]
-
-                    # It is a request w/ a block
-                    if isinstance(block_option, CoAPOptionBlock1):
-
-                        # Get the conversation from current dictionnary
-                        conv = self.by_bl.get(token)
-
-                        # Final block of an existing conversation
-                        # Clear the by block dict associated to this token
-                        if conv and not block_option['m']:
-                            del self.by_bl[token]
-
-                        # New block1 conversation w/ more blocks
-                        # Create the by block dict associated to this token
-                        elif block_option['m']:
-                            conv = self.__tracker.new_conversation(frame)
-                            self.by_bl[token] = conv
-
-                    # Block2 option (a block option is Block1 or Block2 type)
-                    else:
-
-                        # Get the corresponding conversations from the uri
-                        conv = self.by_bl.get(uri)
-
-                        # If it exists, clear the conv got from the uri mapping
-                        # And map it to its token value
-                        if conv:
-                            del self.by_bl[uri]
-                            self.by_request_token[token] = conv
-
-                # Not a block conversation
-                except KeyError:
-
-                    # If a conversation is found
-                    if conv:
-
-                        # Discard the state in by_bl
-                        if token in self.by_bl:
-                            del self.by_bl[token]
-                        if uri in self.by_bl:
-                            del self.by_bl[uri]
-
-                        # And start a new conversation
-                        conv = None
-
-                # If new conversation
-                if not conv:
-
-                    # Handle observe option
-                    conv = self.obs_by_uri.get(uri)
-
-                    try:
-                        obs = opt[CoAPOptionObserve]
-
-                        # This is a new conversation
-                        if not conv or not conv.__obs_active:
-                            conv = self.__tracker.new_conversation(frame)
-                            conv.__obs_active = True
-                            self.obs_by_uri[uri] = conv
-
-                        # Remember the token
-                        self.obs_by_token[token] = conv
-
-                    # Not with observe option
-                    except KeyError:
-
-                        # This observation is no longer active
-                        if conv and conv.__obs_active:
-                            conv.__obs_active = False
-
-                        # Unrelated new conversation
-                        else:
-                            conv = self.__tracker.new_conversation(frame)
-
-                        # Map it from its token
-                        self.by_request_token[token] = conv
-
-                # Check that at the end of a request managment, we have a
-                # conversation and an uri. The goal is to match a request
-                # with its corresponding response
-                assert conv
-                conv.__uri = uri
-
-            # Response frame
-            elif frame[CoAP].is_response():
-
-                # Match by token
-                try:
-
-                    # If response of a simple request
-                    try:
-                        conv = self.by_request_token.pop(token)
-
-                    # If observable response
-                    except KeyError:
-                        conv = self.obs_by_token[token]
-
-                    # Track block2 transfers
-                    bl2 = opt[CoAPOptionBlock2]
-
-                    if bl2['M']:
-                        self.by_bl[conv.__uri] = conv
-                except KeyError:
-                    pass
-
-            # Matching by message id for RST & ACK
-            mid = frame[CoAP]['mid']
-            typ = frame[CoAP]['type']
-
-            # CON frame w/ known conversation
-            if typ == 0 and conv:
-
-                # Record the mid
-                self.by_mid[mid] = conv, frame['ts'] + MAX_TIMEOUT
-
-            # ACK/RST frame w/o known conversation
-            elif typ > 1 and not conv:
-
-                # Try matching by message-id
-                try:
-                    conv, timeout = self.by_mid[mid]
-
-                    # If timeout passed, delete the conv because inconsistant
-                    if frame['ts'] > timeout:
-                        del self.by_mid[mid]
-                        conv = None
-                except KeyError:
-                    pass
-
-            # RST frame
-            if typ == 3:
-
-                # Observable not anymore active
-                if conv:
-                    conv.__obs_active = False
-
-                # If another conv was registered, not anymore active too
-                conv2 = self.obs_by_token.get(token)
-                if conv2:
-                    conv2.__obs_active = False
-
-            # If we found a corresponding conv for this response
-            if conv:
-                conv.append(frame)
-
-            # If none, add it to the ignored ones
-            else:
-                self.__tracker.ignored_frames.append(frame)
-
-    @typecheck
-    def __init__(self, frames: list_of(Frame) = []):
-        """
-        Initialize the CoAP Tracker with a frame list
-
-        :param frames: List of frames
-        :type frames: [Frame]
-        """
-        self.reset()
-        self.append(frames)
-
-    def reset(self):
-        """
-        Reset the tracker, clear all its list and dict
-        """
-        self.conversations = []
-        self.ignored_frames = []
-        self.__states = {}
-
-    @staticmethod
-    @typecheck
-    def flow_tag(frame: Frame) -> str:
-        """
-        Generate a tag for a flow, consists into displaying the two adresses
-
-        :param frame: The frame from which we will generate the tag
-        :type frame: Frame
-
-        :return: A tag of the flow consisting into the adresses of the two
-                 communicating entities
-        :rtype: str
-        """
-        assert CoAP in frame
-
-        src = frame['src'], frame['src_port']
-        dst = frame['dst'], frame['dst_port']
-
-        return str((src, dst)) if src < dst else str((dst, src))
-
-    @typecheck
-    def new_conversation(self, frame: Frame) -> CoAPConversation:
-        """
-        Generate a new conversation
-
-        :param frame: The first frame of the new conversation
-        :type frame: Frame
-
-        :return: A new conversation containing the entered frame
-        :rtype: CoAPConversation
-        """
-        t = CoAPConversation(frame)
-        self.conversations.append(t)
-        t.id = len(self.conversations)
-        return t
-
-    @typecheck
-    def append(self, frames: list_of(Frame)):
-        """
-        Put the frames into the tracker lists
-
-        :param frames: The frame to put into the tracker lists
-        :type frame: [Frame]
-        """
-        for f in frames:
-
-            # Not a coap frame
-            if CoAP not in f:
-                self.ignored_frames.append(f)
-                continue
-
-            # Get the flow tag of this frame "(src, dst)" or "(dst, src)"
-            tag = self.flow_tag(f)
-
-            # Try to get the corresponding flowstate
-            try:
-                state = self.__states[tag]
-
-            # If none found, create it
-            except KeyError:
-                state = self.FlowState(self)
-                self.__states[tag] = state
-
-            # In the end, add it to the flow state
-            state.append(f)
-
-
-@typecheck
-def group_conversations_by_pair(
-    conversations: list_of(CoAPConversation)
-) -> dict_of((Value, Value), list_of(CoAPConversation)):
-    """
-    Group a list of conversations by pair
-
-    :param conversations: The list of conversations to regroup by pair
-    :type conversations: [CoAPConversation]
-
-    :return: A dict mapping of the client/server @ pair and the list ofconv
-    :rtype: {(Value, Value): [CoAPConversation]}
-
-    .. note::
-        - As we only run a test case into analyze function, we don't need to
-          group them by pair anymore
-        - We still need this at least for putting the next variable which links
-          conversations between them
-    """
-    d = {}
-    for t in conversations:
-        pair = t.client, t.server
-        try:
-            d[pair].append(t)
-
-            # Chain successive conversations together
-            d[pair][-2].next = t
-        except KeyError:
-            d[pair] = [t]
-    return d
-
-
 if __name__ == "__main__":
     filename = '/'.join((
         'tests',
         'test_dumps',
-        '_'.join((
-            'TD',
-            'COAP',
-            'CORE',
-            '07',
-            'FAIL',
-            'No',
-            'CoAPOptionContentFormat',
-            'plus',
-            'random',
-            'UDP',
-            'messages.pcap'
-        ))
+        'merged.pcap'
     ))
 
-    from ttproto.core.lib.ports.pcap import PcapReader
-    frame_list = Frame.create_list(PcapReader(filename))
-
-    tracker = CoAPTracker(frame_list)
-    conversations = tracker.conversations
-    ignored = tracker.ignored_frames
+    from ttproto.core.dissector import Capture
+    capture = Capture(filename)
+    conversations = capture.frames
+    malformed = capture.malformed
     print('#####')
-    print('##### Conversations')
-    print(conversations)
+    print('##### Frames')
+    print(frames)
     print('#####')
     print('##### Ignored')
-    print(ignored)
-    print('#####')
-    print('##### Conversations by pair')
-    conversations_by_pair = group_conversations_by_pair(conversations)
-    print(conversations_by_pair)
+    print(malformed)
     print('#####')

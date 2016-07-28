@@ -1,10 +1,8 @@
 import unittest
 
 from collections import OrderedDict
-from ttproto.core.dissector import Dissector, Frame
+from ttproto.core.dissector import (Capture, Dissector, Frame, ReaderError)
 from ttproto.core.lib.all import *
-from ttproto.core.lib.ports.pcap import PcapReader
-from ttproto.utils.pure_pcapy import PcapError
 from tests.test_tools.struct_checker import StructureChecker
 from ttproto.core.packet import Value, PacketValue
 from ttproto.core.lib.inet.meta import InetPacketValue
@@ -20,9 +18,6 @@ class FrameTestCase(unittest.TestCase):
     # File path
     TEST_FILE_DIR = 'tests/test_files/DissectorTests'
     PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
-    WRONG_TEST_FILE_DIR = 'tests/test_files/WrongFilesForTests'
-    EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
-    NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
 
     # Create a struct checker object
     STRUCT_CHECKER = StructureChecker()
@@ -54,6 +49,12 @@ class FrameTestCase(unittest.TestCase):
             CoAP
         ]
     }
+    FRAME_VALUES = {
+        'id': int,
+        'ts': float,
+        'error': Exception,
+        'value': Value
+    }
 
     # #################### Utility functions #########################
 
@@ -76,35 +77,9 @@ class FrameTestCase(unittest.TestCase):
         """
             Initialize the frame list from the valid pcap file
         """
-        self.frames = Frame.create_list(PcapReader(self.PCAP_FILE))
+        self.frames = Capture(self.PCAP_FILE).frames
 
     # #################### Tests functions #########################
-
-    # ##### create_list
-    def test_create_list(self):
-
-        # Check values got
-        self.assertEqual(len(self.frames), 5)
-        for frame in self.frames:
-            self.assertEqual(type(frame), Frame)
-
-    def test_create_list_not_pcap(self):
-
-        # Execute the create_list from a valid file
-        with self.assertRaises(PcapError):
-            frames = Frame.create_list(PcapReader(self.NOT_A_PCAP_FILE))
-
-    def test_create_list_empty(self):
-
-        # Execute the create_list from a valid file
-        with self.assertRaises(PcapError):
-            frames = Frame.create_list(PcapReader(self.EMPTY_PCAP_FILE))
-
-    def test_create_list_filename(self):
-
-        # Execute the create_list from a valid file
-        with self.assertRaises(InputParameterError):
-            frames = Frame.create_list(self.PCAP_FILE)
 
     # ##### __repr__
     def test___repr__(self):
@@ -174,15 +149,6 @@ class FrameTestCase(unittest.TestCase):
 
             # Get the elements that shouldn't be in it
             should_not_be = self.list_diff(self.FRAMES_PROTOCOL[i], protocols)
-
-            # Check that every non present protocol
-            # for s in should_not_be:
-            #     self.assertIn(s, protocols)
-            #     self.assertNotIn(s, self.FRAMES_PROTOCOL[i])
-            #     self.assertEqual(
-            #         len(should_not_be) + len(self.FRAMES_PROTOCOL[i]),
-            #         len(protocols)
-            #     )
 
             # Check that those which shouldn't be present really aren't
             for non_present in should_not_be:
@@ -351,6 +317,57 @@ class FrameTestCase(unittest.TestCase):
             # Filter on none protocol
             with self.assertRaises(TypeError):
                 filtered, ignored = Frame.filter_frames(self.frames, protocol)
+
+    # ##### __getitem__
+    def test___getitem__values(self):
+
+        # For each value name, check its type
+        for value_name, value_type in self.FRAME_VALUES.items():
+
+            if value_name != 'error':
+                for frame in self.frames:
+                    self.assertIsInstance(frame[value_name], value_type)
+            else:  # 'error' field can be None
+                for frame in self.frames:
+                    if frame[value_name]:
+                        self.assertIsInstance(frame[value_name], value_type)
+
+    def test___getitem__unknown_value(self):
+
+        for frame in self.frames:
+            with self.assertRaises(AttributeError):
+                test = frame['unknown']
+
+    def test___getitem__none(self):
+        for frame in self.frames:
+            with self.assertRaises(InputParameterError):
+                test = frame[None]
+
+    def test___getitem__type_but_not_a_protocol(self):
+
+        # Check that the protocols are in the correct frame
+        for frame in self.frames:
+
+            # Expect the exception
+            with self.assertRaises(InputParameterError):
+                test = frame[Frame]
+
+    def test___getitem__higher_classes(self):
+
+        # Check that the protocols are in the correct frame
+        for frame in self.frames:
+
+            # Expect the exception
+            with self.assertRaises(InputParameterError):
+                check = frame[InetPacketValue]
+
+            # Expect the exception
+            with self.assertRaises(InputParameterError):
+                check = frame[PacketValue]
+
+            # Expect the exception
+            with self.assertRaises(InputParameterError):
+                check = frame[Value]
 
 
 # #################### Main run the tests #########################
