@@ -51,6 +51,28 @@ Verify
 Client displays the response
 
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(
+                type='con',
+                code='get',
+                opt=Opt(CoAPOptionUriQuery(), superset=True)
+            )
+        ]
+
     def run (self):
         if self.urifilter:
             uri_query_opt = self.uri ("/query?first=1&second=2")
@@ -60,10 +82,10 @@ Client displays the response
         self.match ("client", CoAP (code = "get",
                         type = "con",
                         opt = uri_query_opt))
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.get_coap_layer()["opt"]))
+        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.coap["opt"]))
 
         if len (opts) < 2:
             self.set_verdict ("inconc", "expect multiple UriQuery options")

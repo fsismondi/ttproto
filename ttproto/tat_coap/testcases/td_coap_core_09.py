@@ -68,16 +68,31 @@ Verify
 Client displays the response
 Note: Steps 3 and 4 may occur out-of-order
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+        """
+        return [
+            CoAP(type='con', code='get')
+        ]
+
     def run(self):
         self.match ("client", CoAP (type="con", code = "get",
                         opt = self.uri ("/separate")))
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
         self.next()
 
         #FIXME: may be out-of-order
-        if not self.match	("server", CoAP (type="ack", code=0, mid=CMID, pl = b"")):
+        if not self.match("server", CoAP (type="ack", code=0, mid=CMID, pl = b"")):
             raise self.Stop()
 
         self.next()
@@ -89,7 +104,7 @@ Note: Steps 3 and 4 may occur out-of-order
                         pl = Not (b''),
                         opt= Opt(CoAPOptionContentFormat())
                 ), "fail")
-        SMID = self.get_coap_layer()["mid"]
+        SMID = self.coap["mid"]
 
         self.next()
 

@@ -57,6 +57,26 @@ Server sends response containing:
 Verify
 Client displays the received response
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+        """
+        return [
+            CoAP(
+                type='non',
+                code='post',
+                pl=Not(b''),
+                opt=Opt(CoAPOptionContentFormat())
+            )
+        ]
+
     def run (self):
         self.match ("client", CoAP (type="non", code="post",
                         opt = self.uri ("/test")))
@@ -64,7 +84,7 @@ Client displays the received response
                         pl  = Not (b''),
                         opt = Opt (CoAPOptionContentFormat()),
                 ), "fail")
-        CTOK = self.get_coap_layer()["tok"]
+        CTOK = self.coap["tok"]
 
         self.next()
 

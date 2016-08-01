@@ -48,9 +48,26 @@ Server sends four-byte RST response containing:
 Verify 	Client displays that the "Ping" was successful
     """
 
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(type='con', code=0)  # Step 1
+        ]
+
     def run (self):
         self.match ("client", CoAP (type="con", code = 0,tok=b"",pl=b""))
-        CMID = self.get_coap_layer()["mid"]
+        CMID = self.coap["mid"]
 
         self.next_skip_ack()
 

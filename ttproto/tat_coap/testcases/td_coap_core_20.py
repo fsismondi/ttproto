@@ -85,13 +85,28 @@ Verify
 Client displays the response
 """
 
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+        """
+        return [
+            CoAP(type='con', code='get'),  # Step 1
+            CoAP(type='con', code='get')   # Step 5
+        ]
+
     def run(self):
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format") if self.urifilter else Opt(CoAPOptionAccept())))
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(CoAPOptionAccept(0))))
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
         self.next_skip_ack()
 
@@ -104,12 +119,10 @@ Client displays the response
 
         self.next_skip_ack(optional=True)
 
-        self.chain()
-
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format", CoAPOptionAccept(41))))
-        CMID2 = self.get_coap_layer()["mid"]
-        CTOK2 = self.get_coap_layer()["tok"]
+        CMID2 = self.coap["mid"]
+        CTOK2 = self.coap["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")

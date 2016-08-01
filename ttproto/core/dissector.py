@@ -413,14 +413,16 @@ class Frame:
             )
 
 
-def add_subclass(impl_list, new_class):
-    subclasses = new_class.__subclasses__()
-    # print(new_class.__name__ + ':')
-    # print(subclasses)
-    impl_list += subclasses
-    # print('#####################')
-    for subclass in subclasses:
-        add_subclass(impl_list, subclass)
+# NOTE: This may ben needed if we change the protocol getter system
+#
+# def add_subclass(impl_list, new_class):
+#     subclasses = new_class.__subclasses__()
+#     # print(new_class.__name__ + ':')
+#     # print(subclasses)
+#     impl_list += subclasses
+#     # print('#####################')
+#     for subclass in subclasses:
+#         add_subclass(impl_list, subclass)
 
 
 class Dissector:
@@ -469,6 +471,8 @@ class Dissector:
             cls.__implemented_protocols += PacketValue.__subclasses__()
             cls.__implemented_protocols += InetPacketValue.__subclasses__()
 
+            # NOTE: This may ben needed if we change the protocol getter system
+            #
             # add_subclass(cls.__implemented_protocols, PacketValue)
 
             # Remove the InetPacketValue class
@@ -583,11 +587,17 @@ class Capture:
     reader_extension = {
         '.pcap': PcapReader,
         '.dump': PcapReader,
-        # 'json': JsonReader  # An idea for later
+        # 'json': JsonReader  # NOTE: An idea for later
     }
 
     @typecheck
     def __init__(self, filename: str):
+        """
+        Initialize a capture only from its filename
+
+        :param filename: The file from which we will generate the frames
+        :type filename: str
+        """
         self._filename = filename
         self._frames = None
         self._malformed = None

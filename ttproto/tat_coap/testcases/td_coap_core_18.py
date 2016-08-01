@@ -54,6 +54,24 @@ and three options of type Location-Path, with the values (none of which contains
 Verify
 Client displays the response
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(type='con', code='post')
+        ]
+
     request_uri = "/test"
 
     def run (self):

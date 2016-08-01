@@ -54,6 +54,21 @@ Server sends response containing:
 Verify
 Client displays the response
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+        """
+        return [
+            CoAP(type='con', code='get')
+        ]
+
     def run (self):
         if self.urifilter:
             uri_path_opt = self.uri ("/seg1/seg2/seg3")
@@ -64,10 +79,10 @@ Client displays the response
                         type = "con",
                         opt = uri_path_opt))
 
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriPath)), self.get_coap_layer()["opt"]))
+        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriPath)), self.coap["opt"]))
 
         if len (opts) > 1:
             self.set_verdict ("pass", "multiple UriPath options")

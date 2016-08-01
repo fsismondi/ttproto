@@ -88,6 +88,25 @@ Server sends response containing:
 Verify
 Client displays the response
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(type='con', code='put'),  # Step 1
+            CoAP(type='con', code='put')   # Step 5
+        ]
+
     request_uri = "/create1"
 
     def run(self):
@@ -101,8 +120,8 @@ Client displays the response
                                        ),
                                        pl=Not(b"")))
 
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
         self.next_skip_ack()
 
@@ -116,7 +135,6 @@ Client displays the response
         self.next_skip_ack(optional=True)
 
         # Part B
-        self.chain()
 
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
@@ -125,8 +143,8 @@ Client displays the response
                                            CoAPOptionIfNoneMatch(),
                                        ),
                                        pl=Not(b"")))
-        CMID2 = self.get_coap_layer()["mid"]
-        CTOK2 = self.get_coap_layer()["tok"]
+        CMID2 = self.coap["mid"]
+        CTOK2 = self.coap["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")

@@ -55,6 +55,24 @@ Server sends response containing:
 Verify
 Client displays the response
 """
+
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(type='non', code='get')
+        ]
+
     def run (self):
         self.match ("client", CoAP (type="non", code = "get",
                     opt=self.uri("/separate")))
@@ -62,7 +80,7 @@ Client displays the response
         self.next()
 
         #FIXME: may be out-of-order
-        if self.get_coap_layer() in CoAP (type="ack"):
+        if self.coap in CoAP (type="ack"):
             self.set_verdict ("fail", "server must no send any ack")
             self.next()
 

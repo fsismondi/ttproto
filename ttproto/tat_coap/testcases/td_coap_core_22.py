@@ -169,6 +169,27 @@ Verify
 Client displays the response and the server did not update the content of the resource
 """
 
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(type='con', code='get'),  # Step 1
+            CoAP(type='con', code='put'),  # Step 4
+            CoAP(type='con', code='get'),  # Step 8
+            CoAP(type='con', code='put'),  # Step 12
+            CoAP(type='con', code='put')   # Step 16
+        ]
+
     def run(self):
         # Preamble
         # Step 2
@@ -177,8 +198,8 @@ Client displays the response and the server did not update the content of the re
                                            Opt(CoAPOptionUriPath("validate")),
                                            NoOpt(CoAPOptionETag()),
                                        )))
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
         self.next_skip_ack()
 
@@ -191,13 +212,13 @@ Client displays the response and the server did not update the content of the re
                                               pl=Not(b""))):
             raise self.Stop()
 
-        ETAG1 = self.get_coap_layer()["opt"][CoAPOptionETag]["val"]
-        pl_3 = self.get_coap_layer()["pl"]
+        ETAG1 = self.coap["opt"][CoAPOptionETag]["val"]
+        pl_3 = self.coap["pl"]
 
         self.next_skip_ack(optional=True)
 
         # Part A
-        self.chain()
+
         # Step 5
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
@@ -206,15 +227,15 @@ Client displays the response and the server did not update the content of the re
                                            CoAPOptionIfMatch(ETAG1),
                                        ),
                                        pl=All(Not(b""), Not(pl_3))))
-        CMID2 = self.get_coap_layer()["mid"]
-        CTOK2 = self.get_coap_layer()["tok"]
+        CMID2 = self.coap["mid"]
+        CTOK2 = self.coap["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
         if CTOK2 is Not(b''):
             if CTOK2 == CTOK:
                 self.set_verdict("fail", "Token should be different")
-        pl_5 = self.get_coap_layer()["pl"]
+        pl_5 = self.coap["pl"]
         self.next_skip_ack()
 
         # Step 6
@@ -233,12 +254,11 @@ Client displays the response and the server did not update the content of the re
         # Part B
 
         # Step 9
-        self.chain()
 
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(CoAPOptionUriPath("validate"))))
-        CMID3 = self.get_coap_layer()["mid"]
-        CTOK3 = self.get_coap_layer()["tok"]
+        CMID3 = self.coap["mid"]
+        CTOK3 = self.coap["tok"]
         if CMID3 is Not(b''):
             if CMID3 == CMID or CMID3 == CMID2:
                 self.set_verdict("fail", "Message ID should be different")
@@ -257,12 +277,10 @@ Client displays the response and the server did not update the content of the re
                                               pl=pl_5)):
             raise self.Stop()
 
-        ETAG2 = self.get_coap_layer()["opt"][CoAPOptionETag]["val"]
-        pl_10 = self.get_coap_layer()["pl"]
+        ETAG2 = self.coap["opt"][CoAPOptionETag]["val"]
+        pl_10 = self.coap["pl"]
 
         self.next_skip_ack(optional=True)
-
-        self.chain()
 
         # Step 13
         self.match("client", CoAP(type="con", code="put",
@@ -271,15 +289,15 @@ Client displays the response and the server did not update the content of the re
                                            CoAPOptionContentFormat(),
                                        ),
                                        pl=All(Not(b""), Not(pl_3), Not(pl_10))))
-        CMID4 = self.get_coap_layer()["mid"]
-        CTOK4 = self.get_coap_layer()["tok"]
+        CMID4 = self.coap["mid"]
+        CTOK4 = self.coap["tok"]
         if CMID4 is Not(b''):
             if CMID4 == CMID or CMID4 == CMID2 or CMID4 == CMID3:
                 self.set_verdict("fail", "Message ID should be different")
         if CTOK4 is Not(b''):
             if CTOK4 == CTOK or CTOK4 == CTOK2 or CTOK4 == CTOK3:
                 self.set_verdict("fail", "Token should be different")
-        pl_13 = self.get_coap_layer()["pl"]
+        pl_13 = self.coap["pl"]
 
         self.next_skip_ack()
 
@@ -295,8 +313,6 @@ Client displays the response and the server did not update the content of the re
 
         self.next_skip_ack(optional=True)
 
-        self.chain()
-
         # Step 17
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
@@ -305,8 +321,8 @@ Client displays the response and the server did not update the content of the re
                                            CoAPOptionIfMatch(ETAG2),
                                        ),
                                        pl=All(Not(b""), Not(pl_13))))
-        CMID5 = self.get_coap_layer()["mid"]
-        CTOK5 = self.get_coap_layer()["tok"]
+        CMID5 = self.coap["mid"]
+        CTOK5 = self.coap["tok"]
         if CMID5 is Not(b''):
             if CMID5 == CMID or CMID5 == CMID2 or CMID5 == CMID3 or CMID5 == CMID4:
                 self.set_verdict("fail", "Message ID should be different")

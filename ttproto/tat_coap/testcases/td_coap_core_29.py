@@ -92,7 +92,7 @@ Response contains:
                                               pl=Not(b""))):
             raise self.Stop()
 
-        maxage = self.get_coap_layer()["opt"][CoAPOptionMaxAge]["val"]
+        maxage = self.coap["opt"][CoAPOptionMaxAge]["val"]
 
         ts = self._frame.ts
 

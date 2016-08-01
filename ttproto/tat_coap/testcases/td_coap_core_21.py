@@ -117,6 +117,26 @@ Verify
 Client displays the response
 """
 
+    @classmethod
+    @typecheck
+    def stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+
+        .. note::
+            Check the number/value of the uri query options or not?
+        """
+        return [
+            CoAP(type='con', code='get'),  # Step 1
+            CoAP(type='con', code='get'),  # Step 5
+            CoAP(type='con', code='put'),  # Step 9
+            CoAP(type='con', code='get')   # Step 10
+        ]
+
     def run(self):
         # Part A
         self.match("client", CoAP(type="con", code="get",
@@ -124,8 +144,8 @@ Client displays the response
                                            Opt(CoAPOptionUriPath("validate")),
                                            NoOpt(CoAPOptionETag()),
                                        )))
-        CMID = self.get_coap_layer()["mid"]
-        CTOK = self.get_coap_layer()["tok"]
+        CMID = self.coap["mid"]
+        CTOK = self.coap["tok"]
 
         self.next_skip_ack()
 
@@ -137,21 +157,20 @@ Client displays the response
                                               pl=Not(b""))):
             raise self.Stop()
 
-        ETAG1 = self.get_coap_layer()["opt"][CoAPOptionETag]["val"]
-        pl3 = self.get_coap_layer()["pl"]
+        ETAG1 = self.coap["opt"][CoAPOptionETag]["val"]
+        pl3 = self.coap["pl"]
 
         self.next_skip_ack(optional=True)
 
         # Part B
-        self.chain()
 
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(
                                            CoAPOptionUriPath("validate"),
                                            CoAPOptionETag(ETAG1),
                                        )))
-        CMID2 = self.get_coap_layer()["mid"]
-        CTOK2 = self.get_coap_layer()["tok"]
+        CMID2 = self.coap["mid"]
+        CTOK2 = self.coap["tok"]
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
@@ -171,7 +190,6 @@ Client displays the response
         self.next_skip_ack(optional=True)
 
         # Part C
-        self.chain()
 
         if self.match("client", CoAP(code="put"), None):
             # allow an update from another client running on the same host
@@ -179,15 +197,13 @@ Client displays the response
             self.match("server", CoAP(code=2.04))
             self.next_skip_ack(optional=True)
 
-            self.chain()
-
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(
                                            CoAPOptionUriPath("validate"),
                                            CoAPOptionETag(ETAG1),
                                        )))
-        CMID3 = self.get_coap_layer()["mid"]
-        CTOK3 = self.get_coap_layer()["tok"]
+        CMID3 = self.coap["mid"]
+        CTOK3 = self.coap["tok"]
         if CMID3 is Not(b''):
             if CMID3 == CMID or CMID3 == CMID2:
                 self.set_verdict("fail", "Message ID should be different")

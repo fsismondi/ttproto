@@ -111,6 +111,7 @@ class AnalyzerTestCase(unittest.TestCase):
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
                 print('verifying test case: ' + tc[0])
+                print('Filename used is %s' % filename)
                 tc_name, verdict, _, log, excepts = self.analyzer.analyse(filename, tc[0])
                 self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + verdict + '\nLOG:\n' + log)
 
