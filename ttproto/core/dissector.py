@@ -31,8 +31,9 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import sys
-import inspect
+
+from collections import OrderedDict
+from os import path
 
 from ttproto.core.exceptions import Error
 from ttproto.core.data import Data, Message
@@ -43,14 +44,12 @@ from ttproto.core.lib.all import *
 from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
-from collections import OrderedDict
-from os import path
-
 
 __all__ = [
     'is_protocol',
     'is_layer_value',
     'ProtocolNotFound',
+    'ReaderError',
     'Frame',
     'Dissector',
     'Capture'
@@ -458,13 +457,6 @@ class Dissector:
 
         # Singleton pattern
         if cls.__implemented_protocols is None:
-
-            # # First way to do it, can get name and class objects
-            #   The problem is that it takes options classes too
-            # for name, obj in inspect.getmembers(sys.modules[__name__]):
-            # for name, obj in inspect.getmembers(ttproto.core.lib.inet.all):
-            #     if inspect.isclass(obj) and issubclass(obj, PacketValue):
-            #         print(name)
 
             # Just directly get the PacketValue and InetPacketValue subclasses
             cls.__implemented_protocols = []

@@ -38,17 +38,14 @@ interoperability testing
 
 import glob
 import inspect
-import itertools
 import sys
 import traceback
 
 from os import path
-from collections import OrderedDict
 from importlib import import_module
 
-from ttproto.core.data import (Data, get_type, store_data, DifferenceList,
-                               Value)
-from ttproto.core.dissector import Frame, Capture, ReaderError, is_protocol
+from ttproto.core.data import Data, DifferenceList, Value
+from ttproto.core.dissector import Frame, Capture, is_protocol
 from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
@@ -123,11 +120,14 @@ def is_tc_subclass(arg) -> bool:
     return all((
         arg is not None,
         type(arg) == type,
-        issubclass(arg, TestCase)
+        inspect.isclass(arg) and issubclass(arg, TestCase)
     ))
 
 
 class FilterError(Error):
+    """
+    The error thrown when an error occurs into Filter object during its run
+    """
     pass
 
 
@@ -159,12 +159,12 @@ class Verdict:
     __values = ('none', 'pass', 'inconc', 'fail', 'aborted', 'error')
 
     @typecheck
-    def __init__(self, initial_value: optional(int) = None):
+    def __init__(self, initial_value: optional(str) = None):
         """
         Initialize the verdict value to 'none' or to the given value
 
         :param initial_value: The initial value to put the verdict on
-        :type initial_value: optional(int)
+        :type initial_value: optional(str)
         """
         self.__value = 0
         self.__message = ''
@@ -230,7 +230,7 @@ class Verdict:
         return self.__values[self.__value]
 
 
-class Node(object):
+class Node:
     """
     The Node object which represents an node communicating with another one
     on a conversation. It can be a node, a client/server, an host, etc.
@@ -305,7 +305,17 @@ class Conversation(list):
 
         :param nodes: The communicating nodes
         :type nodes: [Node]
+
+        :raises ValueError: If not enough nodes received (less than 2)
         """
+
+        # If not enough nodes
+        if len(nodes) < 2:
+            raise ValueError(
+                'At least 2 nodes are required but %d received'
+                %
+                len(nodes)
+            )
 
         # The node dictionnary
         self._nodes = {}
@@ -702,9 +712,9 @@ class Filter:
         # Ignored is defined a little lower
 
         # If there is no stimuli at all
-        if len(stimulis) == 0:
+        if not stimulis or len(stimulis) == 0:
             raise ValueError('Expected at least one stimuli')
-        if len(nodes) < 2:
+        if not nodes or len(nodes) < 2:
             raise ValueError('Expected at least two nodes')
 
         # Get the frames filtered on the protocol

@@ -2005,12 +2005,6 @@ class WebserverTestCase(unittest.TestCase):
         resp = resp.json()
         self.STRUCT_CHECKER.check_error_response(resp)
 
-        # Check the content is an error message
-        self.assertEqual(
-            resp['error'],
-            "Expected 'pcap_file' to be a non empty pcap file"
-        )
-
     def test_dissector_dissect_file_pcap_file_in_file_but_not_a_pcap_file(self):
 
         # Get the path of the pcap file
@@ -2039,12 +2033,6 @@ class WebserverTestCase(unittest.TestCase):
         resp = resp.json()
         self.STRUCT_CHECKER.check_error_response(resp)
 
-        # Check the content is an error message
-        self.assertEqual(
-            resp['error'],
-            "Expected 'pcap_file' to be a non empty pcap file"
-        )
-
     def test_dissector_dissect_file_empty_pcap_file(self):
 
         # Get the path of the pcap file
@@ -2072,12 +2060,6 @@ class WebserverTestCase(unittest.TestCase):
         # Check data headers
         resp = resp.json()
         self.STRUCT_CHECKER.check_error_response(resp)
-
-        # Check the content is an error message
-        self.assertEqual(
-            resp['error'],
-            "Expected 'pcap_file' to be a non empty pcap file"
-        )
 
     def test_dissector_dissect_file_unknown_protocol_selection(self):
 

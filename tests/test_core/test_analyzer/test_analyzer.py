@@ -37,6 +37,8 @@ class AnalyzerTestCase(unittest.TestCase):
         """
         self.analyzer = Analyzer(self.TEST_ENV)
 
+    # #################### Tests functions #########################
+
     # ##### __init__
     def test___init__(self):
 
