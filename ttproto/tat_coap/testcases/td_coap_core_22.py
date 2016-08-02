@@ -171,7 +171,7 @@ Client displays the response and the server did not update the content of the re
 
     @classmethod
     @typecheck
-    def stimulis(cls) -> list_of(Value):
+    def get_stimulis(cls) -> list_of(Value):
         """
         Get the stimulis of this test case. This has to be be implemented into
         each test cases class.

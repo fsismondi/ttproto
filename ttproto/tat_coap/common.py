@@ -32,13 +32,9 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 import re
-import socket
-import sys
-import time
 
 from .templates import *
-from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation
-from ttproto.core.dissector import Frame
+from ttproto.core.analyzer import TestCase, is_protocol, Node
 from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
@@ -65,7 +61,7 @@ class CoAPTestCase(TestCase):
 
     @classmethod
     @typecheck
-    def protocol(cls) -> is_protocol:
+    def get_protocol(cls) -> is_protocol:
         """
         Get the protocol corresponding to this test case. This has to be
         implemented into the protocol's common test case class.
@@ -77,58 +73,22 @@ class CoAPTestCase(TestCase):
 
     @classmethod
     @typecheck
-    def generate_nodes(cls, frame: Frame) -> (Node, Node):
+    def get_nodes(cls) -> list_of(Node):
         """
-        Generate nodes from the first frame of the conversation. This has to be
-        implemented into the protocol's common test case class.
+        Get the nodes of this test case. This has to be be implemented into
+        each test cases class.
 
-        :return: The generated nodes
-        :rtype: (Node, Node)
+        :return: The nodes of this TC
+        :rtype: [Node]
+
+        .. note:: For CoAP it is simpler so we can define this function in this
+                  class but for other protocols it can happend that we have to
+                  define this inside each TC
         """
-        assert CoAP in frame
-        return Node('client', frame['src']), Node('server', frame['dst'])
-
-    @classmethod
-    @typecheck
-    def frame_node(cls, frame: Frame) -> Node:
-        """
-        Get the node corresponding to a frame. This has to be implemented into
-        the protocol's common test case class.
-
-        :return: The generated node of this frame
-        :rtype: Node
-        """
-        assert CoAP in frame
-        if frame[CoAP].is_request():
-            return Node('client', frame['src'])
-        elif frame[CoAP].is_response():
-            return Node('server', frame['src'])
-        else:  # Code == 0 (EMPTY)
-            assert frame[CoAP]['code'] == 0
-
-            # FIXME: How can we detect a server from a client in this case?
-
-            if frame[CoAP]['type'] == 0 or frame[CoAP]['type'] == 2:
-                return Node('client', frame['src'])
-            else:
-                return Node('server', frame['src'])
-
-    @typecheck
-    def check_node(self, node_name: str) -> bool:
-        """
-        Function to check if the sender of a frame is the correct one. This has
-        to be implemented into the protocol's common test case class.
-
-        :param node_name: The name of the sender
-        :type node_name: str
-
-        :return: True if the sender's name and value corresponds
-        :rtype: bool
-        """
-        return all((
-            node_name == self._node.name,
-            self._node.value == self._frame['src']
-        ))
+        return [
+            Node('client', UDP(dport=5683)),
+            Node('server', UDP(sport=5683))
+        ]
 
     @typecheck
     def next_skip_ack(self, optional: bool = False):

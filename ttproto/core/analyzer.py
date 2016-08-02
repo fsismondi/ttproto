@@ -55,9 +55,13 @@ from ttproto.core.lib.all import *
 
 
 __all__ = [
-    'Analyzer',
+    'FilterError',
     'Verdict',
-    'TestCase'
+    'Node',
+    'Conversation',
+    'TestCase',
+    'Filter',
+    'Analyzer'
 ]
 
 
@@ -232,18 +236,18 @@ class Node(object):
     on a conversation. It can be a node, a client/server, an host, etc.
 
     It will have a name (ex: client, node1, iut2, border_router) and an
-    associated value, like an IP or a MAC address for example.
+    associated template, like an IP or a MAC address template for example.
     """
 
     @typecheck
-    def __init__(self, name: str, value: anything):
+    def __init__(self, name: str, value: Value):
         """
         Create an node object
 
         :param name: The name of this node
-        :param value: The value associated to this node
+        :param value: The template associated to this node
         :type name: str
-        :type value: anything
+        :type value: Value
         """
         self._name = name
         self._value = value
@@ -274,10 +278,10 @@ class Node(object):
     @property
     def value(self):
         """
-        Function to get the value
+        Function to get the template
 
-        :return: The value
-        :rtype: anything
+        :return: The template
+        :rtype: Value
         """
         return self._value
 
@@ -289,29 +293,32 @@ class Node(object):
 class Conversation(list):
     """
     A class representing a conversation. A conversation is an ordered exchange
-    of messages between two nodes.
+    of messages between at least two nodes.
 
-    It is composed by the two nodes and a list of (Node, Frames) tuple.
-    Frame list mostly begin whith a request followed by one or many responses.
+    It is composed by the nodes and a list of Frames.
     """
 
     @typecheck
-    def __init__(self, nodes: (Node, Node)):
+    def __init__(self, nodes: list_of(Node)):
         """
         Function to initialize a Conversation object with its nodes
 
         :param nodes: The communicating nodes
-        :type nodes: (Node, Node)
+        :type nodes: [Node]
         """
-        self._nodes = nodes
+
+        # The node dictionnary
+        self._nodes = {}
+        for node in nodes:
+            self._nodes[node.name] = node.value
 
     @property
     def nodes(self):
         """
-        Function to get the nodes as a binary tuple
+        Function to get the nodes as a dictionnary
 
-        :return: The tuple of nodes
-        :rtype: (Node, Node)
+        :return: The dictionnary of nodes
+        :rtype: {str: Template}
         """
         return self._nodes
 
@@ -356,14 +363,32 @@ class TestCase:
 
         # Prepare the parameters
         self._conversations = conv_list
+        self._nodes = None
         self._iter = None
         self._frame = None
-        self._node = None
 
         # Prepare the values to return after a TC is finished
         self._text = ''
         self._failed_frames = []
         self._exceptions = []
+
+    @typecheck
+    def __not_matching(
+        self,
+        verdict: optional(is_verdict),
+        message: str
+    ) -> bool:
+
+        # Put the verdict
+        if verdict:
+            self.set_verdict(verdict, message)
+
+        # Add this frame's id to the failed frames
+        self._failed_frames.append(self._frame['id'])
+        self.log('ENCOUNTER FAILED FRAME! : %d' % self._frame['id'])
+
+        # Always return False
+        return False
 
     @typecheck
     def match(
@@ -390,79 +415,76 @@ class TestCase:
         :rtype: bool
         """
 
-        # If we're expecting a frame but it's the end of conversation
-        if not self._iter:
-            self.set_verdict(
+        # Check the node
+        try:
+            node_value = self._nodes[node_name]
+        except KeyError:
+            return self.__not_matching(
                 verdict,
-                'Expected %s from the %s' % (template, node_name)
+                'Expected %s from the %s but this node was not found'
+                %
+                (template, node_name)
             )
 
-            # Add this frame's id to the failed frames
-            self._failed_frames.append(self._frame['id'])
-            self.log('ENCOUNTER FAILED FRAME! : %d' % self._frame['id'])
+        # If no more frames for this conversation
+        if not self._iter:
+            return self.__not_matching(
+                verdict,
+                'Expected %s from the %s but premature end of conversation'
+                %
+                (template, node_name)
+            )
 
-            # Frame value didn't match the template (error in fact)
-            return False
+        # The node isn't matching
+        if not node_value.match(self._frame[node_value.__class__]):
+            return self.__not_matching(
+                verdict,
+                'Expected %s from the %s but the sender is not matching'
+                %
+                (template, node_name)
+            )
 
-        # Check the node
-        if not self.check_node(node_name):
+        # Here check the template passed
+        protocol = self.get_protocol()
+        diff_list = DifferenceList(self._frame[protocol])
 
-            # If a verdict is given, put it
+        # If it matches
+        if template.match(self._frame[protocol], diff_list):
             if verdict is not None:
-                self.set_verdict(
-                    verdict,
-                    'Expected %s from the %s' % (template, node_name)
-                )
+                self.set_verdict('pass', 'Match: %s' % template)
+
+        # If it didn't match
+        else:
+            if verdict is not None:
+                def callback(path, mismatch, describe):
+                    self.log(
+                        "             %s: %s\n"
+                        %
+                        (
+                            ".".join(path),
+                            type(mismatch).__name__
+                        )
+                    )
+                    self.log(
+                        "                 got:        %s\n"
+                        %
+                        mismatch.describe_value(describe)
+                    )
+                    self.log(
+                        "                 expected: %s\n"
+                        %
+                        mismatch.describe_expected(describe)
+                    )
+
+                # Put the verdict
+                self.set_verdict(verdict, 'Mismatch: %s' % template)
+                diff_list.describe(callback)
 
             # Add this frame's id to the failed frames
             self._failed_frames.append(self._frame['id'])
-            self.log('ENCOUNTER FAILED FRAME! : %d' % self._frame['id'])
 
-            # Frame value didn't match the template (error in fact)
+            # Frame value didn't match the template
             return False
-
-        # Check the template
-        if template:
-            protocol = self.protocol()
-            diff_list = DifferenceList(self._frame[protocol])
-
-            # If it matches
-            if template.match(self._frame[protocol], diff_list):
-                if verdict is not None:
-                    self.set_verdict('pass', 'Match: %s' % template)
-
-            # If it didn't match
-            else:
-                if verdict is not None:
-                    def callback(path, mismatch, describe):
-                        self.log(
-                            "             %s: %s\n"
-                            %
-                            (
-                                ".".join(path),
-                                type(mismatch).__name__
-                            )
-                        )
-                        self.log(
-                            "                 got:        %s\n"
-                            %
-                            mismatch.describe_value(describe)
-                        )
-                        self.log(
-                            "                 expected: %s\n"
-                            %
-                            mismatch.describe_expected(describe)
-                        )
-
-                    # Put the verdict
-                    self.set_verdict(verdict, 'Mismatch: %s' % template)
-                    diff_list.describe(callback)
-
-                # Add this frame's id to the failed frames
-                self._failed_frames.append(self._frame['id'])
-
-                # Frame value didn't match the template
-                return False
 
         # If it matched, return True
         return True
@@ -476,8 +498,8 @@ class TestCase:
         :type optional: bool
         """
         try:
-            self._node, self._frame = next(self._iter)
-            self.log((self._node, self._frame))
+            self._frame = next(self._iter)
+            self.log(self._frame)
 
         except StopIteration:
             if not optional:
@@ -536,7 +558,9 @@ class TestCase:
             try:
 
                 # Get an iterator on the current conversation frames
+                # and its list of nodes
                 self._iter = iter(conv)
+                self._nodes = conv.nodes
                 self.next()
 
                 # Run the test case
@@ -606,10 +630,13 @@ class TestCase:
 
     @classmethod
     @typecheck
-    def protocol(cls) -> is_protocol:
+    def get_protocol(cls) -> is_protocol:
         """
         Get the protocol corresponding to this test case. This has to be
         implemented into the protocol's common test case class.
+
+        This protocol's layer will be the one on which we will do the matching
+        so it should be the lowest one that we are testing.
 
         :return: The protocol on which this TC will occur
         :rtype: Value
@@ -618,51 +645,25 @@ class TestCase:
 
     @classmethod
     @typecheck
-    def generate_nodes(cls, frame: Frame) -> (Node, Node):
-        """
-        Generate nodes from the first frame of the conversation. This has to be
-        implemented into the protocol's common test case class.
-
-        :return: The generated nodes
-        :rtype: (Node, Node)
-        """
-        raise NotImplementedError()
-
-    @classmethod
-    @typecheck
-    def frame_node(cls, frame: Frame) -> Node:
-        """
-        Get the node corresponding to a frame. This has to be implemented into
-        the protocol's common test case class.
-
-        :return: The generated node of this frame
-        :rtype: Node
-        """
-        raise NotImplementedError()
-
-    @typecheck
-    def check_node(self, node_name: str) -> bool:
-        """
-        Function to check if the sender of a frame is the correct one. This has
-        to be implemented into the protocol's common test case class.
-
-        :param node_name: The name of the sender
-        :type node_name: str
-
-        :return: True if the sender's name and value corresponds
-        :rtype: bool
-        """
-        raise NotImplementedError
-
-    @classmethod
-    @typecheck
-    def stimulis(cls) -> list_of(Value):
+    def get_stimulis(cls) -> list_of(Value):
         """
         Get the stimulis of this test case. This has to be be implemented into
         each test cases class.
 
         :return: The stimulis of this TC
         :rtype: [Value]
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @typecheck
+    def get_nodes(cls) -> list_of(Node):
+        """
+        Get the nodes of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The nodes of this TC
+        :rtype: [Node]
         """
         raise NotImplementedError()
 
@@ -683,16 +684,18 @@ class Filter:
         test case
 
         :param capture: The capture which will be filtered
-        :param testcase: The TC object to get the stimulis and the protocol
+        :param testcase: The TC object to get the stimulis, the nodes and the
+                         protocol
         :type capture: Capture
         :type testcase: type (subclass of TestCase)
 
-        :raises ValueError: If there is no stimuli given
+        :raises ValueError: If there is no stimuli given or not enough nodes
         """
 
         # Get informations from the test case
-        stimulis = testcase.stimulis()
-        protocol = testcase.protocol()
+        stimulis = testcase.get_stimulis()
+        protocol = testcase.get_protocol()
+        nodes = testcase.get_nodes()
 
         # The attribute to store conversations
         self._conversations = []
@@ -701,6 +704,8 @@ class Filter:
         # If there is no stimuli at all
         if len(stimulis) == 0:
             raise ValueError('Expected at least one stimuli')
+        if len(nodes) < 2:
+            raise ValueError('Expected at least two nodes')
 
         # Get the frames filtered on the protocol
         frames, self._ignored = Frame.filter_frames(capture.frames, protocol)
@@ -721,8 +726,8 @@ class Filter:
                     if current_conversation:
                         self._conversations.append(current_conversation)
 
-                    # Generate the two nodes as binary tuple
-                    nodes = testcase.generate_nodes(frame)
+                    # Get the nodes as a list of nodes
+                    nodes = testcase.get_nodes()
 
                     # And create the new one
                     current_conversation = Conversation(nodes)
@@ -732,8 +737,7 @@ class Filter:
 
             # If there is a current_conversation, put the frame into it
             if current_conversation:
-                node = testcase.frame_node(frame)
-                current_conversation.append((node, frame))
+                current_conversation.append(frame)
 
             # If no conversation pending
             else:
