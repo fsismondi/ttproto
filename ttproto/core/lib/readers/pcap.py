@@ -45,7 +45,7 @@ _map_link_type = {
     pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
     pure_pcapy.DLT_NULL: NullLoopback,
     pure_pcapy.DLT_IEEE802_15_4: Ieee802154,
-    # pure_pcapy.DLT_IEEE802_15_4_NOFCS: Ieee802154,
+    pure_pcapy.DLT_IEEE802_15_4_NOFCS: Ieee802154,
     # pure_pcapy.DLT_IEEE802_15_4_NONASK_PHY: Ieee802154
 }
 

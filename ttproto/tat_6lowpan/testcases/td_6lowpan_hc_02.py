@@ -114,10 +114,6 @@ Notes           * The feature tests check that best compression is used (but
 
         :return: The nodes of this TC
         :rtype: [Node]
-
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
         """
         return [
             Node('EUT1', ICMPv6EchoRequest()),
