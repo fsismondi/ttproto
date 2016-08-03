@@ -1,7 +1,7 @@
 import unittest
 
 from collections import OrderedDict
-from ttproto.core.dissector import (Capture, Dissector, Frame, ReaderError)
+from ttproto.core.dissector import Capture, Dissector, Frame, ReaderError
 from ttproto.core.lib.all import *
 from tests.test_tools.struct_checker import StructureChecker
 from ttproto.core.packet import Value, PacketValue

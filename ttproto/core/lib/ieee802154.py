@@ -141,7 +141,7 @@ class Ieee802154 (
 
         ("Payload",         "pl",   Value,      ""),
 
-        ('FCS',     'fcs',  HexUInt16, 0)
+        # ('FCS',     'fcs',  HexUInt16, 0)
     ],
 
     id = 1, # Data frame by default
@@ -271,33 +271,33 @@ class Ieee802154 (
                 bin_slice = decode_field ("pl", bin_slice)
             """
 
-        try:
-            bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
-        except Exception as e:
-            # FIXME: The FCS field throw an IndexError for the non ICMPv6 packs
-            #        Here is the traceback given:
-            """
-            Traceback (most recent call last):
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/ieee802154.py", line 426, in _decode_message
-            bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/ieee802154.py", line 368, in decode_field
-            v, sl = f.tag.decode_message (t if t else f.type, sl, None)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/packet.py", line 302, in decode_message
-            return type_.decode_message(bin_slice)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
-            result = method(*args, **kwargs)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/inet/meta.py", line 98, in decode_message
-            sl = bin_slice[:nb]
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
-            result = method(*args, **kwargs)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/data.py", line 699, in __getitem__
-            right_bits=self.__compute_offset(index.stop, None, True)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
-            result = method(*args, **kwargs)
-            File "/home/tandriam/Workspace/ttproto/ttproto/core/data.py", line 659, in __compute_offset
-            raise IndexError()
-            """
-            pass
+        # try:
+        #     bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
+        # except Exception as e:
+        #     # FIXME: The FCS field throw an IndexError for the non ICMPv6 packs
+        #     #        Here is the traceback given:
+        #     """
+        #     Traceback (most recent call last):
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/ieee802154.py", line 426, in _decode_message
+        #     bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/ieee802154.py", line 368, in decode_field
+        #     v, sl = f.tag.decode_message (t if t else f.type, sl, None)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/packet.py", line 302, in decode_message
+        #     return type_.decode_message(bin_slice)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
+        #     result = method(*args, **kwargs)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/inet/meta.py", line 98, in decode_message
+        #     sl = bin_slice[:nb]
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
+        #     result = method(*args, **kwargs)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/data.py", line 699, in __getitem__
+        #     right_bits=self.__compute_offset(index.stop, None, True)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
+        #     result = method(*args, **kwargs)
+        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/data.py", line 659, in __compute_offset
+        #     raise IndexError()
+        #     """
+        #     pass
 
         return cls (*values), bin_slice
 

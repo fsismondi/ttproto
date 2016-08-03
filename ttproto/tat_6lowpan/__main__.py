@@ -1,6 +1,6 @@
 """
-Invokes webserver to be run at 127.0.0.1:2080
-Should be run as: python3 -m ttproto.tat_coap
+Invokes webserver to be run at 127.0.0.1:2082
+Should be run as: python3 -m ttproto.tat_6lowpan
 """
 from .webserver import *
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
 def reopen_log_file(signum, frame):
     global log_file
-    log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
+    log_file = open(os.path.join(LOGDIR, "tat-6lowpan-webserver.log"), "a")
 
 
 reopen_log_file(None, None)
@@ -33,7 +33,7 @@ reopen_log_file(None, None)
 # -> reopen the log file upon SIGHUP
 signal.signal(signal.SIGHUP, reopen_log_file)
 
-server = http.server.HTTPServer(("0.0.0.0", 2080), RequestHandler)
+server = http.server.HTTPServer(("0.0.0.0", 2082), RequestHandler)
 print('Server is ready')
 while not __shutdown:
     try:
