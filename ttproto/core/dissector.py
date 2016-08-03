@@ -412,16 +412,14 @@ class Frame:
             )
 
 
-# NOTE: This may ben needed if we change the protocol getter system
-#
-# def add_subclass(impl_list, new_class):
-#     subclasses = new_class.__subclasses__()
-#     # print(new_class.__name__ + ':')
-#     # print(subclasses)
-#     impl_list += subclasses
-#     # print('#####################')
-#     for subclass in subclasses:
-#         add_subclass(impl_list, subclass)
+def add_subclass(impl_list, new_class):
+    subclasses = new_class.__subclasses__()
+    # print(new_class.__name__ + ':')
+    # print(subclasses)
+    impl_list += subclasses
+    # print('#####################')
+    for subclass in subclasses:
+        add_subclass(impl_list, subclass)
 
 
 class Dissector:
@@ -460,15 +458,14 @@ class Dissector:
 
             # Just directly get the PacketValue and InetPacketValue subclasses
             cls.__implemented_protocols = []
-            cls.__implemented_protocols += PacketValue.__subclasses__()
-            cls.__implemented_protocols += InetPacketValue.__subclasses__()
+            # cls.__implemented_protocols += PacketValue.__subclasses__()
+            # cls.__implemented_protocols += InetPacketValue.__subclasses__()
 
             # NOTE: This may ben needed if we change the protocol getter system
-            #
-            # add_subclass(cls.__implemented_protocols, PacketValue)
+            add_subclass(cls.__implemented_protocols, PacketValue)
 
             # Remove the InetPacketValue class
-            cls.__implemented_protocols.remove(InetPacketValue)
+            # cls.__implemented_protocols.remove(InetPacketValue)
 
         # Return the singleton value
         return cls.__implemented_protocols

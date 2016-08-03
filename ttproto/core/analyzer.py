@@ -45,7 +45,8 @@ from os import path
 from importlib import import_module
 
 from ttproto.core.data import Data, DifferenceList, Value
-from ttproto.core.dissector import Frame, Capture, is_protocol
+from ttproto.core.dissector import (Frame, Capture, is_protocol,
+                                    ProtocolNotFound)
 from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
@@ -446,12 +447,20 @@ class TestCase:
             )
 
         # The node isn't matching
-        if not node_value.match(self._frame[node_value.__class__]):
+        try:
+            if not node_value.match(self._frame[node_value.__class__]):
+                return self.__not_matching(
+                    verdict,
+                    'Expected %s from the %s but the sender is not matching'
+                    %
+                    (template, node_name)
+                )
+        except ProtocolNotFound:
             return self.__not_matching(
                 verdict,
-                'Expected %s from the %s but the sender is not matching'
+                'Expected %s from the %s but the %s protocol is not found'
                 %
-                (template, node_name)
+                (template, node_value.__class__.__name__, node_name)
             )
 
         # Here check the template passed

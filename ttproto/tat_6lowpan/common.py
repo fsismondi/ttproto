@@ -55,4 +55,4 @@ class SixlowpanTestCase(TestCase):
         :return: The protocol on which this TC will occur
         :rtype: Value
         """
-        return SixLowpan
+        return SixLowpanIPHC
