@@ -35,9 +35,9 @@
 from ttproto.core.typecheck import *
 
 
-class Reader:
+class CaptureReader:
     """
-    The Reader interface class which will allow us to read capture files
+    The CaptureReader interface class which will allow us to read capture files
     """
 
     @typecheck

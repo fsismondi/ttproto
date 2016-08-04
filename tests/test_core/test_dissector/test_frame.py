@@ -196,15 +196,6 @@ class FrameTestCase(unittest.TestCase):
             with self.assertRaises(InputParameterError):
                 check = Value in frame
 
-    def test___contains__options_not_a_protocol(self):
-
-        # Check that the protocols are in the correct frame
-        for frame in self.frames:
-
-            # Expect the exception
-            with self.assertRaises(InputParameterError):
-                check = CoAPOptionLocationQuery in frame
-
     # ##### filter_frames
     def test_filter_frames(self):
 
@@ -267,14 +258,6 @@ class FrameTestCase(unittest.TestCase):
             filtered, ignored = Frame.filter_frames(self.frames, PacketValue)
         with self.assertRaises(InputParameterError):
             filtered, ignored = Frame.filter_frames(self.frames, Value)
-
-    def test_filter_frames_options_not_a_protocol(self):
-
-        with self.assertRaises(InputParameterError):
-            filtered, ignored = Frame.filter_frames(
-                self.frames,
-                CoAPOptionLocationQuery
-            )
 
     def test_filter_frames_only_single_frame(self):
 

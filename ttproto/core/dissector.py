@@ -35,7 +35,7 @@
 from collections import OrderedDict
 from os import path
 
-from ttproto.core.exceptions import Error
+from ttproto.core.exceptions import Error, ReaderError
 from ttproto.core.data import Data, Message
 from ttproto.core.list import ListValue
 from ttproto.core.packet import Value, PacketValue
@@ -49,7 +49,6 @@ __all__ = [
     'is_protocol',
     'is_layer_value',
     'ProtocolNotFound',
-    'ReaderError',
     'Frame',
     'Dissector',
     'Capture'
@@ -96,13 +95,6 @@ def is_layer_value(arg: anything) -> bool:
 class ProtocolNotFound(Error):
     """
     Error thrown when a protocol isn't found in a frame
-    """
-    pass
-
-
-class ReaderError(Error):
-    """
-    Exception class for when the reader can't process the file
     """
     pass
 
@@ -465,7 +457,7 @@ class Dissector:
             add_subclass(cls.__implemented_protocols, PacketValue)
 
             # Remove the InetPacketValue class
-            # cls.__implemented_protocols.remove(InetPacketValue)
+            cls.__implemented_protocols.remove(InetPacketValue)
 
         # Return the singleton value
         return cls.__implemented_protocols
@@ -692,7 +684,7 @@ if __name__ == "__main__":
     #         'NON_EXISTENT.pcap'
     #     )))
     #     capt.frames
-    # except Capture.ReaderError:
+    # except ReaderError:
     #     print('File not found correctly managed')
     # try:
     #     capt = Capture('/'.join((
@@ -702,7 +694,7 @@ if __name__ == "__main__":
     #         'not_a_pcap_file.dia'
     #     )))
     #     capt.frames
-    # except Capture.ReaderError:
+    # except ReaderError:
     #     print('Reader not found correctly managed')
     # try:
     #     capt = Capture('/'.join((
@@ -712,7 +704,7 @@ if __name__ == "__main__":
     #         'empty_pcap.pcap'
     #     )))
     #     capt.frames
-    # except Capture.ReaderError:
+    # except ReaderError:
     #     print('Reader error correctly managed (empty file)')
     # try:
     #     capture.frames = []

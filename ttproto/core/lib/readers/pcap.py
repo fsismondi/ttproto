@@ -38,7 +38,7 @@ from ttproto.core.typecheck import *
 from ttproto.core.lib.ethernet import Ethernet
 from ttproto.core.lib.encap import *
 from ttproto.core.lib.ieee802154 import Ieee802154
-from ttproto.core.lib.readers.reader import Reader
+from ttproto.core.lib.readers.capture_reader import CaptureReader
 
 _map_link_type = {
     pure_pcapy.DLT_EN10MB: Ethernet,
@@ -50,28 +50,10 @@ _map_link_type = {
 }
 
 
-class PcapReader(Reader):
-
-    # NOTE: The decode type was never used in ttproto
-    #
-    # @typecheck
-    # def __init__(self, file: str, decode_type: optional(is_type) = None):
-
-    #     self.__pcap_file = open(file, "rb")
-    #     try:
-    #         self.__reader = pure_pcapy.Reader(self.__pcap_file)
-    #     except Exception as e:
-    #         self.__pcap_file.close()
-    #         raise e
-    #     # print("datalink: %d" % self.__reader.datalink())
-
-    #     if not decode_type:
-    #         try:
-    #             decode_type = _map_link_type[self.__reader.datalink()]
-    #         except KeyError:
-    #             decode_type = bytes
-
-    #     self.__decode_type = get_type(decode_type)
+class PcapReader(CaptureReader):
+    """
+    Reader class for pcap capture files
+    """
 
     @typecheck
     def __init__(self, file: str):

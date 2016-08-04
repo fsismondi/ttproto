@@ -54,9 +54,6 @@ class DissectorTestCase(unittest.TestCase):
         for prot in implemented_protocols:
             self.assertTrue(issubclass(prot, PacketValue))
 
-        # Check that the InetPacketValue isn't there
-        self.assertNotIn(InetPacketValue, implemented_protocols)
-
     # ##### summary
     def test_summary_without_filtering(self):
 
