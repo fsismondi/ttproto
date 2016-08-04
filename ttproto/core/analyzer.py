@@ -1069,6 +1069,7 @@ if __name__ == "__main__":
     #
     # print(Analyzer('tat_coap').import_test_cases())
     # print(Analyzer('tat_6tisch').import_test_cases())
+    print(Analyzer('tat_privacy').import_test_cases())
     # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
     # print(Analyzer('tat_coap').import_test_cases([
     #     'TD_COAP_CORE_01',
