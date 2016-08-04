@@ -47,12 +47,21 @@ class SixlowpanTestCase(TestCase):
 
     @classmethod
     @typecheck
-    def get_protocol(cls) -> is_protocol:
+    def get_test_purpose(cls) -> str:
         """
-        Get the protocol corresponding to this test case. This has to be
-        implemented into the protocol's common test case class.
+        Get the purpose of this test case
 
-        :return: The protocol on which this TC will occur
-        :rtype: Value
+        :return: The purpose of this test case
+        :rtype: str
         """
-        return SixLowpanIPHC
+        if cls.__doc__:
+            save = False
+            for line in cls.__doc__.splitlines():
+                if line.startswith('Objective'):
+                    ret = line.split('*')[1]
+                    save = True
+                elif line.startswith('Configuration'):
+                    return ' '.join(ret.split())
+                elif save:
+                    ret += line
+        return ''

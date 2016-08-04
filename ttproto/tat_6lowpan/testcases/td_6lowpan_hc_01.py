@@ -57,15 +57,15 @@ Notes           * The feature tests check that best compression is used (but thi
 
     @classmethod
     @typecheck
-    def get_stimulis(cls) -> list_of(Value):
+    def get_protocol(cls) -> is_protocol:
         """
-        Get the stimulis of this test case. This has to be be implemented into
-        each test cases class.
+        Get the protocol corresponding to this test case. This has to be
+        implemented into the protocol's common test case class.
 
-        :return: The stimulis of this TC
-        :rtype: [Value]
+        :return: The protocol on which this TC will occur
+        :rtype: Value
         """
-        return [ICMPv6(type=128)]
+        return SixLowpanIPHC
 
     @classmethod
     @typecheck
@@ -85,6 +85,18 @@ Notes           * The feature tests check that best compression is used (but thi
             Node('EUT1', ICMPv6(type=128)),
             Node('EUT2', ICMPv6(type=129))
         ]
+
+    @classmethod
+    @typecheck
+    def get_stimulis(cls) -> list_of(Value):
+        """
+        Get the stimulis of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The stimulis of this TC
+        :rtype: [Value]
+        """
+        return [ICMPv6(type=128)]
 
     def run(self):
         self.match("EUT1", ICMPv6(type=128))

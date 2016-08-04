@@ -458,9 +458,9 @@ class TestCase:
         except ProtocolNotFound:
             return self.__not_matching(
                 verdict,
-                'Expected %s from the %s but the %s protocol is not found'
+                'Expected %s into protocol %s but it was not found'
                 %
-                (template, node_value.__class__.__name__, node_name)
+                (template, node_value.__class__.__name__)
             )
 
         # Here check the template passed

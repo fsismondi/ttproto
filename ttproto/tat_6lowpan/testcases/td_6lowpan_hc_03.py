@@ -3,21 +3,20 @@
 from ..common import *
 
 
-class TD_6LOWPAN_HC_02 (SixlowpanTestCase):
+class TD_6LOWPAN_HC_03 (SixlowpanTestCase):
     """
 ====================        ===================================================
-Identifier                  TD_6LoWPAN_HC_02
+Identifier                  TD_6LoWPAN_HC_03
 ====================        ===================================================
 Objective                   * Check that EUTs correctly handle compressed
-                              6LoWPAN packets (16-bit link-local, hop limit=64)
+                              6LoWPAN packets (EUI-64 link-local, hop limit=63)
 Configuration               * Node - Node
 References                  * RFC 6282 section 3
 Pre-test conditions         * Header compression is enabled on both EUT1 and
                               EUT2
-                            * EUT1 and EUT2 are configured to use 16-bit short
-                              address
+                            * EUT1 and EUT2 are configured to use EUI-64
                             * EUT1 and EUT2 are configured with a default hop
-                              limit of 64
+                              limit of 63
 ====================        ===================================================
 
 =============== =========    ========    ======================================
@@ -27,7 +26,7 @@ Test Sequence   Step         Type        Description
                                            EUT2's link-local address
                                          * ICMP payload = 4 bytes, total IPv6
                                            size 52 bytes
-                                         * Hop Limit is 64, no traffic class or
+                                         * Hop Limit is 63, no traffic class or
                                            flow label is being used
 
 .. ts           1            Check       EUT1 sends a compressed 6LoWPAN packet
@@ -41,8 +40,8 @@ Test Sequence   Step         Type        Description
                                          and flow label fields are compressed
                                          away
 
-.. ts           4            Feature     In IP_HC, HLIM (HL) is 10 and the hop
-                                         limit field is compressed away
+.. ts           4            Feature     In IP_HC, HLIM (HL) is 00 and the hop
+                                         limit field is carried in-line
 
 .. ts           5            Feature     In IP_HC, SAC=0, SAM=11; DAC=0; DAM=11
 
@@ -60,8 +59,8 @@ Test Sequence   Step         Type        Description
                                          and flow label fields are compressed
                                          away
 
-.. ts           10           Feature     In IP_HC, HLIM (HL) is 10 and the hop
-                                         limit field is compressed away
+.. ts           10           Feature     In IP_HC, HLIM (HL) is 00 and the hop
+                                         limit field is carried in-line
 
 .. ts           11           Feature     In IP_HC, SAC=0, SAM=11; DAC=0; DAM=11
 
@@ -131,7 +130,7 @@ Notes           * The feature tests check that best compression is used (but
                     IPv6(
                         tc=0x00,
                         fl=0x00000,
-                        hl=64,
+                        hl=63,
                         pl=ICMPv6EchoRequest(
                             # pl=Length(bytes, 4)
                         )
@@ -160,7 +159,7 @@ Notes           * The feature tests check that best compression is used (but
         ))
 
         # TS 4
-        self.match('EUT1', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT1', SixLowpanIPHC(hl=0b00, ihl=UInt8()))
 
         # TS 5
         self.match('EUT1', SixLowpanIPHC(
@@ -191,7 +190,7 @@ Notes           * The feature tests check that best compression is used (but
         ))
 
         # TS 10
-        self.match('EUT2', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT2', SixLowpanIPHC(hl=0b00, ihl=UInt8()))
 
         # TS 11
         self.match('EUT2', SixLowpanIPHC(
