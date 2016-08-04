@@ -2057,7 +2057,8 @@ class Message:
                 self.__value.freeze()  # TODO: move this into decode_message ?
 
                 if binslice.get_bit_length():
-                    self.__value.display()
+                    # NOTE: Put this as comment otherwise the process is too long
+                    # self.__value.display()
                     raise exceptions.Error("Buffer not fully decoded (%d bits remaining)" % binslice.get_bit_length())
             except Exception as e:
                 raise exceptions.DecodeError(data_or_binary, expected_type, e)
