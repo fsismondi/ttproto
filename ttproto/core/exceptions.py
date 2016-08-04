@@ -108,6 +108,13 @@ class UnknownField (Error):
 	def __init__ (self, value, field_name):
 		Error.__init__ (self, "value of type %s has no field named %s" % (type (value).__name__, repr(field_name)))
 
+
+class ReaderError(Error):
+    """
+    Exception class for when a reader can't process the file
+    """
+    pass
+
 class Location:
 	"""A class to help locating encoding or decoding errors.
 

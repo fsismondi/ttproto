@@ -92,6 +92,9 @@ class Ethernet (
 	def describe (self, desc):
 		desc.hw_src = self["src"]
 		desc.hw_dst = self["dst"]
+
+		# Added by 
+
 		if not self.describe_payload (desc):
 			#TODO: integrate the map into the InetFormat
 

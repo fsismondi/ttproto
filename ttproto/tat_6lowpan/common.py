@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-#   (c) 2012  Universite de Rennes 1
+#  (c) 2012  Universite de Rennes 1
 #
 # Contact address: <t3devkit@irisa.fr>
 #
@@ -31,8 +31,37 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from ttproto.lib.ethernet	import *
-from ttproto.lib.ieee802154	import *
-from ttproto.lib.encap	import *
-from ttproto.lib.inet.all	import *
+import re
 
+from ttproto.core.analyzer import TestCase, is_protocol, Node
+from ttproto.core.templates import All, Not, Any, Length
+from ttproto.core.typecheck import *
+from ttproto.core.lib.all import *
+from urllib import parse
+
+
+class SixlowpanTestCase(TestCase):
+    """
+    The test case extension representing a Sixlowpan test case
+    """
+
+    @classmethod
+    @typecheck
+    def get_test_purpose(cls) -> str:
+        """
+        Get the purpose of this test case
+
+        :return: The purpose of this test case
+        :rtype: str
+        """
+        if cls.__doc__:
+            save = False
+            for line in cls.__doc__.splitlines():
+                if line.startswith('Objective'):
+                    ret = line.split('*')[1]
+                    save = True
+                elif line.startswith('Configuration'):
+                    return ' '.join(ret.split())
+                elif save:
+                    ret += line
+        return ''

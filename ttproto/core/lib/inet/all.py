@@ -31,14 +31,16 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from ttproto.core.lib.inet.basics	import *
-from ttproto.core.lib.inet.ipv4		import *
-from ttproto.core.lib.inet.ipv6		import *
-from ttproto.core.lib.inet.icmpv6	import *
-from ttproto.core.lib.inet.udp		import *
-from ttproto.core.lib.inet.sixlowpan	import *
-from ttproto.core.lib.inet.sixlowpan_nd	import *
-from ttproto.core.lib.inet.sixlowpan_hc	import *
+from ttproto.core.lib.inet.basics import *
+from ttproto.core.lib.inet.coap import *
+from ttproto.core.lib.inet.coap_link_format import *
+from ttproto.core.lib.inet.icmpv6 import *
+from ttproto.core.lib.inet.ip import *
+from ttproto.core.lib.inet.ipv4 import *
+from ttproto.core.lib.inet.ipv6 import *
+from ttproto.core.lib.inet.meta import *
+from ttproto.core.lib.inet.sixlowpan import *
+from ttproto.core.lib.inet.sixlowpan_hc import *
+from ttproto.core.lib.inet.sixlowpan_nd import *
 from ttproto.core.lib.inet.sixlowpan_port import *
-from ttproto.core.lib.inet.coap		import *
-from ttproto.core.lib.inet.coap_link_format	import *
+from ttproto.core.lib.inet.udp import *

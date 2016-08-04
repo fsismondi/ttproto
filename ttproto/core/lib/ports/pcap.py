@@ -31,72 +31,10 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import atexit, threading, tempfile, os, signal, socket, time, weakref, traceback
-
-from ttproto.core.typecheck import *
 from ttproto.core.data import *
-from ttproto.core import exceptions, port, clock
-
-from ttproto.core.lib.ethernet import Ethernet
-from ttproto.core.lib.encap import *
-
-import ttproto.utils.pure_pcapy as pure_pcapy
-
-_map_link_type = {
-    pure_pcapy.DLT_EN10MB: Ethernet,
-    pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
-    pure_pcapy.DLT_NULL: NullLoopback,
-}
-
-
-class PcapReader:
-    @typecheck
-    def __init__(self, file: str, decode_type: optional(is_type) = None):
-
-        self.file_opened = open(file, "rb")
-        self.__reader = pure_pcapy.Reader(self.file_opened)
-        # print ("datalink: %d" % self.__reader.datalink())
-
-        if not decode_type:
-            try:
-                decode_type = _map_link_type[self.__reader.datalink()]
-            except KeyError:
-                decode_type = bytes
-
-        self.__decode_type = get_type(decode_type)
-
-    def __del__(self):
-        self.file_opened.close()
-
-    def next(self):
-
-        h, b = self.__reader.next()
-
-        if not h:
-            return None
-
-        # timestamp
-        ts = h.getts()
-        ts = ts[0] + ts[1] * 0.000001
-
-        # decode the packet
-        try:
-            m = Message(b, self.__decode_type)
-            exc = None
-        except Exception as e:
-            m = Message(b)
-            exc = e
-
-        return ts, m, exc
-
-    def __iter__(self):
-        while True:
-            f = self.next()
-
-            if not f:
-                return
-
-            yield f
+from ttproto.core.typecheck import *
+from ttproto.core import port, clock
+from ttproto.utils import pure_pcapy
 
 
 class PcapPort(port.RawMessagePort):

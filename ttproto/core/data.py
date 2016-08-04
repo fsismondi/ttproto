@@ -2057,7 +2057,8 @@ class Message:
                 self.__value.freeze()  # TODO: move this into decode_message ?
 
                 if binslice.get_bit_length():
-                    self.__value.display()
+                    # NOTE: Put this as comment otherwise the process is too long
+                    # self.__value.display()
                     raise exceptions.Error("Buffer not fully decoded (%d bits remaining)" % binslice.get_bit_length())
             except Exception as e:
                 raise exceptions.DecodeError(data_or_binary, expected_type, e)
@@ -2144,7 +2145,9 @@ class MessageDescription:
         >>> str(md)
         '[fe80::1234                       -> fe80::5678                      ] UDP 1024 -> domain'
     """
-    __attrs = ("hw_src", "src", "hw_dst", "dst", "info")
+
+    # Added "src_port" and "dst_port" after e6dc5f5b0b77c6bb987374e757e14e9362191c1e
+    __attrs = ("hw_src", "src", "hw_dst", "dst", "src_port", "dst_port", "info")
 
     @typecheck
     def __init__(self, message: Message):
