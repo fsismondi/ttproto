@@ -373,10 +373,9 @@ class Frame:
 
         # If a protocol, fetch the layer value
         else:
-
             # Check that the layer is a correct protocol
             if not is_protocol(item):
-                raise TypeError(prot.__name__ + ' is not a protocol class')
+                raise TypeError(item.__name__ + ' is not a protocol class')
 
             # Get current value
             value = self.__msg.get_value()
@@ -587,9 +586,6 @@ class Capture:
     def filename(self):
         return self._filename
 
-    @filename.setter
-    def filename(self, value):
-        raise AttributeError('Setting filename attribute is not allowed')
 
     @property
     def frames(self):
@@ -597,9 +593,6 @@ class Capture:
             self.__process_file()
         return self._frames
 
-    @frames.setter
-    def frames(self, value):
-        raise AttributeError('Setting frames attribute is not allowed')
 
     @property
     def malformed(self):
@@ -607,9 +600,6 @@ class Capture:
             self.__process_file()
         return self._malformed
 
-    @malformed.setter
-    def malformed(self, value):
-        raise AttributeError('Setting malformed attribute is not allowed')
 
     def __process_file(self):
         """
@@ -660,7 +650,7 @@ class Capture:
 
 if __name__ == "__main__":
     # dis = Dissector(
-    #     'tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    #     'tests/test_dumps/coap/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
     # )
     # print(dis.summary())
     # print('#####')

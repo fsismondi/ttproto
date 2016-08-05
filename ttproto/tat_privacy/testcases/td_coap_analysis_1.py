@@ -3,7 +3,11 @@
 from ..common import *
 
 
+<<<<<<< HEAD
 class TD_COAP_ANALYSIS_1 (CoAPAnalysis):
+=======
+class TD_COAP_ANALYSIS_1 (CoapPrivacyTestCase):
+>>>>>>> master
     """
     Identifier:
         TD_COAP_ANALYSIS_1
@@ -28,9 +32,16 @@ class TD_COAP_ANALYSIS_1 (CoAPAnalysis):
         """
         return []
 
+<<<<<<< HEAD
     @classmethod
     @typecheck
     def get_nodes(cls) -> list_of(Node):
+=======
+
+    @classmethod
+    @typecheck
+    def get_nodes_identification_patterns(cls) -> list_of(Node):
+>>>>>>> master
         """
         Get the nodes of this test case. This has to be be implemented into
         each test cases class.
@@ -49,6 +60,10 @@ class TD_COAP_ANALYSIS_1 (CoAPAnalysis):
 
     def run(self):
         while(self.next):
+<<<<<<< HEAD
             if self.match('client', None ):
+=======
+            if self.match('client', CoAP(), 'pass' ):
+>>>>>>> master
                 print("passed :d")
 

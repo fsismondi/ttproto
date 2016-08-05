@@ -5,7 +5,7 @@ from ttproto.core.lib.inet.coap import *
 from os import getcwd, path
 import json
 
-DUMPS_DIR = '/tests/test_dumps'
+DUMPS_DIR = '/tests/test_dumps/coap'
 
 class AnalysisTestCase(unittest.TestCase):
     """
@@ -17,7 +17,7 @@ class AnalysisTestCase(unittest.TestCase):
 
     """
 
-    PCAP_test = getcwd() + '/tests/test_dumps/coap_get_migled_with_tcp_traffic.pcap'
+    PCAP_test = getcwd() + '/tests/test_dumps/coap/coap_get_migled_with_tcp_traffic.pcap'
 
     def test_basic_dissect_pcap_list_return_four_elements_coap(self):
         a = basic_dissect_pcap_to_list(self.PCAP_test, CoAP)

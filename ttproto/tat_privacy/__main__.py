@@ -21,6 +21,32 @@ if __name__ == "__main__":
             if e.errno != errno.EEXIST:
                 raise
 
+<<<<<<< HEAD
+=======
+    print(
+         Analyzer('tat_privacy').analyse(
+             '/'.join((
+                 'tests',
+                 'test_dumps',
+                 '_'.join((
+                     'TD',
+                     'COAP',
+                     'CORE',
+                     '07',
+                     'FAIL',
+                     'No',
+                     'CoAPOptionContentFormat',
+                     'plus',
+                     'random',
+                     'UDP',
+                     'messages.pcap'
+                 ))
+             )),
+             'TD_COAP_ANALYSIS_1'
+         )
+     )
+
+>>>>>>> master
 
 def reopen_log_file(signum, frame):
     global log_file
