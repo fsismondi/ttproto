@@ -18,7 +18,7 @@ class FilterTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # The files used here
-    TEST_FILE_DIR = 'tests/test_dumps'
+    TEST_FILE_DIR = 'tests/test_dumps/coap'
     CORE_02 = TEST_FILE_DIR + '/TD_COAP_CORE_02_PASS.pcap'
     CORE_02_MULTIPLE = TEST_FILE_DIR + '/TD_COAP_CORE_02_MULTIPLETIMES.pcap'
     NESTED_CONV = TEST_FILE_DIR + '/03_20_04_20_07.pcap'

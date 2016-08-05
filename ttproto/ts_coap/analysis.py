@@ -780,8 +780,8 @@ def dissect_pcap_to_list(filename, protocol_selection=None):
 if __name__ == "__main__":
 
     import pprint,json
-    PCAP_test2 = getcwd()+ "/tests/test_dumps/TD_COAP_CORE_01_PASS.pcap"
-    PCAP_test3 = getcwd() + "/tests/test_dumps/coap_get_migled_with_tcp_traffic.pcap"
+    PCAP_test2 = getcwd()+ "/tests/test_dumps/coap/TD_COAP_CORE_01_PASS.pcap"
+    PCAP_test3 = getcwd() + "/tests/test_dumps/coap/coap_get_migled_with_tcp_traffic.pcap"
 
 
 

@@ -373,10 +373,9 @@ class Frame:
 
         # If a protocol, fetch the layer value
         else:
-
             # Check that the layer is a correct protocol
             if not is_protocol(item):
-                raise TypeError(prot.__name__ + ' is not a protocol class')
+                raise TypeError(item.__name__ + ' is not a protocol class')
 
             # Get current value
             value = self.__msg.get_value()
@@ -651,7 +650,7 @@ class Capture:
 
 if __name__ == "__main__":
     # dis = Dissector(
-    #     'tests/test_dumps/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
+    #     'tests/test_dumps/coap/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
     # )
     # print(dis.summary())
     # print('#####')

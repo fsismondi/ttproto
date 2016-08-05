@@ -21,7 +21,7 @@ class AnalyzerTestCase(unittest.TestCase):
     UNKNOWN_TEST_CASE_ID = 'TD_COAP_CORE_42'
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps'
+    TEST_FILE_DIR = 'tests/test_dumps/coap'
     PCAP_FILE = TEST_FILE_DIR + '/TD_COAP_CORE_01_PASS.pcap'
     WRONG_TEST_FILE_DIR = 'tests/test_files/WrongFilesForTests'
     EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
@@ -109,7 +109,7 @@ class AnalyzerTestCase(unittest.TestCase):
     # ##### analyse
     def test_analyse_basic_pass_PCAPs(self):
         for tc in self.analyzer.get_implemented_testcases():
-            filename = getcwd() + '/tests/test_dumps/' + tc[0] + '_PASS.pcap'
+            filename = getcwd() + '/tests/test_dumps/coap/' + tc[0] + '_PASS.pcap'
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
                 print('verifying test case: ' + tc[0])

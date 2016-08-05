@@ -22,7 +22,7 @@ if __name__ == "__main__":
                 raise
 
     from os import chdir, path, getcwd
-    PCAP_test2 = getcwd() + "/tests/test_dumps/TD_COAP_CORE_01_PASS.pcap"
+    PCAP_test2 = getcwd() + "/tests/test_dumps/coap/TD_COAP_CORE_01_PASS.pcap"
     from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
     c = Capture(PCAP_test2)
     print(c.frames)
