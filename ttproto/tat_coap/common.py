@@ -34,11 +34,13 @@
 import re
 
 from .templates import *
-from ttproto.core.analyzer import TestCase, is_protocol, Node
+from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
+from ttproto.core.dissector import Frame
 from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
 from urllib import parse
+from ttproto.core.exceptions import Error
 
 
 # CoAP constants
@@ -48,6 +50,19 @@ MAX_RETRANSMIT = 4
 MAX_TIMEOUT = 10 + round(
         (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT
     )
+
+
+class NoStimuliFoundForTestcase(Error):
+    """
+    Error raised when no stimuli was defined for the testcase
+    """
+    pass
+
+class FilterError(Error):
+    """
+    The error thrown when an error occurs into Filter object during its run
+    """
+    pass
 
 
 class CoAPTestCase(TestCase):
@@ -89,6 +104,114 @@ class CoAPTestCase(TestCase):
             Node('client', UDP(dport=5683)),
             Node('server', UDP(sport=5683))
         ]
+
+    @typecheck
+    def preprocess(self, capture: Capture) -> (list_of(Conversation), list_of(Frame)):
+        """
+        Preprocess and filter the frames of the capture into test case related conversations.
+
+        :param Capture: The capture which will be filtered/preprocessed
+        :return:
+        """
+
+        # TODO assert is subclass of TesCase?
+
+
+        # Get informations from the test case
+        # TODO get attrbutes stimuli , protocol under test, nodes patterns directly from child's atrib?
+        stimulis = self.get_stimulis()
+        print("stimulus:" + str(stimulis))
+        protocol = self.get_protocol()
+        print("protocol:" + str(protocol))
+        nodes = self.get_nodes_identification_patterns()
+        print("nodes:" + str(nodes))
+        conversations = []
+        ignored = []
+
+        # TODO what happens if no protocol declared on the test case?
+        if not nodes or len(nodes) < 2:
+            raise ValueError('Expected at leaset two nodes declaration from the test case')
+        if not protocol:
+            raise ValueError('Expected a protocol under test declaration from the test case')
+        # If there is no stimuli at all
+        if not stimulis or len(stimulis) == 0:
+            raise NoStimuliFoundForTestcase('Expected stimuli declaration from the test case')
+
+        # Get the frames filtered on the protocol
+        frames, ignored = Frame.filter_frames(capture.frames, protocol)
+
+        # Get a counter of the current stimuli
+        sti_count = 0
+        current_conversation = None
+        nb_stimulis = len(stimulis)
+        for frame in frames:
+
+            # If the frame matches a stimuli
+            if stimulis[sti_count].match(frame[protocol]):
+
+                # If it's the first stimuli
+                if sti_count == 0:
+
+                    # If there is already a conversation pending, save it
+                    if current_conversation:
+                        self._conversations.append(current_conversation)
+
+                    # Get the nodes as a list of nodes
+                    # TODO already done at begining. why isnde the iteeration?
+                    # nodes = testcase.get_nodes_identification_patterns()
+
+                    # And create the new one
+                    current_conversation = Conversation(nodes)
+
+                # If intermediate stimulis, just increment the counter
+                sti_count = (sti_count + 1) % nb_stimulis
+
+            # If there is a current_conversation, put the frame into it
+            if current_conversation:
+                current_conversation.append(frame)
+
+            # If no conversation pending
+            else:
+                ignored.append(frame)
+
+        # At the end, if there is a current conversation pending, close it
+        if current_conversation:
+
+            # If not all stimulis were consumed
+            if sti_count != 0:
+                raise FilterError(
+                    'Not all stimulis were consumed, %d left and next one should have been %s'
+                    %
+                    (
+                        nb_stimulis - sti_count,
+                        stimulis[sti_count]
+                    )
+                )
+
+            # Close the current conversation by adding it to list
+            conversations.append(current_conversation)
+
+        return conversations, ignored
+
+        # @property
+        # def conversations(self):
+        #     """
+        #     Function to get the conversations as a list
+        #
+        #     :return: The lsit of conversation
+        #     :rtype: [Conversation]
+        #     """
+        #     return self._conversations
+        #
+        # @property
+        # def ignored(self):
+        #     """
+        #     Function to get the ignored frames as a list
+        #
+        #     :return: The ignored frames that were filtered
+        #     :rtype: [Frame]
+        #     """
+        #     return self._ignored
 
     @typecheck
     def next_skip_ack(self, optional: bool = False):

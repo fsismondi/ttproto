@@ -45,20 +45,17 @@ from os import path
 from importlib import import_module
 
 from ttproto.core.data import Data, DifferenceList, Value
-from ttproto.core.dissector import (Frame, Capture, is_protocol,
-                                    ProtocolNotFound)
+from ttproto.core.dissector import Frame, Capture, is_protocol, ProtocolNotFound
 from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
 
 
 __all__ = [
-    'FilterError',
     'Verdict',
     'Node',
     'Conversation',
     'TestCase',
-    'Filter',
     'Analyzer'
 ]
 
@@ -123,19 +120,6 @@ def is_tc_subclass(arg) -> bool:
         type(arg) == type,
         inspect.isclass(arg) and issubclass(arg, TestCase)
     ))
-
-
-class FilterError(Error):
-    """
-    The error thrown when an error occurs into Filter object during its run
-    """
-    pass
-
-class NoStimuliFoundForTestcase(Error):
-    """
-    Error raised when no stimuli was defined for the testcase
-    """
-    pass
 
 
 class Verdict:
@@ -266,7 +250,7 @@ class Node:
         :return: String representation of this node
         :rtype: str
         """
-        return "Node named %s valued as %s" % (self._name, self._value)
+        return "Node \"%s\" identification pattern is: %s" % (self._name, self._value)
 
     @property
     def name(self):
@@ -343,7 +327,7 @@ class Conversation(list):
         return True
 
 
-class TestCase:
+class TestCase(object):
     """
     A class handling a test case for an analysis
     """
@@ -356,7 +340,7 @@ class TestCase:
         pass
 
     @typecheck
-    def __init__(self, conv_list: list_of(Conversation)):
+    def __init__(self, capture: Capture):
         """
         Initialize a test case, the only thing that it needs for
         interoperability testing is a list of frame
@@ -369,7 +353,9 @@ class TestCase:
         self._verdict = Verdict()
 
         # Prepare the parameters
-        self._conversations = conv_list
+        self._capture = capture
+        self._conversations = []
+        self._ignore_frames = []
         self._nodes = None
         self._iter = None
         self._frame = None
@@ -567,6 +553,14 @@ class TestCase:
         :rtype: (str, [int], str, [(type, Exception, traceback)])
         """
 
+        # Pre-process / filter conversations corresponding to the TC
+        self._conversations, self._ignored = self.preprocess(self._capture)
+
+        print("----conversations----")
+        print(self._conversations)
+        print("----ignored----")
+        print(self._ignored)
+
         # Run the test case for every conversations
         for conv in self._conversations:
 
@@ -658,6 +652,14 @@ class TestCase:
         """
         raise NotImplementedError()
 
+    def preprocess(self, capture: Capture):
+        """
+        Pre-process and filter the frames of the capture into test case related conversations. This has to be
+        implemented into the protocol's common test case class.
+        """
+        raise NotImplementedError()
+
+
     @classmethod
     @typecheck
     def get_stimulis(cls) -> list_of(Value):
@@ -682,122 +684,6 @@ class TestCase:
         """
         raise NotImplementedError()
 
-
-class Filter:
-    """
-    Filter class to filter and give conversations from frame list
-    """
-
-    @typecheck
-    def __init__(
-        self,
-        capture: Capture,
-        testcase: is_tc_subclass
-    ):
-        """
-        Initialize the Filter with the capture object and the corresponding
-        test case
-
-        :param capture: The capture which will be filtered
-        :param testcase: The TC object to get the stimulis, the nodes and the
-                         protocol
-        :type capture: Capture
-        :type testcase: type (subclass of TestCase)
-
-        :raises ValueError: If there is no stimuli given or not enough nodes
-        """
-
-        # Get informations from the test case
-        stimulis = testcase.get_stimulis()
-        protocol = testcase.get_protocol()
-        nodes = testcase.get_nodes_identification_patterns()
-
-        # The attribute to store conversations
-        self._conversations = []
-        # Ignored is defined a little lower
-
-        # TODO what happens if no protocol declared on the test case?
-        if not nodes or len(nodes) < 2:
-            raise ValueError('Expected at leaset two nodes declaration from the test case')
-        if not protocol:
-            raise ValueError('Expected a protocol under test declaration from the test case')
-        # If there is no stimuli at all
-        if not stimulis or len(stimulis) == 0:
-            raise NoStimuliFoundForTestcase('Expected stimuli declaration from the test case')
-
-
-        # Get the frames filtered on the protocol
-        frames, self._ignored = Frame.filter_frames(capture.frames, protocol)
-
-        # Get a counter of the current stimuli
-        sti_count = 0
-        current_conversation = None
-        nb_stimulis = len(stimulis)
-        for frame in frames:
-
-            # If the frame matches a stimuli
-            if stimulis[sti_count].match(frame[protocol]):
-
-                # If it's the first stimuli
-                if sti_count == 0:
-
-                    # If there is already a conversation pending, save it
-                    if current_conversation:
-                        self._conversations.append(current_conversation)
-
-                    # Get the nodes as a list of nodes
-                    nodes = testcase.get_nodes_identification_patterns()
-
-                    # And create the new one
-                    current_conversation = Conversation(nodes)
-
-                # If intermediate stimulis, just increment the counter
-                sti_count = (sti_count + 1) % nb_stimulis
-
-            # If there is a current_conversation, put the frame into it
-            if current_conversation:
-                current_conversation.append(frame)
-
-            # If no conversation pending
-            else:
-                self._ignored.append(frame)
-
-        # At the end, if there is a current conversation pending, close it
-        if current_conversation:
-
-            # If not all stimulis were consumed
-            if sti_count != 0:
-                raise FilterError(
-                    'Not all stimulis were consumed, %d left and next one should have been %s'
-                    %
-                    (
-                        nb_stimulis - sti_count,
-                        stimulis[sti_count]
-                    )
-                )
-
-            # Close the current conversation by adding it to list
-            self._conversations.append(current_conversation)
-
-    @property
-    def conversations(self):
-        """
-        Function to get the conversations as a list
-
-        :return: The lsit of conversation
-        :rtype: [Conversation]
-        """
-        return self._conversations
-
-    @property
-    def ignored(self):
-        """
-        Function to get the ignored frames as a list
-
-        :return: The ignored frames that were filtered
-        :rtype: [Frame]
-        """
-        return self._ignored
 
 class Analyzer:
     """
@@ -1025,25 +911,11 @@ class Analyzer:
             # Get the capture from the file
             capture = Capture(filename)
 
-            try:
-                # Get the conversations from the filter
-                frame_filter = Filter(capture, test_case_class)
 
-                # Initialize the TC with the list of conversations
-                test_case = test_case_class(frame_filter.conversations)
 
-            # Bypass of the filter if no stimuli is provided.
-            # Basically we create a conversation with all the frames on the capture
-            except NoStimuliFoundForTestcase:
-                protocol = test_case_class.get_protocol()
-                nodes = test_case_class.get_nodes_identification_patterns()
-                frames, _ = Frame.filter_frames(capture.frames, protocol)
-                conversations = []
-                c = Conversation(nodes)
-                c.append(frames)
-                conversations.append(c)
-                #print(conversations)
-                test_case = test_case_class(conversations)
+            # Initialize the TC with the list of conversations
+            test_case = test_case_class(capture)
+            verdict, rev_frames, extra, exceptions = test_case.run_test_case()
 
 
             # print('##### Ignored')
@@ -1051,7 +923,7 @@ class Analyzer:
             # print('#####')
 
             # Here we execute the test case and return the result
-            verdict, rev_frames, extra, exceptions = test_case.run_test_case()
+
             # print('##### Verdict given')
             # print(verdict)
             # print('#####')
@@ -1066,7 +938,7 @@ class Analyzer:
             # print('#####')
 
             # Return the result
-            return (tc_id, verdict, rev_frames, extra, exceptions)
+            return tc_id, verdict, rev_frames, extra, exceptions
 
 
 if __name__ == "__main__":
@@ -1075,12 +947,11 @@ if __name__ == "__main__":
     #
     # print(Analyzer('tat_coap').import_test_cases())
     # print(Analyzer('tat_6tisch').import_test_cases())
-<<<<<<< Updated upstream
-=======
+
     #print(Analyzer('tat_privacy').analyse()
 
     #print(Analyzer('tat_privacy').import_test_cases(['TD_COAP_CORE_24']))
->>>>>>> Stashed changes
+
     # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
     # print(Analyzer('tat_coap').import_test_cases([
     #     'TD_COAP_CORE_01',

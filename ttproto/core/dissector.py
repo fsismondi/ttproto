@@ -587,9 +587,6 @@ class Capture:
     def filename(self):
         return self._filename
 
-    @filename.setter
-    def filename(self, value):
-        raise AttributeError('Setting filename attribute is not allowed')
 
     @property
     def frames(self):
@@ -597,9 +594,6 @@ class Capture:
             self.__process_file()
         return self._frames
 
-    @frames.setter
-    def frames(self, value):
-        raise AttributeError('Setting frames attribute is not allowed')
 
     @property
     def malformed(self):
@@ -607,9 +601,6 @@ class Capture:
             self.__process_file()
         return self._malformed
 
-    @malformed.setter
-    def malformed(self, value):
-        raise AttributeError('Setting malformed attribute is not allowed')
 
     def __process_file(self):
         """
