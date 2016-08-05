@@ -39,34 +39,110 @@ from ttproto.core.typecheck import *
 
 class YamlReader:
     """
-    Reader class for yaml files
+    Reader class for yaml file or text
     """
 
-    @typecheck
-    def __init__(self, filename: str):
-        """
-        Initialize yaml reader with the filename
-        """
-        self.__filename = filename
-        self._yaml_as_dict = None
+    # Some class constants mainly for dumping format
+    YAML_LINE_WIDTH = 70
+    INDENTATION_SPACES_LENGTH = 4
 
-    def __process_file(self):
+    @typecheck
+    def __init__(self, text: str, raw_text: bool = False):
+        """
+        Initialize yaml reader with the text can be a raw text or a filename
+
+        :param text: The filename if file or a raw yaml text
+        :param raw_text: True if raw text, default False for filename
+        :type text: str
+        :type raw_text: bool
+        """
+        self.__text = text
+        self.__raw_text = raw_text
+        self._yaml_as_dict = None
+        self._flat_yaml = None
+
+    @typecheck
+    def __process_dict(self) -> dict:
+        """
+        Process the dictionnary value of this yaml object
+
+        :return: The python dict representation of this yaml object
+        :rtype: dict
+        """
         try:
-            with open(self.__filename, 'r') as yaml_file:
-                self._yaml_as_dict = yaml.load(yaml_file)
+
+            # If a raw text
+            if self.__raw_text:
+                return yaml.load(self.__text)
+
+            # If a file
+            else:
+                with open(self.__text, 'r') as yaml_file:
+                    return yaml.load(yaml_file)
+
+        # If yaml error during decoding
         except yaml.YAMLError as ye:
             raise ReaderError(
                 "YamlReader was unable to open and parse the %s file"
                 %
-                self.__filename
+                self.__text
             ) from ye
 
     @property
     def as_dict(self):
+        """
+        Singleton method to process the dictionnary value of this yaml object
+
+        :return: The python dict representation of this yaml object
+        :rtype: dict
+        """
         if not self._yaml_as_dict:
-            self.__process_file()
+            self._yaml_as_dict = self.__process_dict()
         return self._yaml_as_dict
 
-    @as_dict.setter
-    def as_dict(self, value):
-        raise AttributeError('Setting as_dict attribute is not allowed')
+    @typecheck
+    def __process_flat(self) -> str:
+        """
+        Process the flat value of this yaml object
+
+        :return: The yaml flat representation
+        :rtype: str
+        """
+        try:
+
+            # If a raw text
+            if self.__raw_text:
+                to_dump = self.__text
+
+            # If a file
+            else:
+                with open(self.__text, 'r') as yaml_file:
+                    to_dump = yaml.load(yaml_file)
+
+            # Return the loaded yaml file
+            return yaml.dump(
+                    to_dump,
+                    width=self.YAML_LINE_WIDTH,
+                    indent=self.INDENTATION_SPACES_LENGTH,
+                    default_flow_style=False
+                )
+
+        # If yaml error during decoding
+        except yaml.YAMLError as ye:
+            raise ReaderError(
+                "YamlReader was unable to flat the %s file"
+                %
+                self.__text
+            ) from ye
+
+    @property
+    def as_flat_yaml(self):
+        """
+        Singleton method to process the flat value of this yaml object
+
+        :return: The yaml flat representation
+        :rtype: text
+        """
+        if not self._flat_yaml:
+            self._flat_yaml = self.__process_flat()
+        return self._flat_yaml

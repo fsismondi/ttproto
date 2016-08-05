@@ -4,48 +4,31 @@ from ..common import *
 
 
 class TD_COAP_CORE_31 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_31
-Objective:
-Perform CoAP Ping (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 4.3
-
-Pre-test
-conditions:
-(Should work with any CoAP server)
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a "Ping" request with:
-•	Type = 0 (CON)
-•	Code = 0 (empty)
-
-2
-Check
-The request sent by the client is four bytes and contains:
-•	Type=0 and Code=0
-•	Client-generated Message ID (➔ CMID)
-•	Zero-length Token
-•	No payload
-
-3
-Check
-Server sends four-byte RST response containing:
-•	Type=3 and Code=0
-•	Message ID = CMID
-•	Zero-length Token
-•	No payload
-
-4
-Verify 	Client displays that the "Ping" was successful
+    """
+---
+TD_COAP_CORE_31:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform CoAP Ping (CON mode)
+    pre: (Should work with any CoAP server)
+    ref: '[COAP] 4.3'
+    seq:
+    -   s:
+        - 'Client is requested to send a "Ping" request with:'
+        -   - Type = 0 (CON)
+            - Code = 0 (empty)
+    -   c:
+        - 'The request sent by the client is four bytes and contains:'
+        -   - Type=0 and Code=0
+            - "Client-generated Message ID (\u2794 CMID)"
+            - Zero-length Token
+            - No payload
+    -   c:
+        - 'Server sends four-byte RST response containing:'
+        -   - Type=3 and Code=0
+            - Message ID = CMID
+            - Zero-length Token
+            - No payload
+    -   v: Client displays that the "Ping" was successful
     """
 
     @classmethod

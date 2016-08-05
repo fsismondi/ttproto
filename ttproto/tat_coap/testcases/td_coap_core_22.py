@@ -4,170 +4,125 @@ from ..common import *
 
 
 class TD_COAP_CORE_22(CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_22
-Objective:
-Perform GET transaction with responses containing the ETag option and requests
-containing the If-Match option (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 5.8.1, 5.10.7,5.10.9,12.1.12
-
-Pre-test
-conditions:
-•	Server offer a /validate resource
-•	Client & server supports ETag and If-Match option
-•	The Client‘s cache must be purged
-
-Test Sequence:
-Step
-Type
-Description
-Preamble: client gets the resource
-
-
-1
-Stimulus
-Client is requested to send a confirmable GET request to
-server’s resource
-
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Uri-Path option "validate"
-•	No ETag option
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID, Token = CTOK
-•	Option type = ETag, value = a value chosen by the server (➔ ETAG1)
-•	Non-empty Payload
-
-Part A: single update
-
-4
-Stimulus
-Client is requested to send a confirmable PUT request to
-server’s resource so as to perform an atomic update
-
-5
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 3 (PUT)
-•	Another client-generated Message ID ≠ CMID (➔ CMID2)
-•	Client-generated Token which may or may not be ≠ CTOK (➔ CTOK2)
-•	Content-format option
-•	Uri-Path option "validate"
-•	Option type = If-Match, value = ETAG1 (ETag value received in step 3)
-•	An arbitrary payload (which differs from the payload received in step 3)
-
-6
-Check
-Server sends response containing:
-•	Code = 68 (2.04 Changed)
-•	Message ID = CMID2, Token = CTOK2
-•	Content-format option if payload non-empty
-•	Empty or non-empty Payload
-
-7
-Verify
-Client displays the response and the server changed its
-resource
-
-Part B: concurrent updates
-
-
-8
-Stimulus
-Client is requested to send a confirmable GET request to
-server’s resource
-
-9
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Another client-generated Message ID ≠ CMID and ≠ CMID2 (➔ CMID3)
-•	Client-generated Token which may or may not be ≠ CTOK or CTOK2 (➔ CTOK3)
-•	Uri-Path option "validate"
-
-10
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID3, Token = CTOK3
-•	Option type = ETag, value = a value ≠ ETAG1 chosen by the server (➔ ETAG2)
-•	The Payload sent in step 5
-
-11
-Verify
-Client displays the response
-
-
-12
-Stimulus
-Update the content of the server’s resource from a CoAP client
-
-13
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 3 (PUT)
-•	Another client-generated Message ID ≠ CMID, CMID2, CMID3 (➔ CMID4)
-•	Client-generated Token which may or may not be ≠ CTOK, CTOK2, CTOK3 (➔ CTOK4)
-•	Content-format option
-•	Uri-Path option "validate"
-•	An arbitrary payload (which differs from the payloads received in steps 3 and 10)
-
-14
-Check
-Server sends response containing:
-•	Code = 2.04 (Changed)
-•	Message ID = CMID4, Token = CTOK4
-•	Content-format option if payload non-empty
-•	Empty or non-empty Payload
-
-15
-Verify
-Client displays the response and the server changed its resource
-
-16
-Stimulus
-Client is requested to send a confirmable PUT request to server’s resource so as to perform an atomic update, assuming it is still unchanged from step 10
-
-17
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 3 (PUT)
-•	Another client-generated Message ID ≠ CMID, CMID2, CMID3, CMID4 (➔ CMID5)
-•	Client-generated Token which may or may not be ≠ CTOK, CTOK2, CTOK3, CTOK4 (➔ CTOK5)
-•	Content-format option
-•	Uri-Path option "validate"
-•	Option type = If-Match, value = ETAG2 (ETag value received in step 10)
-•	An arbitrary payload (which differs from the previous payloads)
-
-18
-Check
-Server sends response containing:
-•	Code = 4.12 (Precondition Failed)
-•	Message ID = CMID4, Token = CTOK4
-•	Optional Content-format option
-•	Empty or non-empty Payload
-
-19
-Verify
-Client displays the response and the server did not update the content of the resource
-"""
+    """
+---
+TD_COAP_CORE_22:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction with responses containing the ETag option
+        and requests containing the If-Match option (CON mode)
+    pre:
+    - Server offers a /validate resource
+    - Client & server supports ETag and If-Match option
+    - "The Client \u2018s cache must be purged"
+    ref: '[COAP] 5.8.1, 5.10.7, 5.10.9, 12.1.12'
+    seq:
+    -   n: client gets the resource
+    -   s: "Client is requested to send a confirmable GET request to server\
+            \u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Uri-Path option "validate"
+            - No ETag option
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.05 (Content)
+            - Message ID = CMID, Token = CTOK
+            - "Option type = ETag, value = a value chosen by the server\
+                \ (\u2794 ETAG1)"
+            - Non-empty Payload
+    -   n: single update
+    -   s: "Client is requested to send a confirmable PUT request to server\
+            \u2019s resource so as to perform an atomic update"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 3 (PUT)
+            - "Another client-generated Message ID \u2260 CMID (\u2794 CMID2)"
+            - "Client-generated Token which may or may not be \u2260 CTOK\
+                \ (\u2794 CTOK2)"
+            - Content-format option
+            - Uri-Path option "validate"
+            - Option type = If-Match, value = ETAG1 (ETag value received
+                in step 3)
+            - An arbitrary payload (which differs from the payload received
+                in step 3)
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.04 (Changed)
+            - Message ID = CMID2, Token = CTOK2
+            - Content-format option if payload non-empty
+            - Empty or non-empty Payload
+    -   v: 'Client displays the response and the server changed its resource '
+    -   n: concurrent updates
+    -   s: "Client is requested to send a confirmable GET request to server\
+            \u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Another client-generated Message ID \u2260 CMID and \u2260\
+                \ CMID2 (\u2794 CMID3)"
+            - "Client-generated Token which may or may not be \u2260 CTOK\
+                \ or CTOK2 (\u2794 CTOK3)"
+            - Uri-Path option "validate"
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.05 (Content)
+            - Message ID = CMID3, Token = CTOK3
+            - "Option type = ETag, value = a value \u2260 ETAG1 chosen by\
+                \ the server (\u2794 ETAG2)"
+            - The Payload sent in step 5
+    -   v: 'Client displays the response '
+    -   s: "Update the content of the server\u2019s resource from a CoAP\
+            \ client once more"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 3 (PUT)
+            - "Another client-generated Message ID \u2260 CMID, CMID2, CMID3\
+                \ (\u2794 CMID4)"
+            - "Client-generated Token which may or may not be \u2260 CTOK,\
+                \ CTOK2, CTOK3 (\u2794 CTOK4)"
+            - Content-format option
+            - Uri-Path option "validate"
+            - An arbitrary payload (which differs from the payloads received
+                in steps 3 and 10)
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.04 (Changed)
+            - Message ID = CMID4, Token = CTOK4
+            - Content-format option if payload non-empty
+            - Empty or non-empty Payload
+    -   v: 'Client displays the response and the server changed its resource '
+    -   s: "Client is requested to send a confirmable PUT request to server\
+            \u2019s resource so as to perform an atomic update, assuming it is\
+            \ still unchanged from step 10"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 3 (PUT)
+            - "Another client-generated Message ID \u2260 CMID, CMID2, CMID3\
+                \ (\u2794 CMID4)"
+            - "Client-generated Token which may or may not be \u2260 CTOK,\
+                \ CTOK2, CTOK3 (\u2794 CTOK4)"
+            - Content-format option
+            - Uri-Path option "validate"
+            - Option type = If-Match, value = ETAG2 (ETag value received
+                in step 10)
+            - An arbitrary payload (which differs from the previous payloads)
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 4.12 (Precondition Failed)
+            - Message ID = CMID4, Token = CTOK4
+            - Optional Content-format option
+            - Empty or non-empty Payload
+    -   v: Client displays the response and the server did not update the
+            content of the resource
+    """
 
     @classmethod
     @typecheck

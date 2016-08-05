@@ -1,55 +1,35 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
 class TD_COAP_CORE_10 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_10
-Objective:
-Perform GET transaction containing non-empty Token (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] clause 2.2 ,5.8.1, 5.10.1
-
-Pre-test
-conditions:
-•	Server offers a /test resource with resource content is not empty that handles GET
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a GET request to server’s resource including Token option
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Option Type = Token
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Length of the token should be between 1 to 8 Bytes
-•	Uri-Path option "test"
-
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID, Token = CTOK
-•	Content-format option
-•	Non-empty Payload
-
-4
-Verify
-Client displays the response
-"""
+    """
+---
+TD_COAP_CORE_10:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction containing non-empty Token (CON mode)
+    pre: Server offers a /test resource with resource content is not empty
+        that handles GET
+    ref: '[COAP] 2.2, 5.8.1, 5.10.1'
+    seq:
+    -   s: "Client is requested to send a GET request to server\u2019s resource
+            \ with non-empty Token option"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Length of the token should be between 1 to 8 Bytes
+            - Uri-Path option "test"
+    - &id003
+        c:
+        - 'Server sends response containing:'
+        -   - Code = 2.05 (Content)
+            - Message ID = CMID, Token = CTOK
+            - Content-format option
+            - Non-empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

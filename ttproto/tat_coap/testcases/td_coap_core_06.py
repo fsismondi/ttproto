@@ -1,55 +1,35 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
 class TD_COAP_CORE_06 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_06
-Objective:
-Perform DELETE transaction (NON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP]  5.8.4,5.2.3
-
-Pre-test
-conditions:
-•	Server offers a /test resource that handles DELETE
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a DELETE request with:
-•	Type = 1(NON)
-•	Code = 4(DELETE)
-
-2
-Check
-The request sent by the client contains:
-•	Type=1 and Code=4
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Uri-Path option "test"
-
-3
-Check
-Server sends response containing:
-•	Type = 1(NON)
-•	Code = 66(2.02 Deleted)
-•	Server-generated Message ID (➔ SMID)
-•	Token = CTOK
-•	Content-format option if payload non-empty
-•	Empty or non-empty Payload
-
-4
-Verify
-Client displays the received information
-"""
+    """
+---
+TD_COAP_CORE_06:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform DELETE transaction (NON mode)
+    pre: Server offers a /test resource that handles DELETE
+    ref: '[COAP] 5.8.4, 5.2.3'
+    seq:
+    -   s:
+        - 'Client is requested to send a DELETE request with:'
+        -   - Type = 1 (NON)
+            - Code = 4 (DELETE)
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type=1 and Code=4
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Uri-Path option "test"
+    -   c:
+        - 'Server sends response containing:'
+        -   - Type = 1 (NON)
+            - Code = 2.02 (Deleted)
+            - "Server-generated Message ID (\u2794 SMID)"
+            - Token = CTOK
+            - Content-format option if payload non-empty
+            - Empty or non-empty Payload
+    -   v: Client displays the received information
+    """
 
     @classmethod
     @typecheck

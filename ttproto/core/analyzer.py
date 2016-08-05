@@ -45,10 +45,12 @@ from os import path
 from importlib import import_module
 
 from ttproto.core.data import Data, DifferenceList, Value
-from ttproto.core.dissector import Frame, Capture, is_protocol, ProtocolNotFound
+from ttproto.core.dissector import (Frame, Capture, is_protocol,
+                                    ProtocolNotFound)
 from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
+from ttproto.core.lib.readers.yaml import YamlReader
 
 
 __all__ = [
@@ -262,7 +264,6 @@ class Node:
         """
         return self._name
 
-
     @property
     def value(self):
         """
@@ -315,7 +316,6 @@ class Conversation(list):
         :rtype: {str: Template}
         """
         return self._nodes
-
 
     def __bool__(self):
         """
@@ -575,18 +575,6 @@ class TestCase(object):
                 # Run the test case
                 self.run()
 
-                # NOTE: With new implementation, we can have useless frames at
-                #       the end of a conversation. We have to put them into
-                #       ignored frames or just ignore them if there are some
-                #       like we are doing right now.
-                #
-                # # Ensure we're at the end of the communication
-                # try:
-                #     self.log(next(self.__iter))
-                #     self.set_verdict('inconc', 'unexpected frame')
-                # except StopIteration:
-                #     pass
-
             except self.Stop:
                 # Ignore this testcase result if the first frame gives an
                 # inconc verdict
@@ -629,12 +617,17 @@ class TestCase(object):
         :rtype: str
         """
         if cls.__doc__:
-            ok = False
-            for line in cls.__doc__.splitlines():
-                if ok:
-                    return line
-                if line == 'Objective:':
-                    ok = True
+
+            # Get the Yaml reader
+            yaml_reader = YamlReader(cls.__doc__, raw_text=True)
+
+            # Then get the dictionnary representation of the tc documentation
+            doc_as_dict = yaml_reader.as_dict
+
+            # Into this dict, get the test objective
+            assert len(doc_as_dict) == 1
+            return doc_as_dict[cls.__name__]['obj']
+
         return ''
 
     @classmethod

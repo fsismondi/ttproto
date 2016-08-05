@@ -1,59 +1,38 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
 class TD_COAP_CORE_13 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_13
-Objective:
-Perform GET transaction containing several URI-Path options (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 5.4.5, 5.10.2,6.5
-
-Pre-test
-conditions:
-•	Server offers a /seg1/seg2/seg3 resource with resource content is not empty
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a confirmable GET request to server’s resource
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Uri-Path option "test"
-
-and three options of type Uri-Path, with the values:
-
-•	seg1
-•	seg2
-•	seg3
-
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID, Token = CTOK
-•	Not empty Payload
-•	Content format option
-
-4
-Verify
-Client displays the response
-"""
+    """
+---
+TD_COAP_CORE_13:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction containing several URI-Path options (CON
+        mode)
+    pre: Server offers a /seg1/seg2/seg3 resource with resource content
+        is not empty
+    ref: '[COAP] 5.4.5, 5.10.2, 6.5'
+    seq:
+    -   s: "Client is requested to send a confirmable GET request to server\
+            \u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Uri-Path option "test"
+        - 'and three options of type Uri-Path, with the values:'
+        -   - seg1
+            - seg2
+            - seg3
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.05 (Content)
+            - Message ID = CMID, Token = CTOK
+            - Content-format option
+            - Non-empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

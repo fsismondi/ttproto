@@ -4,62 +4,41 @@ from ..common import *
 
 
 class TD_COAP_CORE_19(CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_19
-Objective:
-Perform POST transaction with responses containing several Location-Query options
-(CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 5.8.1,5.10.8,5.9.1.1
-
-Pre-test
-conditions:
-•	Server accepts creation of new resource on uri  /location-query, the location of
-the created resource contains two query parameters ?first=1&second=2
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a confirmable POST request to
-server’s resource
-
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 2 (POST)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Content-format option
-•	Empty or non-empty Payload
-•	Uri-Path option "location-query"
-
-3
-Check
-Server sends response containing:
-•	Code = 65 (2.01 created)
-•	Message ID = CMID, Token = CTOK
-•	Content-format option if payload non-empty
-•	Zero or more Location-path options
-•	Empty or non-empty Payload
-
-and two options of type Location-Query, with the values (none of which contains a "?" or "&"):
-
-•	first=1
-•	second=2
-
-
-4
-Verify
-Client displays the response
-"""
+    """
+---
+TD_COAP_CORE_19:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform POST transaction with responses containing several
+         Location-Query options (CON mode)
+    pre: Server accepts creation of new resource on uri /location-query,
+        the location of the created resource contains two query parameters
+        ?first=1&second=2
+    ref: '[COAP] 5.8.1, 5.10.8, 5.9.1.1'
+    seq:
+    -   s: "Client is requested to send a confirmable POST request to server\
+            \u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 2 (POST)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Content-format option
+            - Empty or non-empty Payload
+            - Uri-Path option "location-query"
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.01 (Created)
+            - Message ID = CMID, Token = CTOK
+            - Content-format option if payload non-empty
+            - Zero or more Location-path options
+            - Empty or non-empty Payload
+        - 'and two options of type Location-Query, with the values (none
+            of which contains a "?" or "&"):'
+        -   - first=1
+            - second=2
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck
