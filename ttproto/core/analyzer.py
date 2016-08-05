@@ -131,6 +131,12 @@ class FilterError(Error):
     """
     pass
 
+class NoStimuliFoundForTestcase(Error):
+    """
+    Error raised when no stimuli was defined for the testcase
+    """
+    pass
+
 
 class Verdict:
     """
@@ -272,9 +278,6 @@ class Node:
         """
         return self._name
 
-    @name.setter
-    def name(self, value):
-        raise AttributeError('Setting name attribute is not allowed')
 
     @property
     def value(self):
@@ -285,10 +288,6 @@ class Node:
         :rtype: Value
         """
         return self._value
-
-    @value.setter
-    def value(self, value):
-        raise AttributeError('Setting value attribute is not allowed')
 
 
 class Conversation(list):
@@ -333,9 +332,6 @@ class Conversation(list):
         """
         return self._nodes
 
-    @nodes.setter
-    def nodes(self, value):
-        raise AttributeError('Setting nodes attribute is not allowed')
 
     def __bool__(self):
         """
@@ -676,7 +672,7 @@ class TestCase:
 
     @classmethod
     @typecheck
-    def get_nodes(cls) -> list_of(Node):
+    def get_nodes_identification_patterns(cls) -> list_of(Node):
         """
         Get the nodes of this test case. This has to be be implemented into
         each test cases class.
@@ -714,17 +710,21 @@ class Filter:
         # Get informations from the test case
         stimulis = testcase.get_stimulis()
         protocol = testcase.get_protocol()
-        nodes = testcase.get_nodes()
+        nodes = testcase.get_nodes_identification_patterns()
 
         # The attribute to store conversations
         self._conversations = []
         # Ignored is defined a little lower
 
+        # TODO what happens if no protocol declared on the test case?
+        if not nodes or len(nodes) < 2:
+            raise ValueError('Expected at leaset two nodes declaration from the test case')
+        if not protocol:
+            raise ValueError('Expected a protocol under test declaration from the test case')
         # If there is no stimuli at all
         if not stimulis or len(stimulis) == 0:
-            raise ValueError('Expected at least one stimuli')
-        if not nodes or len(nodes) < 2:
-            raise ValueError('Expected at least two nodes')
+            raise NoStimuliFoundForTestcase('Expected stimuli declaration from the test case')
+
 
         # Get the frames filtered on the protocol
         frames, self._ignored = Frame.filter_frames(capture.frames, protocol)
@@ -746,7 +746,7 @@ class Filter:
                         self._conversations.append(current_conversation)
 
                     # Get the nodes as a list of nodes
-                    nodes = testcase.get_nodes()
+                    nodes = testcase.get_nodes_identification_patterns()
 
                     # And create the new one
                     current_conversation = Conversation(nodes)
@@ -789,10 +789,6 @@ class Filter:
         """
         return self._conversations
 
-    @conversations.setter
-    def conversations(self, value):
-        raise AttributeError('Setting conversations attribute is not allowed')
-
     @property
     def ignored(self):
         """
@@ -802,11 +798,6 @@ class Filter:
         :rtype: [Frame]
         """
         return self._ignored
-
-    @ignored.setter
-    def ignored(self, value):
-        raise AttributeError('Setting ignored attribute is not allowed')
-
 
 class Analyzer:
     """
@@ -1034,11 +1025,26 @@ class Analyzer:
             # Get the capture from the file
             capture = Capture(filename)
 
-            # Get the conversations from the filter
-            frame_filter = Filter(capture, test_case_class)
+            try:
+                # Get the conversations from the filter
+                frame_filter = Filter(capture, test_case_class)
 
-            # Initialize the TC with the list of conversations
-            test_case = test_case_class(frame_filter.conversations)
+                # Initialize the TC with the list of conversations
+                test_case = test_case_class(frame_filter.conversations)
+
+            # Bypass of the filter if no stimuli is provided.
+            # Basically we create a conversation with all the frames on the capture
+            except NoStimuliFoundForTestcase:
+                protocol = test_case_class.get_protocol()
+                nodes = test_case_class.get_nodes_identification_patterns()
+                frames, _ = Frame.filter_frames(capture.frames, protocol)
+                conversations = []
+                c = Conversation(nodes)
+                c.append(frames)
+                conversations.append(c)
+                #print(conversations)
+                test_case = test_case_class(conversations)
+
 
             # print('##### Ignored')
             # print(ignored)
@@ -1069,6 +1075,12 @@ if __name__ == "__main__":
     #
     # print(Analyzer('tat_coap').import_test_cases())
     # print(Analyzer('tat_6tisch').import_test_cases())
+<<<<<<< Updated upstream
+=======
+    #print(Analyzer('tat_privacy').analyse()
+
+    #print(Analyzer('tat_privacy').import_test_cases(['TD_COAP_CORE_24']))
+>>>>>>> Stashed changes
     # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
     # print(Analyzer('tat_coap').import_test_cases([
     #     'TD_COAP_CORE_01',
