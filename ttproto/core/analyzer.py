@@ -394,8 +394,8 @@ class TestCase(object):
         """
         Abstract function to match the current frame value with a template
 
-        :param node_name: The node_name of the packet
-        :param template: The template to confront with current frame value
+        :param node_name: The node source of the packet
+        :param template: The template to match the frame value
         :param verdict: The verdict to put if it matches
         :param msg: The message to associated with the verdict
         :type node_name: str
@@ -942,15 +942,13 @@ if __name__ == "__main__":
     #
     # print(Analyzer('tat_coap').import_test_cases())
     # print(Analyzer('tat_6tisch').import_test_cases())
-<<<<<<< HEAD
+
     print(Analyzer('tat_privacy').import_test_cases())
-=======
 
     #print(Analyzer('tat_privacy').analyse()
 
     #print(Analyzer('tat_privacy').import_test_cases(['TD_COAP_CORE_24']))
 
->>>>>>> master
     # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
     # print(Analyzer('tat_coap').import_test_cases([
     #     'TD_COAP_CORE_01',

@@ -624,7 +624,7 @@ class Capture:
             iterable_reader = reader(self._filename)
         except Exception as e:
             raise ReaderError(
-                "The reader wans't able to generate the frames"
+                "The reader wans't able to generate the frames" + str(e)
             ) from e  # Raise this exception from the
 
         # Initialize the list attributes

@@ -33,28 +33,33 @@
 
 import re
 
-from ttproto.core.analyzer import TestCase, is_protocol, Node
+from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
+from ttproto.core.dissector import Frame
 from ttproto.core.templates import All, Not, Any, Length
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
 from urllib import parse
+from ttproto.core.exceptions import Error
 
-
-<<<<<<< HEAD
-class CoAPAnalysis(TestCase):
+class NoStimuliFoundForTestcase(Error):
     """
-    The test case extension representing a Sixlowpan test case
-=======
+    Error raised when no stimuli was defined for the testcase
+    """
+    pass
+
+class FilterError(Error):
+    """
+    The error thrown when an error occurs into Filter object during its run
+    """
+    pass
+
 class CoapPrivacyTestCase(TestCase):
     """
     The test case extension for privacy analysis on CoAP transactions.
->>>>>>> master
     """
 
     @classmethod
     @typecheck
-<<<<<<< HEAD
-=======
     def get_protocol(cls) -> is_protocol:
         """
         Get the protocol corresponding to this test case. This has to be
@@ -67,7 +72,6 @@ class CoapPrivacyTestCase(TestCase):
 
     @classmethod
     @typecheck
->>>>>>> master
     def get_test_purpose(cls) -> str:
         """
         Get the purpose of this test case
@@ -86,3 +90,54 @@ class CoapPrivacyTestCase(TestCase):
                 elif save:
                     ret += line
         return ''
+
+    @typecheck
+    def preprocess(self, capture: Capture) -> (list_of(Conversation), list_of(Frame)):
+        """
+        Preprocess and filter the frames of the capture into test case related conversations.
+
+        :param Capture: The capture which will be filtered/preprocessed
+        :return:
+        """
+
+        # Get informations from the test case
+        protocol = self.get_protocol()
+        nodes = self.get_nodes_identification_patterns()
+        print(nodes)
+
+        conversations = []
+        ignored = []
+
+        if not nodes or len(nodes) < 2:
+            raise ValueError('Expected at leaset two nodes declaration from the test case')
+        if not protocol:
+            raise ValueError('Expected a protocol under test declaration from the test case')
+
+        # Get protocol related frames
+        frames, ignored = Frame.filter_frames(capture.frames, protocol)
+
+        # For privacy we dont need a preprocess for splitting the frames into conversations, we just analize it all
+        c = Conversation(nodes)
+        c.append(frames)
+        conversations.append(c)
+
+        return conversations, ignored
+
+    @classmethod
+    @typecheck
+    def get_nodes_identification_patterns(cls) -> list_of(Node):
+        """
+        Get the nodes of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The nodes of this TC
+        :rtype: [Node]
+
+        .. note:: For CoAP it is simpler so we can define this function in this
+                  class but for other protocols it can happend that we have to
+                  define this inside each TC
+        """
+        return [
+            Node('client', UDP(dport=5683)),
+            Node('server', UDP(sport=5683))
+        ]

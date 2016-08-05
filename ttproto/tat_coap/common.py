@@ -120,11 +120,8 @@ class CoAPTestCase(TestCase):
         # Get informations from the test case
         # TODO get attrbutes stimuli , protocol under test, nodes patterns directly from child's atrib?
         stimulis = self.get_stimulis()
-        print("stimulus:" + str(stimulis))
         protocol = self.get_protocol()
-        print("protocol:" + str(protocol))
         nodes = self.get_nodes_identification_patterns()
-        print("nodes:" + str(nodes))
         conversations = []
         ignored = []
 

@@ -21,32 +21,15 @@ if __name__ == "__main__":
             if e.errno != errno.EEXIST:
                 raise
 
-<<<<<<< HEAD
-=======
-    print(
-         Analyzer('tat_privacy').analyse(
-             '/'.join((
-                 'tests',
-                 'test_dumps',
-                 '_'.join((
-                     'TD',
-                     'COAP',
-                     'CORE',
-                     '07',
-                     'FAIL',
-                     'No',
-                     'CoAPOptionContentFormat',
-                     'plus',
-                     'random',
-                     'UDP',
-                     'messages.pcap'
-                 ))
-             )),
-             'TD_COAP_ANALYSIS_1'
-         )
-     )
+    result = Analyzer('tat_privacy').analyse('./tests/test_dumps/coap/TD_COAP_CORE_01_PASS.pcap', 'TD_COAP_ANALYSIS_1')
 
->>>>>>> master
+    for res in result:
+        print(res)
+    if result[1] != 'pass' and len(result[4]) > 0:
+        import traceback
+
+        traceback.print_tb(result[4][0][2])
+    shutdown()
 
 def reopen_log_file(signum, frame):
     global log_file

@@ -2,17 +2,12 @@
 
 from ..common import *
 
-
-<<<<<<< HEAD
-class TD_COAP_ANALYSIS_1 (CoAPAnalysis):
-=======
 class TD_COAP_ANALYSIS_1 (CoapPrivacyTestCase):
->>>>>>> master
     """
     Identifier:
         TD_COAP_ANALYSIS_1
     Objective:
-        Analyse all GET messages and look for keywords refering to potential private sensitive information.
+        Analyse all GET messages and look for keywords referring to potential private sensitive information.
 
     """
 
@@ -32,38 +27,8 @@ class TD_COAP_ANALYSIS_1 (CoapPrivacyTestCase):
         """
         return []
 
-<<<<<<< HEAD
-    @classmethod
-    @typecheck
-    def get_nodes(cls) -> list_of(Node):
-=======
 
-    @classmethod
-    @typecheck
-    def get_nodes_identification_patterns(cls) -> list_of(Node):
->>>>>>> master
-        """
-        Get the nodes of this test case. This has to be be implemented into
-        each test cases class.
-
-        :return: The nodes of this TC
-        :rtype: [Node]
-
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
-        """
-        return [
-            Node('client', UDP(dport=5683)),
-            Node('server', UDP(sport=5683))
-        ]
 
     def run(self):
-        while(self.next):
-<<<<<<< HEAD
-            if self.match('client', None ):
-=======
-            if self.match('client', CoAP(), 'pass' ):
->>>>>>> master
-                print("passed :d")
+        self.match ("client", CoAP (type="con", code="get"))
 
