@@ -556,11 +556,6 @@ class TestCase(object):
         # Pre-process / filter conversations corresponding to the TC
         self._conversations, self._ignored = self.preprocess(self._capture)
 
-        print("----conversations----")
-        print(self._conversations)
-        print("----ignored----")
-        print(self._ignored)
-
         # Run the test case for every conversations
         for conv in self._conversations:
 
