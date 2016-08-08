@@ -556,10 +556,10 @@ class TestCase(object):
         # Pre-process / filter conversations corresponding to the TC
         self._conversations, self._ignored = self.preprocess(self._capture)
 
-        print("----conversations----")
-        print(self._conversations)
-        print("----ignored----")
-        print(self._ignored)
+        # print("----conversations----")
+        # print(self._conversations)
+        # print("----ignored----")
+        # print(self._ignored)
 
         # Run the test case for every conversations
         for conv in self._conversations:
@@ -645,13 +645,17 @@ class TestCase(object):
         """
         raise NotImplementedError()
 
-    def preprocess(self, capture: Capture):
+    @typecheck
+    def preprocess(
+        self,
+        capture: Capture
+    ) -> (list_of(Conversation), list_of(Frame)):
         """
-        Pre-process and filter the frames of the capture into test case related conversations. This has to be
-        implemented into the protocol's common test case class.
+        Pre-process and filter the frames of the capture into test case related
+        conversations. This has to be implemented into the protocol's common
+        test case class.
         """
         raise NotImplementedError()
-
 
     @classmethod
     @typecheck
@@ -818,21 +822,22 @@ class Analyzer:
         self,
         testcases: optional(list_of(str)) = None,
         verbose: bool = False
-    ) -> list_of((str, str, str)):
+    ) -> list_of((str, str, str, str)):
         """
         Get more informations about the test cases
 
         :param testcases: A list of test cases to get their informations
-        :param verbose: True if we want the TC implementation code
+        :param verbose: True if we want more informations about the TC
         :type testcase_id: optional([str])
         :type verbose: bool
 
         :raises FileNotFoundError: If one of the test case is not found
 
         :return: List of descriptions of test cases composed of:
-                    -tc_identifier
-                    -tc_objective
-                    -tc_sourcecode
+                    - tc_identifier
+                    - tc_objective
+                    - tc_sourcecode
+                    - tc_doc
         :rtype: [(str, str, str)]
         """
 
@@ -845,11 +850,17 @@ class Analyzer:
         # Add the infos of each of them to the return value
         for tc in tc_classes:
 
-            # If verbose is asked, we provide the source code too
-            more_info = '' if not verbose else inspect.getsource(tc)
+            # If verbose is asked, we provide the source code and doc too
+            source_code = ''
+            source_doc = ''
+            if verbose:
+                source_code = inspect.getsource(tc)
+                source_doc = inspect.getdoc(tc)
 
             # Add the tuple to the return value
-            ret.append((tc.__name__, tc.get_test_purpose(), more_info))
+            ret.append(
+                (tc.__name__, tc.get_test_purpose(), source_code, source_doc)
+            )
 
         # Return the list of tuples
         return ret
@@ -904,12 +915,9 @@ class Analyzer:
             # Get the capture from the file
             capture = Capture(filename)
 
-
-
             # Initialize the TC with the list of conversations
             test_case = test_case_class(capture)
             verdict, rev_frames, extra, exceptions = test_case.run_test_case()
-
 
             # print('##### Ignored')
             # print(ignored)
@@ -941,9 +949,9 @@ if __name__ == "__main__":
     # print(Analyzer('tat_coap').import_test_cases())
     # print(Analyzer('tat_6tisch').import_test_cases())
 
-    #print(Analyzer('tat_privacy').analyse()
+    # print(Analyzer('tat_privacy').analyse()
 
-    #print(Analyzer('tat_privacy').import_test_cases(['TD_COAP_CORE_24']))
+    # print(Analyzer('tat_privacy').import_test_cases(['TD_COAP_CORE_24']))
 
     # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
     # print(Analyzer('tat_coap').import_test_cases([
