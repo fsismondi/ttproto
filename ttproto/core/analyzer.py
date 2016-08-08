@@ -410,11 +410,8 @@ class TestCase(object):
 
         # Check the node
         try:
-            node_value = self._nodes[node_name]
-            print("1 " + str(node_value))
-            print("2 " + str(node_value.__class__))
-            print("3 " + str(self._frame))
-            print("4 " + str(type(self._frame)))
+            node_template = self._nodes[node_name]
+
         except KeyError:
             return self.__not_matching(
                 verdict,
@@ -432,8 +429,9 @@ class TestCase(object):
                 (template, node_name)
             )
 
+        # check the sender (node) is as expected
         try:
-            if not node_value.match(self._frame[node_value.__class__]):
+            if not node_template.match(self._frame[node_template.__class__]):
                 # The node isn't matching
                 return self.__not_matching(
                     verdict,
@@ -446,7 +444,7 @@ class TestCase(object):
                 verdict,
                 'Expected %s into protocol %s but it was not found'
                 %
-                (template, node_value.__class__.__name__)
+                (template, node_template.__class__.__name__)
             )
 
         # Here check the template passed
@@ -673,7 +671,7 @@ class TestCase(object):
 
     @classmethod
     @typecheck
-    def get_nodes_identification_patterns(cls) -> list_of(Node):
+    def get_nodes_identification_templates(cls) -> list_of(Node):
         """
         Get the nodes of this test case. This has to be be implemented into
         each test cases class.

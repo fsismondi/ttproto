@@ -88,7 +88,7 @@ class CoAPTestCase(TestCase):
 
     @classmethod
     @typecheck
-    def get_nodes_identification_patterns(cls) -> list_of(Node):
+    def get_nodes_identification_templates(cls) -> list_of(Node):
         """
         Get the nodes of this test case. This has to be be implemented into
         each test cases class.
@@ -121,7 +121,7 @@ class CoAPTestCase(TestCase):
         # TODO get attrbutes stimuli , protocol under test, nodes patterns directly from child's atrib?
         stimulis = self.get_stimulis()
         protocol = self.get_protocol()
-        nodes = self.get_nodes_identification_patterns()
+        nodes = self.get_nodes_identification_templates()
         conversations = []
         ignored = []
 
@@ -155,7 +155,7 @@ class CoAPTestCase(TestCase):
 
                     # Get the nodes as a list of nodes
                     # TODO already done at begining. why isnde the iteeration?
-                    # nodes = testcase.get_nodes_identification_patterns()
+                    # nodes = testcase.get_nodes_identification_templates()
 
                     # And create the new one
                     current_conversation = Conversation(nodes)

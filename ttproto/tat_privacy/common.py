@@ -72,7 +72,7 @@ class CoapPrivacyTestCase(TestCase):
 
     @classmethod
     @typecheck
-    def get_nodes_identification_patterns(cls) -> list_of(Node):
+    def get_nodes_identification_templates(cls) -> list_of(Node):
         """
         Get the nodes of this test case. This has to be be implemented into
         each test cases class.
@@ -121,8 +121,7 @@ class CoapPrivacyTestCase(TestCase):
 
         # Get informations from the test case
         protocol = self.get_protocol()
-        nodes = self.get_nodes_identification_patterns()
-        print(nodes)
+        nodes = self.get_nodes_identification_templates()
 
         conversations = []
         ignored = []

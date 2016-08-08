@@ -93,7 +93,7 @@ Notes           * The feature tests check that best compression is used (but
 
     @classmethod
     @typecheck
-    def get_nodes_identification_patterns(cls) -> list_of(Node):
+    def get_nodes_identification_templates(cls) -> list_of(Node):
         """
         Get the nodes of this test case. This has to be be implemented into
         each test cases class.

@@ -30,5 +30,6 @@ class TD_COAP_ANALYSIS_1 (CoapPrivacyTestCase):
 
 
     def run(self):
-        self.match ("client", CoAP (type="con", code="get"))
+        while self.next():
+            self.match ("client", CoAP (type="con", code="get"))
 
