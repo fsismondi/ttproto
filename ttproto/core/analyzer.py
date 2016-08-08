@@ -411,6 +411,10 @@ class TestCase(object):
         # Check the node
         try:
             node_value = self._nodes[node_name]
+            print("1 " + str(node_value))
+            print("2 " + str(node_value.__class__))
+            print("3 " + str(self._frame))
+            print("4 " + str(type(self._frame)))
         except KeyError:
             return self.__not_matching(
                 verdict,
@@ -428,9 +432,9 @@ class TestCase(object):
                 (template, node_name)
             )
 
-        # The node isn't matching
         try:
             if not node_value.match(self._frame[node_value.__class__]):
+                # The node isn't matching
                 return self.__not_matching(
                     verdict,
                     'Expected %s from the %s but the sender is not matching'

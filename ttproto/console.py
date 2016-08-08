@@ -42,6 +42,7 @@ __HISTORY_FILE = os.path.join (os.path.expanduser ("~"), ".ttproto_history")
 
 class Console:
 	"""Welcome to ttproto console.
+- run as: python3 -i -m ttproto.console
 - Use [tab] to complete
 - Use help(object) to print help messages.
 - Quit using ctrl+d"""

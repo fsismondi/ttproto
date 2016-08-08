@@ -72,6 +72,25 @@ class CoapPrivacyTestCase(TestCase):
 
     @classmethod
     @typecheck
+    def get_nodes_identification_patterns(cls) -> list_of(Node):
+        """
+        Get the nodes of this test case. This has to be be implemented into
+        each test cases class.
+
+        :return: The nodes of this TC
+        :rtype: [Node]
+
+        .. note:: For CoAP it is simpler so we can define this function in this
+                  class but for other protocols it can happend that we have to
+                  define this inside each TC
+        """
+        return [
+            Node('client', UDP(dport=5683)),
+            Node('server', UDP(sport=5683))
+        ]
+
+    @classmethod
+    @typecheck
     def get_test_purpose(cls) -> str:
         """
         Get the purpose of this test case
@@ -118,26 +137,10 @@ class CoapPrivacyTestCase(TestCase):
 
         # For privacy we dont need a preprocess for splitting the frames into conversations, we just analize it all
         c = Conversation(nodes)
-        c.append(frames)
+        for f in frames:
+            c.append(f)
         conversations.append(c)
 
         return conversations, ignored
 
-    @classmethod
-    @typecheck
-    def get_nodes_identification_patterns(cls) -> list_of(Node):
-        """
-        Get the nodes of this test case. This has to be be implemented into
-        each test cases class.
 
-        :return: The nodes of this TC
-        :rtype: [Node]
-
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
-        """
-        return [
-            Node('client', UDP(dport=5683)),
-            Node('server', UDP(sport=5683))
-        ]
