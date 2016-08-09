@@ -378,8 +378,8 @@ class TestCase(object):
 
         # Add this frame's id to the failed frames
         self._failed_frames.append(self._frame['id'])
-        self.log('ENCOUNTER FAILED FRAME! : %d' % self._frame['id'])
-
+        #self.log('failed frames: %d' % self._frame['id'])
+        self.log(message)
         # Always return False
         return False
 
@@ -408,18 +408,6 @@ class TestCase(object):
         :rtype: bool
         """
 
-        # Check the node
-        try:
-            node_template = self._nodes[node_name]
-
-        except KeyError:
-            return self.__not_matching(
-                verdict,
-                'Expected %s from the %s but this node was not found'
-                %
-                (template, node_name)
-            )
-
         # If no more frames for this conversation
         if not self._iter:
             return self.__not_matching(
@@ -429,23 +417,36 @@ class TestCase(object):
                 (template, node_name)
             )
 
-        # check the sender (node) is as expected
-        try:
-            if not node_template.match(self._frame[node_template.__class__]):
-                # The node isn't matching
+        # Check the node
+        if node_name is not None:
+            try:
+                node_template = self._nodes[node_name]
+
+            except KeyError:
                 return self.__not_matching(
                     verdict,
-                    'Expected %s from the %s but the sender is not matching'
+                    'No node %s was not found. Check list of nodes defined for the test case'
                     %
-                    (template, node_name)
+                    (node_name)
                 )
-        except ProtocolNotFound:
-            return self.__not_matching(
-                verdict,
-                'Expected %s into protocol %s but it was not found'
-                %
-                (template, node_template.__class__.__name__)
-            )
+
+            # check the sender (node) is as expected
+            try:
+                if not node_template.match(self._frame[node_template.__class__]):
+                    # The node isn't matching
+                    return self.__not_matching(
+                        verdict,
+                        'Sender doesnt match. Expected %s pattern for the %s'
+                        %
+                        (node_template, node_name)
+                    )
+            except ProtocolNotFound:
+                return self.__not_matching(
+                    verdict,
+                    'Expected %s into protocol %s but it was not found'
+                    %
+                    (node_template, node_template.__class__.__name__)
+                )
 
         # Here check the template passed
         protocol = self.get_protocol()
