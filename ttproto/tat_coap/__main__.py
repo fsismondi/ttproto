@@ -21,17 +21,6 @@ if __name__ == "__main__":
             if e.errno != errno.EEXIST:
                 raise
 
-    from os import chdir, path, getcwd
-    PCAP_test2 = getcwd() + "/tests/test_dumps/coap/TD_COAP_CORE_01_PASS.pcap"
-    from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
-    c = Capture(PCAP_test2)
-    print(c.frames)
-    print(c.malformed)
-    print("pase por aca!!")
-    from ttproto.core import analyzer
-
-    print(Analyzer('tat_coap').analyse(PCAP_test2,'TD_COAP_CORE_01'))
-    shutdown()
 
 def reopen_log_file(signum, frame):
     global log_file
