@@ -386,7 +386,7 @@ class TestCase(object):
     @typecheck
     def match(
         self,
-        node_name: str,
+        node_name: optional(str),
         template: Value,
         verdict: optional(is_verdict) = 'inconc',
         msg: str = ''
