@@ -34,6 +34,7 @@
 
 from collections import OrderedDict
 from os import path
+import logging
 
 from ttproto.core.exceptions import Error, ReaderError
 from ttproto.core.data import Data, Message
@@ -45,6 +46,7 @@ from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
 
+
 __all__ = [
     'is_protocol',
     'is_layer_value',
@@ -53,6 +55,7 @@ __all__ = [
     'Dissector',
     'Capture'
 ]
+
 
 
 @typecheck
@@ -622,9 +625,12 @@ class Capture:
         # Get an iterable reader for generating frames
         try:
             iterable_reader = reader(self._filename)
+        except IOError as e:
+            print("PCAP file not found. You sure %s exists? \n" % self._filename)
+            raise e
         except Exception as e:
             raise ReaderError(
-                "The reader wans't able to generate the frames" + str(e)
+                "The reader wans't able to generate the frames \n" + str(e)
             ) from e  # Raise this exception from the
 
         # Initialize the list attributes
