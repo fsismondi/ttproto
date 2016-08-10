@@ -1,79 +1,46 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
-class TD_COAP_CORE_29(CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_29
-Objective:
-Perform GET transaction with responses containing the Max-Age option (Reverse
-proxy)
-Configuration:
-CoAP_CFG_03
-References:
-[1] clause 5.8.1,5.10.6,5.9.1.3,5.9.1.5, 8.2.2,8.2.1,10.2.2,11.2
-
-Pre-test
-conditions:
-•	Proxy offers a cache
-•	Proxy is configured as a reverse-proxy for the server
-•	Servers resource vary in time and supports Max-Age option
-•	Proxy’s cache is cleared
-•	Server offers a resource /validate that varies in time, with a Max-Age set to 30s
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-A confirmable GET request is sent to Proxy from Client
-
-
-2
-Check
-Proxy Sends request containing:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 Content)
-•	Option type = ETag
-•	Option value = ETag value
-•	Option type = Max-age
-•	Option value
-•	Not empty Payload
-
-
-4
-Verify
-Proxy forwards response to client
-
-5
-Stimulus
-A confirmable GET request is sent to proxy from Client before
-Max-Age expires
-
-6
-Check
-Proxy dos not forward any request to the server
-
-7
-Check
-Proxy sends response to client
-
-8
-Verify
-Response contains:
-•	Option type = Max-age
-•	Option Value = new Max-age
-•	Payload cached
-	"""
+class TD_COAP_CORE_29 (CoAPTestCase):
+    """
+---
+TD_COAP_CORE_29:
+    cfg: CoAP_CFG_03
+    obj: Perform GET transaction with responses containing the Max-Age option
+         (Reverse proxy)
+    pre:
+        - Proxy offers a cache
+        - Proxy is configured as a reverse-proxy for the server
+        - Servers resource vary in time and supports Max-Age option
+        - Proxy’s cache is cleared
+        - Server offers a resource /validate that varies in time, with a
+          Max-Age set to 30s
+    ref: '[1] clause 5.8.1,5.10.6,5.9.1.3,5.9.1.5, 8.2.2,8.2.1,10.2.2,11.2'
+    seq:
+        -   s: A confirmable GET request is sent to Proxy from Client
+        -   c:
+            - 'Proxy Sends request containing:'
+            -   - Type = 0 (CON)
+                - Code = 1 (GET)
+        -   c:
+            - 'Server sends response containing:'
+            -   - Code = 69 (2.05 Content)
+                - Option type = ETag
+                - Option value = ETag value
+                - Option type = Max-age
+                - Option value
+                - Not empty Payload
+        -   v: Proxy forwards response to client
+        -   s: A confirmable GET request is sent to proxy from Client before
+               Max-Age expires
+        -   c: Proxy dos not forward any request to the server
+        -   c: Proxy sends response to client
+        -   v:
+            - 'Response contains:'
+            -   - Option type = Max-age
+                - Option Value = new Max-age
+                - Payload cached
+    """
     reverse_proxy = True
 
     def run(self):

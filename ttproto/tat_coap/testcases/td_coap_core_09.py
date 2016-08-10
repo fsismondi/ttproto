@@ -4,70 +4,49 @@ from ..common import *
 
 
 class TD_COAP_CORE_09 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_09
-Objective:
-Perform GET transaction with separate response (CON mode, no piggyback)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] clause  5.8.1,5.2.2
-
-Pre-test
-conditions:
-•	 Server offers a resource /separate which is not served immediately and which therefore is not acknowledged in a piggybacked way.
-cannot be acknowledged in a piggybacked way.
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a confirmable GET request to server’s resource
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Uri-Path option "separate"
-•	Client-generated Token (➔ CTOK)
-
-
-3
-Check
-Server sends response containing:
-•	Type = 2 (ACK)
-•	Code = 0
-•	Message ID = CMID
-•	empty Payload
-
-4
-Check
-Server sends response containing:
-•	Type  = 0 (CON)
-•	Code = 69 (2.05 content)
-•	Server-generated Message ID (➔ SMID)
-•	Token = CTOK
-•	Content-format option
-•	Non-empty Payload
-
-5
-Check
-Client sends response containing:
-•	Type = 2 (ACK)
-•	Code = 0
-•	Message ID = SMID
-•	empty Payload
-
-6
-Verify
-Client displays the response
-Note: Steps 3 and 4 may occur out-of-order
-"""
+    """
+---
+TD_COAP_CORE_09:
+    cfg: CoAP_CFG_BASIC
+    not: Steps 3 and 4 may occur out-of-order
+    obj: Perform GET transaction with separate response (CON mode, no
+        piggyback)
+    pre: Server offers a resource /separate which is not served immediately
+        and which therefore is not acknowledged in a piggybacked way.
+    ref: '[COAP] 5.8.1, 5.2.2'
+    seq:
+    -   s: "Client is requested to send a confirmable GET request to
+            server\u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - Uri-Path option "separate"
+            - "Client-generated Token (\u2794 CTOK)"
+    -   c:
+        - 'Server sends response containing:'
+        -   - Type = 2 (ACK)
+            - Code = 0
+            - Message ID = CMID
+            - Empty Payload
+    -   n: Some time (a couple of seconds) elapses.
+    -   c:
+        - 'Server sends response containing:'
+        -   - Type = 0 (CON)
+            - Code = 2.05 (Content)
+            - "Server-generated Message ID (\u2794 SMID)"
+            - Token = CTOK
+            - Content-format option
+            - Non-empty Payload
+    -   c:
+        - 'Client sends response containing:'
+        -   - Type = 2 (ACK)
+            - Code = 0
+            - Message ID = SMID
+            - Empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

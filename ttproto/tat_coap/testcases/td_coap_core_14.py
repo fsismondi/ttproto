@@ -2,55 +2,38 @@
 
 from ..common import *
 
+
 class TD_COAP_CORE_14 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_14
-Objective:
-Perform GET transaction containing several URI-Query options (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 5.4.5, 5.10.2,6.5
-
-Pre-test
-conditions:
-•	Server offers a /query resource with resource content is not empty
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a confirmable GET request with three Query parameters (e.g. ?first=1&second=2&third=3) to the server’s resource
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Uri-Path option "query"
-and two options of Uri-Query, with values such as:
-•	first=1
-•	second=2
-
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID, Token = CTOK
-•	Content-format option
-•	Non-empty Payload
-
-4
-Verify
-Client displays the response
-
-"""
+    """
+---
+TD_COAP_CORE_14:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction containing several URI-Query options (CON
+        mode)
+    pre: Server offers a /query resource with resource content is not empty
+    ref: '[COAP] 5.4.5, 5.10.2, 6.5'
+    seq:
+    -   s: "Client is requested to send a confirmable GET request with three\
+            \ Query parameters (e.g. ?first=1&second=2&third=3) to the server\
+            \u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Uri-Path option "query"
+        - 'and two options of Uri-Query, with values such as:'
+        -   - first=1
+            - second=2
+    - c:
+        - 'Server sends response containing:'
+        -   - Code = 2.05 (Content)
+            - Message ID = CMID, Token = CTOK
+            - Content-format option
+            - Non-empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

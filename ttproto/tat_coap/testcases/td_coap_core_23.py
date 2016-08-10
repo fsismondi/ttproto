@@ -4,90 +4,60 @@ from ..common import *
 
 
 class TD_COAP_CORE_23(CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_23
-Objective:
-Perform PUT transaction containing the If-None-Match option (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 5.8.1, 5.10.7,5.10.10,12.1.12
-
-Pre-test
-conditions:
-•	Server should offer a /create1 resource, which does not exist and which can be created by the client
-•	Client & server supports If-Non-Match
-
-
-Test Sequence:
-Step
-Type
-Description
-
-Part A: single creation
-
-1
-Stimulus
-Client is requested to send a confirmable PUT request to
-server’s resource so as to atomically create the resource.
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 3 (PUT)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Content-format option
-•	Uri-Path option "create1"
-•	Option Type=If-None-Match
-•	An arbitrary payload
-
-3
-Check
-Server sends response containing:
-•	Code = 65 (2.01 Created)
-•	Message ID = CMID, Token = CTOK
-•	Content-format option if payload non-empty
-•	Empty or non-empty Payload
-
-
-4
-Verify
-Client displays the response and the server created a new resource
-
-Part B: concurrent creations
-
-5
-Stimulus
-Client is requested to send a confirmable PUT request to
-server’s resource so as to atomically create the resource.
-
-6
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 3 (PUT)
-•	Another client-generated Message ID ≠ CMID (➔ CMID2)
-•	Client-generated Token which may or may not be ≠ CTOK (➔ CTOK2)
-•	Content-format option
-•	Uri-Path option "create1"
-•	Option Type=If-None-Match
-•	An arbitrary payload
-
-7
-Check
-Server sends response containing:
-•	140 (4.12 Precondition Failed)
-•	Message ID = CMID2, Token = CTOK2
-•	Optional Content-format option
-•	Empty or non-empty Payload
-
-
-8
-Verify
-Client displays the response
-"""
+    """
+---
+TD_COAP_CORE_23:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform PUT transaction containing the If-None-Match option (CON
+        mode)
+    pre:
+    - Server offers a /create1 resource, which does not exist and can be
+        created by the client
+    - Client & server support If-Non-Match
+    ref: '[COAP] 5.8.1, 5.10.7, 5.10.10, 12.1.12'
+    seq:
+    -   n: single creation
+    -   s: "Client is requested to send a confirmable PUT request to server\
+            \u2019s resource so as to atomically create the resource."
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 3 (PUT)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Content-format option
+            - Uri-Path option "create1"
+            - Option Type=If-None-Match
+            - An arbitrary payload
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 2.01 (Created)
+            - Message ID = CMID, Token = CTOK
+            - Content-format option if payload non-empty
+            - Empty or non-empty Payload
+    -   v: Client displays the response and the server created a new resource
+    -   n: concurrent creations
+    -   s: "Client is requested to send a confirmable PUT request to server\
+            \u2019s resource so as to atomically create the resource."
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 3 (PUT)
+            - "Another client-generated Message ID \u2260 CMID (\u2794 CMID2)"
+            - "Client-generated Token which may or may not be \u2260 CTOK\
+                \ (\u2794 CTOK2)"
+            - Content-format option
+            - Uri-Path option "create1"
+            - Option Type=If-None-Match
+            - An arbitrary payload
+    -   c:
+        - 'Server sends response containing:'
+        -   - Code = 4.12 (Precondition Failed)
+            - Message ID = CMID2, Token = CTOK2
+            - Optional Content-format option
+            - Empty or non-empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

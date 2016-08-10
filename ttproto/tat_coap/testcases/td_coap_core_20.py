@@ -1,89 +1,59 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
-class TD_COAP_CORE_20(CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_20
-Objective:
-Perform GET transaction containing the Accept option (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] clause 5.8.1,5.10.5,5.10.4
-
-Pre-test
-conditions:
-•	Server should provide a resource /multi-format which exists in two formats:
--	text/plain;charset=utf-8
--	application/xml
-
-Test Sequence:
-Step
-Type
-Description
-
-Part A: client requests a resource in text format
-
-
-1
-Stimulus
-Client is requested to send a confirmable GET request to
-server’s resource
-
-
-2
-Check
-The request sent request by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Option type = Accept, value = 0 (text/plain;charset=utf-8)
-•	Uri-Path option "multi-format"
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID, Token = CTOK
-•	Option type = Content-Format, value = 0 (text/plain;charset=utf-8)
-•	Payload = Content of the requested resource in text/plain;charset=utf-8 format
-
-4
-Verify
-Client displays the response
-
-Part B: client requests a resource in xml format
-
-5
-Stimulus
-Client is requested to send a confirmable GET request to
-server’s resource
-
-
-6
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Another client-generated Message ID ≠ CMID (➔ CMID2)
-•	Client-generated Token which may or may not be ≠ CTOK (➔ CTOK2)
-•	Option type = Accept, value = 41 (application/xml)
-
-7
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID2, Token = CTOK2
-•	Option type = Content-Format, value = 41 (application/xml)
-Payload = Content of the requested resource in application/xml format
-
-8
-Verify
-Client displays the response
-"""
+class TD_COAP_CORE_20 (CoAPTestCase):
+    """
+---
+TD_COAP_CORE_20:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction containing the Accept option (CON mode)
+    pre:
+        - 'Server should provide a resource /multi-format which exists in two
+            formats: '
+        -   - text/plain;charset=utf-8
+            - application/xml
+    ref: '[COAP] 5.8.1, 5.10.5, 5.10.4'
+    seq:
+        -   n: client requests a resource in text format
+        -   s: "Client is requested to send a confirmable GET request to server\
+                \u2019s resource"
+        -   c:
+            - 'The request sent request by the client contains:'
+            -   - Type = 0 (CON)
+                - Code = 1 (GET)
+                - "Client-generated Message ID (\u2794 CMID)"
+                - "Client-generated Token (\u2794 CTOK)"
+                - Option type = Accept, value = 0 (text/plain;charset=utf-8)
+                - Uri-Path option "multi-format"
+        -   c:
+            - 'Server sends response containing:'
+            -   - Code = 2.05 (Content)
+                - Message ID = CMID, Token = CTOK
+                - Option type = Content-Format, value = 0
+                                (text/plain;charset=utf-8)
+                - Payload = Content of the requested resource in
+                            text/plain;charset=utf-8 format
+        -   v: Client displays the response
+        -   n: client requests a resource in xml format
+        -   s: "Client is requested to send a confirmable GET request to server\
+                \u2019s resource"
+        -   c:
+            - 'The request sent by the client contains:'
+            -   - Type = 0 (CON)
+                - Code = 1 (GET)
+                - "Another client-generated Message ID \u2260 CMID (\u2794 CMID2)"
+                - "Client-generated Token which may or may not be \u2260 CTOK\
+                    \ (\u2794 CTOK2)"
+                - Option type = Accept, value = 41 (application/xml)
+        -   c:
+            - 'Server sends response containing:'
+            -   - Code = 2.05 (Content)
+                - Message ID = CMID2, Token = CTOK2
+                - Option type = Content-Format, value = 41 (application/xml)
+            - Payload = Content of the requested resource in application/xml
+                format
+        -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

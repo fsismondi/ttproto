@@ -1,121 +1,84 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
-class TD_COAP_CORE_21(CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_21
-Objective:
-Perform GET transaction containing the ETag option (CON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 5.8.1, 5.10.7,5.10.10,12.1.12
-
-Pre-test
-conditions:
-•	Server should offer a /validate resource which vary in time
-•	Client & server supports ETag option
-•	The Client‘s cache must be purged
-
-Test Sequence:
-Step
-Type
-Description
-
-Part A: Verifying that client cache is empty
-
-1
-Stimulus
-Client is requested to send a confirmable GET request to server’s resource
-
-
-2
-Check
-The request sent request by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Uri-Path option "validate"
-•	No ETag option
-
-3
-Check
-Server sends response containing:
-•	Code = 69 (2.05 content)
-•	Message ID = CMID, Token = CTOK
-•	Option type = ETag, value = a value chosen by the server (➔ ETAG1)
-•	Non-empty Payload
-
-4
-Verify
-Client displays the response
-
-Part B: Verifying client cache entry is still valid
-
-5
-Stimulus
-Client is requested to send s confirmable GET request to
-server’s resource so as to check if the resource was updated
-
-6
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Another client-generated Message ID ≠ CMID (➔ CMID2)
-•	Client-generated Token which may or may not be ≠ CTOK (➔ CTOK2)
-•	Uri-Path option "validate"
-•	Option Type = ETag, value = ETAG1 (the ETag value received in step 3)
-
-7
-Check
-Server sends response containing:
-•	Code = 67 (2.03 Valid)
-•	Message ID = CMID2, Token = CTOK2
-•	Option type = ETag, value = ETAG1
-•	Empty Payload
-
-
-8
-Verify
-Client displays the response
-
-Part C: Verifying that client cache entry is no longer valid
-
-9
-Stimulus
-Update the content of the server’s resource from a CoAP client (either another client, or the testing client in a separate transaction)
-
-10
-Stimulus
-Client is requested to send a confirmable GET request to server’s resource so as to check if the resource was updated
-
-11
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Another client-generated Message ID ≠ CMID and ≠ CMID2 (➔ CMID3)
-•	Client-generated Token which may or may not be ≠ CTOK or CTOK2 (➔ CTOK3)
-•	Uri-Path option "validate"
-•	Option Type = ETag, value = ETAG1 (the ETag value received in step 3)
-
-12
-Check
-Server sends response containing:
-•	Code = 69 (2.05 Content)
-•	Message ID = CMID3, Token = CTOK3
-•	Option type = ETag, value = another ETag value ≠ ETAG1
-•	The payload of the requested resource, which should be different from the payload in step 3
-
-
-13
-Verify
-Client displays the response
-"""
+class TD_COAP_CORE_21 (CoAPTestCase):
+    """
+---
+TD_COAP_CORE_21:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction containing the ETag option (CON mode)
+    pre:
+        - Server should offer a /validate resource which may be made to vary
+            over time
+        - Client & server supports ETag option
+        - "The Client\u2019s cache must be purged"
+    ref: '[COAP] 5.8.1, 5.10.7, 5.10.10, 12.1.12'
+    seq:
+        -   n: Verifying that client cache is empty
+        -   s: "Client is requested to send a confirmable GET request to server\
+                \u2019s resource"
+        -   c:
+            - 'The request sent request by the client contains:'
+            -   - Type = 0 (CON)
+                - Code = 1 (GET)
+                - "Client-generated Message ID (\u2794 CMID)"
+                - "Client-generated Token (\u2794 CTOK)"
+                - Uri-Path option "validate"
+                - No ETag option
+        -   c:
+            - 'Server sends response containing:'
+            -   - Code = 2.05 (Content)
+                - Message ID = CMID, Token = CTOK
+                - "Option type = ETag, value = a value chosen by the server\
+                    \ (\u2794 ETAG1)"
+                - Non-empty Payload
+        -   v: 'Client displays the response '
+        -   n: Verifying client cache entry is still valid
+        -   s: "Client is requested to send a confirmable GET request to server\
+                \u2019s resource so as to check if the resource was updated"
+        -   c:
+            - 'The request sent by the client contains:'
+            -   - Type = 0 (CON)
+                - Code = 1 (GET)
+                - "Another client-generated Message ID \u2260 CMID (\u2794 CMID2)"
+                - "Client-generated Token which may or may not be \u2260 CTOK\
+                    \ (\u2794 CTOK2)"
+                - Uri-Path option "validate"
+                - Option Type = ETag, value = ETAG1 (the ETag value received
+                    in step 3)
+        -   c:
+            - 'Server sends response containing:'
+            -   - Code = 2.03 (Valid)
+                - Message ID = CMID2, Token = CTOK2
+                - Option type = ETag, value = ETAG1
+                - Empty Payload
+        -   v: 'Client displays the response '
+        -   n: Verifying that client cache entry is no longer valid
+        -   s: "Update the content of the server\u2019s resource from a CoAP\
+                \ client (either another client, or the testing client in a\
+                \ separate transaction)"
+        -   s: "Client is requested to send a confirmable GET request to server\
+                \u2019s resource so as to check if the resource was updated"
+        -   c:
+            - 'The request sent by the client contains:'
+            -   - Type = 0 (CON)
+                - Code = 1 (GET)
+                - "Another client-generated Message ID \u2260 CMID and \u2260\
+                    \ CMID2 (\u2794 CMID3)"
+                - "Client-generated Token which may or may not be \u2260 CTOK\
+                    \ or CTOK2 (\u2794 CTOK3)"
+                - Uri-Path option "validate"
+                - Option Type = ETag, value = ETAG1 (the ETag value received
+                    in step 3)
+        -   c:
+            - 'Server sends response containing:'
+            -   - Code = 2.05 (Content)
+                - Message ID = CMID3, Token = CTOK3
+                - "Option type = ETag, value = another ETag value \u2260 ETAG1"
+                - The payload of the requested resource, which should be different
+                    from the payload in step 3
+        -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

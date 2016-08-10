@@ -1,60 +1,39 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
 class TD_COAP_CORE_17 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_17
-Objective:
-Perform GET transaction with a separate response (NON mode)
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 2.2, 5.2.2,  5.8.1
-
-Pre-test
-conditions:
-•	Server offers a resource /separate which is not served immediately and which therefore is not acknowledged in a piggybacked way.
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a non-confirmable GET request to server’s resource
-
-2
-Check
-The request sent by the client contains:
-•	Type = 1 (NON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Uri-Path option "separate"
-
-3
-Check
-Server DOES NOT send response containing:
-•	Type = 2 (ACK)
-•	Same message ID as in the request in step 2
-•	empty Payload
-
-
-4
-Check
-Server sends response containing:
-•	Type  = 1 (NON)
-•	Code = 69 (2.05 content)
-•	Server-generated Message ID (➔ SMID)
-•	Content-format option
-•	Non-empty Payload
-
-5
-Verify
-Client displays the response
-"""
+    """
+---
+TD_COAP_CORE_17:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction with a separate response (NON mode)
+    pre: Server offers a resource /separate which is not served immediately
+        and which therefore is not acknowledged in a piggybacked way.
+    ref: '[COAP] 2.2, 5.2.2, 5.8.1'
+    seq:
+    -   s: "Client is requested to send a non-confirmable GET request to\
+            \ server\u2019s resource"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 1 (NON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - Uri-Path option "separate"
+    -   c:
+        - 'Server DOES NOT send response containing:'
+        -   - Type = 2 (ACK)
+            - Same message ID as in the request in step 2
+            - Empty Payload
+    -   n: Some time (a couple of seconds) elapses.
+    -   c:
+        - 'Server sends response containing:'
+        -   - Type = 1 (NON)
+            - Code = 2.05 (Content)
+            - "Server-generated Message ID (\u2794 SMID)"
+            - Content-format option
+            - Non-empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

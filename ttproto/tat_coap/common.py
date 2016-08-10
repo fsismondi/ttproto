@@ -106,9 +106,13 @@ class CoAPTestCase(TestCase):
         ]
 
     @typecheck
-    def preprocess(self, capture: Capture) -> (list_of(Conversation), list_of(Frame)):
+    def preprocess(
+        self,
+        capture: Capture
+    ) -> (list_of(Conversation), list_of(Frame)):
         """
-        Preprocess and filter the frames of the capture into test case related conversations.
+        Preprocess and filter the frames of the capture into test case related
+        conversations.
 
         :param Capture: The capture which will be filtered/preprocessed
         :return:
@@ -116,23 +120,32 @@ class CoAPTestCase(TestCase):
 
         # TODO assert is subclass of TesCase?
 
-
         # Get informations from the test case
-        # TODO get attrbutes stimuli , protocol under test, nodes patterns directly from child's atrib?
+        # TODO: Get attrbutes stimuli , protocol under test, nodes patterns
+        #       directly from child's atrib?
+
         stimulis = self.get_stimulis()
         protocol = self.get_protocol()
         nodes = self.get_nodes_identification_templates()
+
         conversations = []
         ignored = []
 
         # TODO what happens if no protocol declared on the test case?
         if not nodes or len(nodes) < 2:
-            raise ValueError('Expected at leaset two nodes declaration from the test case')
+            raise ValueError(
+                'Expected at leaset two nodes declaration from the test case'
+            )
         if not protocol:
-            raise ValueError('Expected a protocol under test declaration from the test case')
+            raise ValueError(
+                'Expected a protocol under test declaration from the test case'
+            )
+
         # If there is no stimuli at all
         if not stimulis or len(stimulis) == 0:
-            raise NoStimuliFoundForTestcase('Expected stimuli declaration from the test case')
+            raise NoStimuliFoundForTestcase(
+                'Expected stimuli declaration from the test case'
+            )
 
         # Get the frames filtered on the protocol
         frames, ignored = Frame.filter_frames(capture.frames, protocol)
@@ -189,26 +202,6 @@ class CoAPTestCase(TestCase):
             conversations.append(current_conversation)
 
         return conversations, ignored
-
-        # @property
-        # def conversations(self):
-        #     """
-        #     Function to get the conversations as a list
-        #
-        #     :return: The lsit of conversation
-        #     :rtype: [Conversation]
-        #     """
-        #     return self._conversations
-        #
-        # @property
-        # def ignored(self):
-        #     """
-        #     Function to get the ignored frames as a list
-        #
-        #     :return: The ignored frames that were filtered
-        #     :rtype: [Frame]
-        #     """
-        #     return self._ignored
 
     @typecheck
     def next_skip_ack(self, optional: bool = False):

@@ -1,74 +1,49 @@
-#!/usr/bin/env python3
-
 from ..common import *
 
 
 class TD_COAP_CORE_11 (CoAPTestCase):
-    """Identifier:
-TD_COAP_CORE_11
-Objective:
-Perform GET transaction containing non-empty Token with a separate response (CON mode)
-
-Configuration:
-CoAP_CFG_BASIC
-References:
-[COAP] 2.2, 5.2.2,  5.8.1
-
-Pre-test
-conditions:
-•	Server offers a resource /separate which is not served immediately and which therefore is not acknowledged in a piggybacked way.
-
-Test Sequence:
-Step
-Type
-Description
-
-1
-Stimulus
-Client is requested to send a GET request to server’s
-resource including Token option
-
-2
-Check
-The request sent by the client contains:
-•	Type = 0 (CON)
-•	Code = 1 (GET)
-•	Client-generated Message ID (➔ CMID)
-•	Client-generated Token (➔ CTOK)
-•	Length of the token should be between 1 to 8 Bytes
-•	Uri-Path option "separate"
-
-3
-Check
-Server sends acknowledgement containing:
-•	Type = 2 (ACK)
-•	Code = 0 (Empty)
-•	Message ID = CMID
-•	empty Payload
-
-
-4
-Check
-Server sends response containing:
-•	Type  = 0 (CON)
-•	Code = 69 (2.05 content)
-•	Server-generated Message ID (➔ SMID)
-•	Token = CTOK
-•	Non-empty Payload
-
-5
-Check
-Client sends acknowledgement containing:
-•	Type = 2 (ACK)
-•	Code = 0 (Empty)
-•	Message ID = SMID
-•	Empty Payload
-
-
-6
-Verify
-Client displays the response
-"""
+    """
+---
+TD_COAP_CORE_11:
+    cfg: CoAP_CFG_BASIC
+    obj: Perform GET transaction containing non-empty Token with a separate
+        response (CON mode)
+    pre: Server offers a resource /separate which is not served immediately
+        and which therefore is not acknowledged in a piggybacked way.
+    ref: '[COAP] 2.2, 5.2.2, 5.8.1'
+    seq:
+    -   s: "Client is requested to send a GET request to server\u2019s resource\
+            \ including Token option"
+    -   c:
+        - 'The request sent by the client contains:'
+        -   - Type = 0 (CON)
+            - Code = 1 (GET)
+            - "Client-generated Message ID (\u2794 CMID)"
+            - "Client-generated Token (\u2794 CTOK)"
+            - Length of the token should be between 1 to 8 Bytes
+            - Uri-Path option "separate"
+    -   c:
+        - 'Server sends response containing:'
+        -   - Type = 2 (ACK)
+            - Code = 0
+            - Message ID = CMID
+            - Empty Payload
+    -   n: Some time (a couple of seconds) elapses.
+    -   c:
+        - 'Server sends response containing:'
+        -   - Type = 0 (CON)
+            - Code = 2.05 (Content)
+            - "Server-generated Message ID (\u2794 SMID)"
+            - Token = CTOK
+            - Non-empty Payload
+    -   c:
+        - 'Client sends response containing:'
+        -   - Type = 2 (ACK)
+            - Code = 0
+            - Message ID = SMID
+            - Empty Payload
+    -   v: Client displays the response
+    """
 
     @classmethod
     @typecheck

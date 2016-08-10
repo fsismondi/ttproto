@@ -45,10 +45,12 @@ from os import path
 from importlib import import_module
 
 from ttproto.core.data import Data, DifferenceList, Value
-from ttproto.core.dissector import Frame, Capture, is_protocol, ProtocolNotFound
+from ttproto.core.dissector import (Frame, Capture, is_protocol,
+                                    ProtocolNotFound)
 from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
+from ttproto.core.lib.readers.yaml import YamlReader
 
 
 __all__ = [
@@ -262,7 +264,6 @@ class Node:
         """
         return self._name
 
-
     @property
     def value(self):
         """
@@ -315,7 +316,6 @@ class Conversation(list):
         :rtype: {str: Template}
         """
         return self._nodes
-
 
     def __bool__(self):
         """
@@ -559,6 +559,11 @@ class TestCase(object):
         # Pre-process / filter conversations corresponding to the TC
         self._conversations, self._ignored = self.preprocess(self._capture)
 
+        # print("----conversations----")
+        # print(self._conversations)
+        # print("----ignored----")
+        # print(self._ignored)
+
         # Run the test case for every conversations
         for conv in self._conversations:
 
@@ -572,18 +577,6 @@ class TestCase(object):
 
                 # Run the test case
                 self.run()
-
-                # NOTE: With new implementation, we can have useless frames at
-                #       the end of a conversation. We have to put them into
-                #       ignored frames or just ignore them if there are some
-                #       like we are doing right now.
-                #
-                # # Ensure we're at the end of the communication
-                # try:
-                #     self.log(next(self.__iter))
-                #     self.set_verdict('inconc', 'unexpected frame')
-                # except StopIteration:
-                #     pass
 
             except self.Stop:
                 # Ignore this testcase result if the first frame gives an
@@ -627,12 +620,17 @@ class TestCase(object):
         :rtype: str
         """
         if cls.__doc__:
-            ok = False
-            for line in cls.__doc__.splitlines():
-                if ok:
-                    return line
-                if line == 'Objective:':
-                    ok = True
+
+            # Get the Yaml reader
+            yaml_reader = YamlReader(cls.__doc__, raw_text=True)
+
+            # Then get the dictionnary representation of the tc documentation
+            doc_as_dict = yaml_reader.as_dict
+
+            # Into this dict, get the test objective
+            assert len(doc_as_dict) == 1
+            return doc_as_dict[cls.__name__]['obj']
+
         return ''
 
     @classmethod
@@ -650,13 +648,17 @@ class TestCase(object):
         """
         raise NotImplementedError()
 
-    def preprocess(self, capture: Capture):
+    @typecheck
+    def preprocess(
+        self,
+        capture: Capture
+    ) -> (list_of(Conversation), list_of(Frame)):
         """
-        Pre-process and filter the frames of the capture into test case related conversations. This has to be
-        implemented into the protocol's common test case class.
+        Pre-process and filter the frames of the capture into test case related
+        conversations. This has to be implemented into the protocol's common
+        test case class.
         """
         raise NotImplementedError()
-
 
     @classmethod
     @typecheck
@@ -823,21 +825,22 @@ class Analyzer:
         self,
         testcases: optional(list_of(str)) = None,
         verbose: bool = False
-    ) -> list_of((str, str, str)):
+    ) -> list_of((str, str, str, str)):
         """
         Get more informations about the test cases
 
         :param testcases: A list of test cases to get their informations
-        :param verbose: True if we want the TC implementation code
+        :param verbose: True if we want more informations about the TC
         :type testcase_id: optional([str])
         :type verbose: bool
 
         :raises FileNotFoundError: If one of the test case is not found
 
         :return: List of descriptions of test cases composed of:
-                    -tc_identifier
-                    -tc_objective
-                    -tc_sourcecode
+                    - tc_identifier
+                    - tc_objective
+                    - tc_sourcecode
+                    - tc_doc
         :rtype: [(str, str, str)]
         """
 
@@ -850,11 +853,17 @@ class Analyzer:
         # Add the infos of each of them to the return value
         for tc in tc_classes:
 
-            # If verbose is asked, we provide the source code too
-            more_info = '' if not verbose else inspect.getsource(tc)
+            # If verbose is asked, we provide the source code and doc too
+            source_code = ''
+            source_doc = ''
+            if verbose:
+                source_code = inspect.getsource(tc)
+                source_doc = inspect.getdoc(tc)
 
             # Add the tuple to the return value
-            ret.append((tc.__name__, tc.get_test_purpose(), more_info))
+            ret.append(
+                (tc.__name__, tc.get_test_purpose(), source_code, source_doc)
+            )
 
         # Return the list of tuples
         return ret
@@ -909,12 +918,9 @@ class Analyzer:
             # Get the capture from the file
             capture = Capture(filename)
 
-
-
             # Initialize the TC with the list of conversations
             test_case = test_case_class(capture)
             verdict, rev_frames, extra, exceptions = test_case.run_test_case()
-
 
             # print('##### Ignored')
             # print(ignored)
@@ -940,167 +946,4 @@ class Analyzer:
 
 
 if __name__ == "__main__":
-    # WARNING: The underlying code can work wrong if this module is directly
-    #          launched as main.
-    #
-    # print(Analyzer('tat_coap').import_test_cases())
-    # print(Analyzer('tat_6tisch').import_test_cases())
-
-    print(Analyzer('tat_privacy').import_test_cases())
-
-    #print(Analyzer('tat_privacy').analyse()
-
-    #print(Analyzer('tat_privacy').import_test_cases(['TD_COAP_CORE_24']))
-
-    # print(Analyzer('tat_coap').import_test_cases(['TD_COAP_CORE_24']))
-    # print(Analyzer('tat_coap').import_test_cases([
-    #     'TD_COAP_CORE_01',
-    #     'TD_COAP_CORE_02'
-    # ]))
-    # print(Analyzer('tat_coap').get_implemented_testcases())
-    # print(Analyzer('tat_6tisch').get_implemented_testcases())
-    # print(Analyzer('tat_coap').get_implemented_testcases(['TD_COAP_CORE_24']))
-    # print(Analyzer('tat_coap').get_implemented_testcases([
-    #     'TD_COAP_CORE_01',
-    #     'TD_COAP_CORE_05',
-    #     'TD_COAP_CORE_09'
-    # ]))
-    # print(Analyzer('tat_coap').get_implemented_testcases(
-    #     ['TD_COAP_CORE_24'], True
-    # ))
-    # print(Analyzer('tat_coap').get_implemented_testcases([
-    #     'TD_COAP_CORE_01',
-    #     'TD_COAP_CORE_05',
-    #     'TD_COAP_CORE_09'
-    # ], True))
-    # try:
-    #     print(
-    #         Analyzer('tat_coap').get_implemented_testcases(['TD_COAP_CORE_42'])
-    #     )
-    # except FileNotFoundError as e:
-    #     print(e)
-    # try:
-    #     print(Analyzer('unknown').get_implemented_testcases())
-    # except NotADirectoryError as e:
-    #     print(e)
-    # try:
-    #     print(Analyzer('unknown').get_implemented_testcases(['TD_COAP_CORE_42']))
-    # except NotADirectoryError as e:
-    #     print(e)
-    # print(
-    #     Analyzer('tat_coap').analyse(
-    #         '/'.join((
-    #             'tests',
-    #             'test_dumps',
-    #             '_'.join((
-    #                 'TD',
-    #                 'COAP',
-    #                 'CORE',
-    #                 '07',
-    #                 'FAIL',
-    #                 'No',
-    #                 'CoAPOptionContentFormat',
-    #                 'plus',
-    #                 'random',
-    #                 'UDP',
-    #                 'messages.pcap'
-    #             ))
-    #         )),
-    #         'TD_COAP_CORE_01'
-    #     )
-    # )
-    # try:
-    #     print(
-    #         Analyzer('tat_6tisch').get_implemented_testcases()
-    #     )
-    # except FileNotFoundError as e:
-    #     print(e)
-    # try:
-    #     print(Analyzer('tat_6tisch').get_implemented_testcases())
-    # except NotADirectoryError as e:
-    #     print(e)
-    # try:
-    #     print(Analyzer('tat_6tisch').get_implemented_testcases())
-    # except NotADirectoryError as e:
-    #     print(e)
-    # result = Analyzer('tat_coap').analyse(
-    #     '/'.join((
-    #         'tests',
-    #         'test_dumps',
-    #         'TD_COAP_CORE_02_PASS.pcap'
-    #     )),
-    #     'TD_COAP_CORE_02'
-    # )
-    # print(
-    #     result
-    # )
-    # if len(result[4]) > 0:
-    #     import traceback
-    #     traceback.print_tb(result[4][0][2])
-    # print(
-    #     Analyzer('tat_coap').analyse(
-    #         '/'.join((
-    #             'tests',
-    #             'test_dumps',
-    #             'TD_COAP_CORE_01_PASS.pcap'
-    #         )),
-    #         'TD_COAP_CORE_02'
-    #     )
-    # )
-    # tcs = Analyzer('tat_coap').get_implemented_testcases()
-    # for tc in tcs:
-    #     print('#####################  ' + tc[0] + '  #####################')
-    #     try:
-    #         print(
-    #             Analyzer('tat_coap').analyse(
-    #                 '/'.join((
-    #                     'tests',
-    #                     'test_dumps',
-    #                     tc[0] + '_PASS.pcap'
-    #                 )),
-    #                 tc[0]
-    #             )
-    #         )
-    #     except ReaderError:
-    #         print(tc[0] + " doesn't have a dump file associated to it")
-    #     print('############################################################')
-    #     print('')
-    # capture = Capture(
-    #     '/'.join((
-    #         'tests',
-    #         'test_dumps',
-    #         'TD_COAP_CORE_01_PASS.pcap'
-    #     ))
-    # )
-    # stimulis = [
-    #     CoAP(type='con', code='get'),
-    #     CoAP(type='con', code='get')
-    # ]
-    # from ttproto.tat_coap.testcases.td_coap_core_01 import TD_COAP_CORE_01
-    # from ttproto.tat_coap.common import CoAPTestCase
-    # assert type(TD_COAP_CORE_01) == type
-    # assert issubclass(TD_COAP_CORE_01, CoAPTestCase)
-    # assert issubclass(CoAPTestCase, TestCase)
-    # assert issubclass(TD_COAP_CORE_01, TestCase)
-    # coap_filter = Filter(capture, TD_COAP_CORE_01)
-    # print('##### Generated conversations')
-    # for conv in coap_filter.conversations:
-    #     print(conv)
-    # print('##### Ignored frames')
-    # print(coap_filter.ignored)
-    # coap_analyser = Analyzer('tat_coap')
-    # for test_id, _, _ in coap_analyser.get_implemented_testcases():
-    #     result = coap_analyser.analyse(
-    #             '/'.join((
-    #                 'tests',
-    #                 'test_dumps',
-    #                 test_id + '_PASS.pcap'
-    #             )),
-    #             test_id
-    #         )
-    #     if result[1] != 'pass':
-    #         print(result)
-    #         if len(result[4]) > 0:
-    #             import traceback
-    #             traceback.print_tb(result[4][0][2])
     pass
