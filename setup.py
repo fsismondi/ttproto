@@ -1,21 +1,19 @@
 from setuptools import find_packages
 from distutils.core import setup
 
-#version = __import__('ttproto').get_version()
-version = '3c2c984'
+version = "0.0.1"
 
 # TODO update license info
 
 setup(
-    name='ttproto ',
+    name='ttproto',
     version=version,
     url='https://www.irisa.fr/tipi/wiki/doku.php/testing_tool_prototype',
     author='Universite de Rennes 1 / INRIA',
-    author_email='t3devkit@irisa.fr',
     maintainer='Federico Sismondi',
-    maintainer_email='federico.sismondi@irisa.fr',
+    maintainer_email='federico.sismondi@inria.fr',
     description=('ttproto is an experimental tool for implementing testing'
-                 'tools, for conformance and interoperability testing.'),
+                 'tools, for conformance and interoperability testing mainly.'),
     license='TODO',
-    packages=find_packages(exclude=['tests', 'tests.*']),
+    #packages=find_packages(exclude=['tests', 'tests.*']),
    )
