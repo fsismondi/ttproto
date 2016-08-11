@@ -23,7 +23,7 @@ class AnalyzerTestCase(unittest.TestCase):
     # File path
     TEST_FILE_DIR = 'tests/test_dumps/coap'
     PCAP_FILE = TEST_FILE_DIR + '/TD_COAP_CORE_01_PASS.pcap'
-    WRONG_TEST_FILE_DIR = 'tests/test_files/WrongFilesForTests'
+    WRONG_TEST_FILE_DIR = 'tests/test_dumps/WrongFilesForTests'
     EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
     NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
 

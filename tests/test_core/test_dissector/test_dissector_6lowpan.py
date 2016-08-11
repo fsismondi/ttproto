@@ -18,9 +18,10 @@ class DissectorTestCase(unittest.TestCase):
     # File path
     TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
     PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
+    PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS = 'wpan_802_15_4_LLT104_icmpv6.pcap'
+    LINKTYPE_IEEE802_15_4_NOFCS= ""
     WRONG_TEST_FILE_DIR = 'tests/test_dumps/WrongFilesForTests'
     EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
-    NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
 
     # Create a struct checker object
     STRUCT_CHECKER = StructureChecker()

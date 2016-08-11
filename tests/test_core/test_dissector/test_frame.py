@@ -16,7 +16,7 @@ class FrameTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_files/DissectorTests'
+    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
     PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
 
     # Create a struct checker object

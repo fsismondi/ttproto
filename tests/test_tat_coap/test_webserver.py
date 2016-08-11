@@ -25,7 +25,7 @@ class WebserverTestCase(unittest.TestCase):
     SERVER_ADDRESS = '0.0.0.0'
     SERVER_PORT = 8008
     TAT_API_URL = 'http://127.0.0.1:' + str(SERVER_PORT)
-    FILES_DIR = 'tests/test_files'
+    FILES_DIR = 'tests/test_dumps'
 
     # Some dummy values
     EXISTING_TEST_CASE = 'TD_COAP_CORE_01'
