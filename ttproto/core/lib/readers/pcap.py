@@ -33,12 +33,17 @@
 
 from ttproto.core.data import *
 from ttproto.utils import pure_pcapy
+import logging
 
 from ttproto.core.typecheck import *
 from ttproto.core.lib.ethernet import Ethernet
 from ttproto.core.lib.encap import *
 from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.readers.capture_reader import CaptureReader
+
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
 
 _map_link_type = {
     pure_pcapy.DLT_EN10MB: Ethernet,
@@ -70,7 +75,7 @@ class PcapReader(CaptureReader):
         except Exception as e:
             self.__pcap_file.close()
             raise e
-        # print("datalink: %d" % self.__reader.datalink())
+        log.info("datalink: %d" % self.__reader.datalink())
 
         try:
             decode_type = _map_link_type[self.__reader.datalink()]

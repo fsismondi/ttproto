@@ -292,10 +292,12 @@ class Pkthdr(object):
 		""" returns the original length of the packet """
 		return self.orig_len
 
+
 class Bpf(object):
 	def __init__(self):
 		raise NotImplementedError("not implemented yet")
 
 	def filter(self, packet):
 		raise NotImplementedError("not implemented yet")
+
 
