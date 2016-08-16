@@ -838,7 +838,7 @@ class Analyzer:
                     - tc_objective
                     - tc_sourcecode
                     - tc_doc
-        :rtype: [(str, str, str)]
+        :rtype: [(str, str, str, str)]
         """
 
         # The return value
