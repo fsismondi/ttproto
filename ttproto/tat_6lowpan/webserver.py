@@ -58,6 +58,7 @@ from ttproto.core.dissector import Dissector
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
+from ttproto.core.lib.readers.yaml import YamlReader
 
 
 # List to generate the changelog page
@@ -80,93 +81,18 @@ TOKEN_LENGTH = 28
 PROTOCOLS = OrderedDict()
 
 
-# ######################## End of API part ######################### #
-
-
-def prepare_changelog():
-    global CHANGELOG
-    CHANGELOG = []
-
-    try:
-        lines = None
-
-        # NOTE: limite log to first parent to avoid the burden of having
-        #       verbose changelog about tool updates
-        #    -> put tool updates in branch 'tool'
-        #    -> put test suites updates in branch 'master'
-        #    -> merge 'tool' into 'master' using « --no-ff --no-commit »
-        #       and put summary changes about the tool
-        git_cmd = [
-            'git',
-            'log',
-            '--format=format:%cD\n%h\n%d\n%B\n_____end_commit_____',
-            '--first-parent'
-        ]
-
-        if CHANGELOG_FIRST_COMMIT:
-            git_cmd.append("%s^1.." % CHANGELOG_FIRST_COMMIT)
-
-        git_log = iter(str(subprocess.Popen(
-                git_cmd,
-                stdout=subprocess.PIPE,
-                close_fds=True,
-            ).stdout.read(), "utf8", "replace").splitlines())
-
-        while True:
-            date = next(git_log)
-            ver = next(git_log)
-            tags = next(git_log)
-            if tags:
-                tags = tags[2:-1]
-            lines = []
-            while True:
-                l = next(git_log)
-                if l == "_____end_commit_____":
-                    break
-                lines.append(l)
-
-            if lines and lines[-1] != "":
-                lines.append("")  # ensure that there will be a \n at the end
-            CHANGELOG.append((ver, tags, date, "\n".join(lines)))
-    except StopIteration:
-        pass
-    except Exception as e:
-        CHANGELOG = [(
-            ("error when generating changelog(%s: %s)" % (type(e).__name__, e)),
-            "",
-            "",
-            ""
-        )]
-
-
-def html_changelog(g):
-
-    ctl = XMLGeneratorControl(g)
-
-    g.h2("Changelog")
-    for ver, tags, date, body in CHANGELOG:
-        if tags:
-            g.b("%s" % (tags))
-            ctl.raw_write("<br>")  # FIXME: bug in xmlgen
-        g.span("%s - %s\n\n" % (ver, date), style="color:#808080")
-
-        g.pre("\t%s\n\n" % "\n\t".join(body.splitlines()))
-
-
-# ########################## ttproto API ########################### #
-
 @typecheck
 def get_test_cases(
-    testcase_id: optional(str) = None
+    testcase_id: optional(str) = None,
+    verbose: bool = False
 ) -> OrderedDict:
     """
-    Function to get the test cases from files if not initialized
-
-    Or directly from the global storage variable, can retrieve a single test
-    case if wanted but doesn't use the analysis function, cf the remark
+    Function to get the test cases from files
 
     :param testcase_id: The id of the single test case if one wanted
+    :param verbose: True if we want to retrieve more informations
     :type testcase_id: str
+    :type verbose: bool
 
     :return: The implemented test cases
     :rtype: OrderedDict
@@ -175,7 +101,10 @@ def get_test_cases(
     # New way by analyzer tool
     test_cases = OrderedDict()
     tc_query = [] if not testcase_id else [testcase_id]
-    raw_tcs = Analyzer('tat_coap').get_implemented_testcases(tc_query)
+    raw_tcs = Analyzer('tat_6lowpan').get_implemented_testcases(
+        tc_query,
+        verbose
+    )
 
     # Build the clean results list
     for raw_tc in raw_tcs:
@@ -323,7 +252,56 @@ def get_token(tok: optional(str) = None):
     return token.replace('=', '')
 
 
+@typecheck
+def get_test_steps(tc: str) -> list_of(OrderedDict):
+    """
+    Get an OrderedDict representing the different steps of a test case
+
+    :param tc: The id of the test case
+    :type tc: str
+
+    :return: The steps of a TC as a list of OrderedDict
+    :rtype: [OrderedDict]
+    """
+
+    # The return list of OrderedDict
+    steps = []
+
+    # Get the test case informations
+    raw_tcs = Analyzer('tat_6lowpan').get_implemented_testcases([tc], True)
+    assert len(raw_tcs) == 1
+
+    # Parse the documentation with yaml reader and get it as dictionnary
+    doc_reader = YamlReader(raw_tcs[0][3], raw_text=True)
+    doc_dict = doc_reader.as_dict
+
+    # For every step, put its informations inside the steps dict
+    for step_id, step in enumerate(doc_dict[tc]['seq']):
+        step_dict = OrderedDict()
+        step_dict['_type'] = 'step'
+        step_dict['step_id'] = step_id
+        step_dict['step_type'], step_dict['step_info'] = step.popitem()
+        steps.append(step_dict)
+
+    # Return the step list of this tc
+    return steps
+
+
 # ######################## End of API part ######################### #
+
+
+def html_changelog(g):
+
+    ctl = XMLGeneratorControl(g)
+
+    g.h2("Changelog")
+    for ver, tags, date, body in CHANGELOG:
+        if tags:
+            g.b("%s" % (tags))
+            ctl.raw_write("<br>")  # FIXME: bug in xmlgen
+        g.span("%s - %s\n\n" % (ver, date), style="color:#808080")
+
+        g.pre("\t%s\n\n" % "\n\t".join(body.splitlines()))
 
 
 class UTF8Wrapper(io.TextIOBase):
@@ -392,7 +370,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             self.send_response(200)
-            self.send_header("Content-Type", "text/x-sh")
+            self.send_header('Content-Type', "text/x-sh")
             self.end_headers()
 
             self.wfile.write(fp.read())
@@ -405,7 +383,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             self.send_response(200)
-            self.send_header("Content-Type", "application/pdf")
+            self.send_header('Content-Type', "application/pdf")
             self.end_headers()
 
             self.wfile.write(fp.read())
@@ -418,7 +396,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             self.send_response(200)
-            self.send_header("Content-Type", "application/pdf")
+            self.send_header('Content-Type', "application/pdf")
             self.end_headers()
 
             self.wfile.write(fp.read())
@@ -431,7 +409,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             self.send_response(200)
-            self.send_header("Content-Type", "application/pdf")
+            self.send_header('Content-Type', "application/pdf")
             self.end_headers()
 
             self.wfile.write(fp.read())
@@ -457,7 +435,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
 
             # Bind the stdout to the http output
@@ -500,7 +478,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
 
             # Bind the stdout to the http output
@@ -528,7 +506,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Get the test case
             try:
-                test_case = get_test_cases(params['testcase_id'][0])
+                test_case = get_test_cases(params['testcase_id'][0], True)
             except FileNotFoundError:
                 self.api_error(
                     'Test case %s not found' % params['testcase_id'][0]
@@ -548,6 +526,61 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
+        # GET handler for the analyzer_getTestcaseSteps uri
+        # It will give the different steps of a TC
+        #
+        # /param testcase_id => The unique id of the test case
+        #
+        elif url.path == '/api/v1/analyzer_getTestcaseSteps':
+
+            # Send the header
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
+            self.end_headers()
+
+            # Bind the stdout to the http output
+            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+
+            # Get the parameters
+            params = parse_qs(url.query)
+
+            try:
+
+                # Check parameters
+                if any((
+                    len(params) != 1,
+                    'testcase_id' not in params,
+                    not correct_get_param(params['testcase_id'])
+                )):
+                    raise
+
+            # Catch errors (key mostly) or if wrong parameter
+            except:
+                self.api_error(
+                    "Incorrects GET parameters, expected '?testcase_id={string}'"
+                )
+                return
+
+            # Get the test case
+            try:
+                tc_id = params['testcase_id'][0]
+                steps = get_test_steps(tc_id)
+            except:
+                self.api_error(
+                    'Steps of test case %s not found' % tc_id
+                )
+                return
+
+            # The result to return
+            json_result = OrderedDict()
+            json_result['_type'] = 'response'
+            json_result['ok'] = True
+            json_result['content'] = steps
+
+            # Here the process from ttproto core
+            print(json.dumps(json_result))
+            return
+
         # GET handler for the analyzer_getProtocols uri
         # It will give to the gui the list of the protocols implemented
         #
@@ -558,7 +591,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
 
             # Bind the stdout to the http output
@@ -597,7 +630,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
 
             # Bind the stdout to the http output
@@ -710,7 +743,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
             # Send the header
             self.send_response(200)
-            self.send_header("Content-Type", "application/json;charset=utf-8")
+            self.send_header('Content-Type', 'application/json;charset=utf-8')
             self.end_headers()
 
             # Bind the stdout to the http output
@@ -798,7 +831,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         self.send_response(200)
-        self.send_header("Content-Type", "text/html;charset=utf-8")
+        self.send_header('Content-Type', "text/html;charset=utf-8")
         self.end_headers()
 
         with XHTML10Generator(output=UTF8Wrapper(self.wfile)) as g:
@@ -1057,7 +1090,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     return
 
             # Get the result of the analysis
-            analysis_results = Analyzer('tat_coap').analyse(
+            analysis_results = Analyzer('tat_6lowpan').analyse(
                                 pcap_path,
                                 testcase_id
                             )
@@ -1282,115 +1315,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # ######################## End of API part ######################### #
-
-        # DEPRECATED
-        # elif (self.path == "/submit"):
-
-        #     if os.fork():
-        #         # close the socket right now(because the
-        #         # requesthandler may do a shutdown(), which triggers a
-        #         # SIGCHLD in the child process)
-        #         self.connection.close()
-        #         return
-
-        #     parser = BytesFeedParser()
-        #     ct = self.headers.get("Content-Type")
-        #     if not ct.startswith("multipart/form-data;"):
-        #         self.send_error(400)
-        #         return
-
-        #     parser.feed(bytes("Content-Type: %s\r\n\r\n" % ct, "ascii"))
-        #     parser.feed(self.rfile.read(int(self.headers['Content-Length'])))
-        #     msg = parser.close()
-
-        #     # agree checkbox is selected
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="agree"' in disposition:
-        #                 agree = True
-        #                 break
-        #     else:
-        #         agree = False
-
-        #     # urifilter checkbox is selected
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="urifilter"' in disposition:
-        #                 urifilter = True
-        #                 break
-        #     else:
-        #         urifilter = False
-
-        #     # content of the regex box
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="regex"' in disposition:
-        #                 regex = part.get_payload()
-        #                 if not regex:
-        #                     regex = None
-        #                 break
-        #     else:
-        #         regex = None
-
-        #     # profile radio buttons
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="profile"' in disposition:
-        #                 profile = part.get_payload()
-        #                 break
-        #     else:
-        #         profile = "client"
-
-        #     # receive the pcap file
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="file"' in disposition:
-        #                 mo = re.search('filename="([^"]*)"', disposition)
-
-        #                 orig_filename = mo.group(1) if mo else None
-
-        #                 timestamp = time.strftime("%y%m%d_%H%M%S")
-
-        #                 pcap_file = os.path.join(
-        #                         (DATADIR if agree else TMPDIR),
-        #                         "%s_%04d.dump" % (timestamp, job_id)
-        #                 )
-        #                 self.log_message("uploading %s(urifilter=%r, regex=%r)", pcap_file, urifilter, regex)
-        #                 with open(pcap_file, "wb") as fd:
-        #                     # FIXME: using hidden API(._payload) because it seems that there is something broken with the encoding when getting the payload using .get_payload()
-        #                     fd.write(part._payload.encode("ascii", errors="surrogateescape"))
-
-        #                 break
-        #     else:
-        #         self.send_error(400)
-        #         return
-
-        #     self.send_response(200)
-        #     self.send_header("Content-Type", "text/html;charset=utf-8")
-        #     self.end_headers()
-
-        #     out = UTF8Wrapper(self.wfile)
-
-        #     self.wfile.flush()
-
-        #     os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-
-        #     try:
-        #         exceptions = []
-        #         analysis.analyse_file_html(pcap_file, orig_filename, urifilter, exceptions, regex, profile)
-        #         for tc in exceptions:
-        #             self.log_message("exception in %s", type(tc).__name__, append=tc.exception)
-        #     except pure_pcapy.PcapError:
-        #         print("Bad file format!")
-
-        #     shutdown()
-
         # If we didn't manage to bind the request
         else:
             self.send_error(404)
@@ -1416,4 +1340,4 @@ for d in TMPDIR, DATADIR, LOGDIR:
 
 def reopen_log_file(signum, frame):
     global log_file
-    log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
+    log_file = open(os.path.join(LOGDIR, "6lowpan-webserver.log"), "a")
