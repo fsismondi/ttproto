@@ -30,6 +30,5 @@ reports/
 
 # Sphinx documentation generation
 doc
-!doc/*.dia
 sphinx-doc-src
 !sphinx-doc-src/conf.py
