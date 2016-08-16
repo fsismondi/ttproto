@@ -35,8 +35,10 @@ from ttproto.utils.pure_pcapy import DLT_IEEE802_15_4
 from ttproto.core.lib.all import Ieee802154
 from ttproto.utils.pcap_filter import remove_first_bytes
 
+TMPDIR = "tmp"
 
-def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str ):
+
+def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR +'/temp.pcap'):
     """
     This filter is usded to filter the extra layers added by openwsn openvisualizer when sniffing ieee802.15.4
     and forwarding to the tun/tap interface
@@ -44,7 +46,7 @@ def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str ):
     :return:
     """
     JUMP_LENGTH = 16 * 5  # en bytes
-    remove_first_bytes( pcap_filename, new_pcap_filename , JUMP_LENGTH, 200, DLT_IEEE802_15_4)
+    remove_first_bytes(JUMP_LENGTH, 200, DLT_IEEE802_15_4, pcap_filename, new_pcap_filename )
 
 
 
@@ -53,12 +55,12 @@ if __name__ == '__main__':
     from ttproto.core.dissector import Dissector
 
     filename = 'tests/test_dumps/6lowpan/echo_req_and_reply_and_other_packets_with_openmote_sniffer.pcap'
-    new_filename = 'temp.pcap'
 
-    openwsn_profile_filter(filename,new_filename)
+
+    openwsn_profile_filter(filename)
 
     print('starting dissection')
-    dissector = Dissector(new_filename)
+    dissector = Dissector('tmp/temp.pcap')
 
     for s in dissector.summary():
         print(s)

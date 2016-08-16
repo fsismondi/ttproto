@@ -38,9 +38,10 @@ from ttproto.core.typecheck import *
 # TODO filter first X layers of pcap
 # TODO protocol filter: ex: filter anything that's not IEE802.15.4? dissect()  already does this
 
+TMPDIR = "tmp"
 
 @typecheck
-def remove_first_bytes( pcap_filename : str, new_pcap_filename: str , number_of_bytes: int, new_snaplen: int, new_network):
+def remove_first_bytes( number_of_bytes: int, new_snaplen: int, new_network, pcap_filename : str, new_pcap_filename: str = TMPDIR+"/temp.pcap"  ):
 
     reader = open_offline(pcap_filename)
     dumper = Dumper(new_pcap_filename, new_snaplen, new_network)
