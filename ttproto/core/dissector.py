@@ -475,6 +475,14 @@ class Dissector:
         :param protocol: Protocol class for filtering purposes
         :type protocol: type
 
+        :Example:
+
+        from ttproto.core.lib.all import Ieee802154
+
+        for s in dissector.summary(protocol = Ieee802154):
+
+            print(s)
+
         :raises TypeError: If protocol is not a protocol class
         :raises ReaderError: If the reader couldn't process the file
 
@@ -485,8 +493,11 @@ class Dissector:
 
             [
                 (13, '[127.0.0.1 -> 127.0.0.1] CoAP [CON 38515] GET /test'),
+
                 (14, '[127.0.0.1 -> 127.0.0.1] CoAP [ACK 38515] 2.05 Content'),
+
                 (21, '[127.0.0.1 -> 127.0.0.1] CoAP [CON 38516] PUT /test'),
+
                 (22, '[127.0.0.1 -> 127.0.0.1] CoAP [ACK 38516] 2.04 Changed')]
             ]
 
@@ -524,7 +535,6 @@ class Dissector:
 
         :param protocol: Protocol class for filtering purposes
         :type protocol: type
-
         :raises TypeError: If protocol is not a protocol class
         :raises ReaderError: If the reader couldn't process the file
 
