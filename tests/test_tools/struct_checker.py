@@ -191,7 +191,7 @@ class StructureChecker(unittest.TestCase):
 
         for tc in el:
             self.assertEqual(type(tc), tuple)
-            self.assertEqual(len(tc), 3)
+            self.assertEqual(len(tc), 4)
 
             # For each element of this, it should be a string
             for tuple_el in tc:

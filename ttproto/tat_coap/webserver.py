@@ -36,37 +36,25 @@ import io
 import sys
 import os
 import errno
-import tempfile
 import re
 import time
 import signal
-import select
-import subprocess
 import cgi
 import json
 import hashlib
 import base64
 import requests
-import email.feedparser
-import email.message
 
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Dissector
-from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
 
 
-# List to generate the changelog page
-CHANGELOG = []
-CHANGELOG_FIRST_COMMIT = "iot2-beta"
-
-
-# ########################## ttproto API ########################### #
 # Directories
 DATADIR = "data"
 TMPDIR = "tmp"
@@ -287,55 +275,7 @@ def get_test_steps(tc: str) -> list_of(OrderedDict):
     return steps
 
 
-# ######################## End of API part ######################### #
-
-
-def html_changelog(g):
-
-    ctl = XMLGeneratorControl(g)
-
-    g.h2("Changelog")
-    for ver, tags, date, body in CHANGELOG:
-        if tags:
-            g.b("%s" % (tags))
-            ctl.raw_write("<br>")  # FIXME: bug in xmlgen
-        g.span("%s - %s\n\n" % (ver, date), style="color:#808080")
-
-        g.pre("\t%s\n\n" % "\n\t".join(body.splitlines()))
-
-
-class UTF8Wrapper(io.TextIOBase):
-    def __init__(self, raw_stream):
-        self.__raw = raw_stream
-
-    def write(self, string):
-
-        return self.__raw.write(bytes(string, "utf-8"))
-
-
-class BytesFeedParser(email.feedparser.FeedParser):
-    """Like FeedParser, but feed accepts bytes."""
-
-    def feed(self, data):
-        super().feed(data.decode('ascii', 'surrogateescape'))
-
-
 class RequestHandler(http.server.BaseHTTPRequestHandler):
-
-    # ########################## ttproto API ########################### #
-    def api_error(self, message):
-        """
-            Function for generating a json error
-            The error message is logged at the same time
-        """
-        self.log_message("%s error: %s", self.path, message)
-        to_dump = OrderedDict()
-        to_dump['_type'] = 'response'
-        to_dump['ok'] = False
-        to_dump['error'] = message
-        print(json.dumps(to_dump))
-
-    # ######################## End of API part ######################### #
 
     def log_message(self, format, *args, append=""):
         global log_file
@@ -357,65 +297,22 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         log_file.write(txt)
         log_file.flush()
 
+    def api_error(self, message):
+        """
+            Function for generating a json error
+            The error message is logged at the same time
+        """
+        self.log_message("%s error: %s", self.path, message)
+        to_dump = OrderedDict()
+        to_dump['_type'] = 'response'
+        to_dump['ok'] = False
+        to_dump['error'] = message
+        print(json.dumps(to_dump))
+
     def do_GET(self):
 
         # Get the url and parse it
         url = urlparse(self.path)
-
-        if url.path == "/coap-tool.sh":
-            fp = open("coap-tool.sh", "rb")
-
-            if not fp:
-                self.send_response(500)
-                return
-
-            self.send_response(200)
-            self.send_header('Content-Type', "text/x-sh")
-            self.end_headers()
-
-            self.wfile.write(fp.read())
-            return
-        elif url.path == "/doc/ETSI-CoAP4-test-list.pdf":
-            fp = open("doc/ETSI-CoAP4-test-list.pdf", "rb")
-
-            if not fp:
-                self.send_response(500)
-                return
-
-            self.send_response(200)
-            self.send_header('Content-Type', "application/pdf")
-            self.end_headers()
-
-            self.wfile.write(fp.read())
-            return
-        elif url.path == "/doc/Additive-IRISA-CoAP-test-list.pdf":
-            fp = open("doc/Additive-IRISA-CoAP-test-list.pdf", "rb")
-
-            if not fp:
-                self.send_response(500)
-                return
-
-            self.send_response(200)
-            self.send_header('Content-Type', "application/pdf")
-            self.end_headers()
-
-            self.wfile.write(fp.read())
-            return
-        elif url.path == "/doc/Additive-IRISA-CoAP-test-description.pdf":
-            fp = open("doc/Additive-IRISA-CoAP-test-description.pdf", "rb")
-
-            if not fp:
-                self.send_response(500)
-                return
-
-            self.send_response(200)
-            self.send_header('Content-Type', "application/pdf")
-            self.end_headers()
-
-            self.wfile.write(fp.read())
-            return
-
-        # ########################## ttproto API ########################### #
 
         # ##### Personnal remarks
         #
@@ -431,7 +328,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # GET handler for the analyzer_getTestCases uri
         # It will give to the gui the list of the test cases
         #
-        elif url.path == '/api/v1/analyzer_getTestCases':
+        if url.path == '/api/v1/analyzer_getTestCases':
 
             # Send the header
             self.send_response(200)
@@ -824,117 +721,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # ######################## End of API part ######################### #
-
-        elif url.path != "/":
+        else:
             self.send_error(404)
             return
-
-        self.send_response(200)
-        self.send_header('Content-Type', "text/html;charset=utf-8")
-        self.end_headers()
-
-        with XHTML10Generator(output=UTF8Wrapper(self.wfile)) as g:
-
-            with g.head:
-                g.title("IRISA CoAP interoperability Testing Tool")
-                g.style("img {border-style: solid; border-width: 20px; border-color: white;}", type="text/css")
-
-            g.h1("IRISA CoAP interoperability Testing Tool")
-
-            g.b("Tool version: ")
-            # g("%s" % Analyzer.TOOL_VERSION)
-            with g.br():  # FIXME: bug generator
-                pass
-            with g.form(method="POST", action="submit", enctype="multipart/form-data"):
-                g("This tool(more details at ")
-                g.a("www.irisa.fr/tipi", href="http://www.irisa.fr/tipi/wiki/doku.php/passive_validation_tool_for_coap")
-                g(") allows executing CoAP interoperability test suites(see below Available Test Scenarios) on the provided traces of CoAP Client-Server interactions.")
-                g.br()
-                g.h3("Available Test Scenarios:")
-                g("- ETSI COAP#4 Plugtest scenarios: ")
-                g.a("ETSI-CoAP4-test-list", href="doc/ETSI-CoAP4-test-list.pdf")
-                g(", ")
-                g.a("ETSI-CoAP4-test-description", href="https://github.com/cabo/td-coap4/")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g("- Additive test scenarios developed by IRISA/Tipi Group: ")
-                g.a("Additive-IRISA-CoAP-test-list", href="doc/Additive-IRISA-CoAP-test-list.pdf")
-                g(", ")
-                g.a("Additive-IRISA-CoAP-test-description", href="doc/Additive-IRISA-CoAP-test-description.pdf")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g.h3("IETF RFCs/Drafts covered:")
-                g("- CoAP CORE(")
-                g.a("RFC7252", href="http://tools.ietf.org/html/rfc7252")
-                g(")")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g("- CoAP OBSERVE(")
-                g.a("draft-ietf-core-observe-16", href="http://tools.ietf.org/html/draft-ietf-core-observe-16")
-                g(")")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g("- CoAP BLOCK(")
-                g.a("draft-ietf-core-block-17", href="http://tools.ietf.org/html/draft-ietf-core-block-17")
-                g(")")
-                g.br()
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-
-                g("==========================================================================================")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g("Submit your traces(pcap format). \nWarning!! pcapng format is not supported; you should convert your pcapng file to pcap format.")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g.input(name="file", type="file", size=60)
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g("Configuration")
-                g.br()
-                with g.select(name="profile"):
-                    g.option("Client <-> Server", value="client", selected="1")
-                    g.option("Reverse-Proxy <-> Server", value="reverse-proxy")
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                g("Optional regular expression for selecting scenarios(eg: ")
-                g.tt("CORE_0[1-2]")
-                g(" will run only ")
-                g.tt("TD_COAP_CORE_01")
-                g(" and ")
-                g.tt("TD_COAP_CORE_02")
-                g(")")
-                g.br()
-                g.input(name="regex", size=60)
-                g.br()
-                with g.br():  # FIXME: bug in generation if we remove the with context
-                    pass
-                with g.input(name="agree", type="checkbox", value="1"):
-                    pass
-                g("I agree to leave a copy of this file on the server(for debugging purpose). Thanks")
-
-                g.br()
-
-                with g.input(name="urifilter", type="checkbox", value="1"):
-                    pass
-                g("Filter conversations by URI(/test vs. /separate vs. /.well-known/core  ...) to reduce verbosity")
-
-                g.br()
-                g.br()
-                g.input(type="submit")
-                with g.br():  # FIXME: bug generator
-                    pass
-                g.b("Note:")
-                g(" alternatively you can use the shell script ")
-                g.a("coap-tool.sh", href="coap-tool.sh")
-                g(" to capture and submit your traces to the server(requires tcpdump and curl installed on your system).")
-
-            g.a(href="http://www.irisa.fr/tipi").img(src="http://www.irisa.fr/tipi/wiki/lib/tpl/tipi_style/images/irisa.jpg", height="40")
-
-            g.a(href="http://www.irisa.fr/tipi").img(src="http://www.irisa.fr/tipi/wiki/lib/tpl/tipi_style/images/tipi_small.png", height="50")
-
-            html_changelog(g)
 
     def do_POST(self):
 
@@ -1094,12 +883,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                 pcap_path,
                                 testcase_id
                             )
-
-            # self.log_message("###############################################")
-            # self.log_message("Verdict description is : %s", analysis_results[0][3])
-            # self.log_message("###############################################")
-
-            # print(analysis_results)
 
             # Error for some test cases that the analysis doesn't manage to get
             try:
@@ -1315,122 +1098,12 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             print(json.dumps(json_result))
             return
 
-        # ######################## End of API part ######################### #
-
-        # DEPRECATED
-        # elif (self.path == "/submit"):
-
-        #     if os.fork():
-        #         # close the socket right now(because the
-        #         # requesthandler may do a shutdown(), which triggers a
-        #         # SIGCHLD in the child process)
-        #         self.connection.close()
-        #         return
-
-        #     parser = BytesFeedParser()
-        #     ct = self.headers.get('Content-Type')
-        #     if not ct.startswith("multipart/form-data;"):
-        #         self.send_error(400)
-        #         return
-
-        #     parser.feed(bytes("Content-Type: %s\r\n\r\n" % ct, "ascii"))
-        #     parser.feed(self.rfile.read(int(self.headers['Content-Length'])))
-        #     msg = parser.close()
-
-        #     # agree checkbox is selected
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="agree"' in disposition:
-        #                 agree = True
-        #                 break
-        #     else:
-        #         agree = False
-
-        #     # urifilter checkbox is selected
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="urifilter"' in disposition:
-        #                 urifilter = True
-        #                 break
-        #     else:
-        #         urifilter = False
-
-        #     # content of the regex box
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="regex"' in disposition:
-        #                 regex = part.get_payload()
-        #                 if not regex:
-        #                     regex = None
-        #                 break
-        #     else:
-        #         regex = None
-
-        #     # profile radio buttons
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="profile"' in disposition:
-        #                 profile = part.get_payload()
-        #                 break
-        #     else:
-        #         profile = "client"
-
-        #     # receive the pcap file
-        #     for part in msg.get_payload():
-        #         if isinstance(part, email.message.Message):
-        #             disposition = part.get("content-disposition")
-        #             if disposition and 'name="file"' in disposition:
-        #                 mo = re.search('filename="([^"]*)"', disposition)
-
-        #                 orig_filename = mo.group(1) if mo else None
-
-        #                 timestamp = time.strftime("%y%m%d_%H%M%S")
-
-        #                 pcap_file = os.path.join(
-        #                         (DATADIR if agree else TMPDIR),
-        #                         "%s_%04d.dump" % (timestamp, job_id)
-        #                 )
-        #                 self.log_message("uploading %s(urifilter=%r, regex=%r)", pcap_file, urifilter, regex)
-        #                 with open(pcap_file, "wb") as fd:
-        #                     # FIXME: using hidden API(._payload) because it seems that there is something broken with the encoding when getting the payload using .get_payload()
-        #                     fd.write(part._payload.encode("ascii", errors="surrogateescape"))
-
-        #                 break
-        #     else:
-        #         self.send_error(400)
-        #         return
-
-        #     self.send_response(200)
-        #     self.send_header('Content-Type', "text/html;charset=utf-8")
-        #     self.end_headers()
-
-        #     out = UTF8Wrapper(self.wfile)
-
-        #     self.wfile.flush()
-
-        #     os.dup2(self.wfile.fileno(), sys.stdout.fileno())
-
-        #     try:
-        #         exceptions = []
-        #         analysis.analyse_file_html(pcap_file, orig_filename, urifilter, exceptions, regex, profile)
-        #         for tc in exceptions:
-        #             self.log_message("exception in %s", type(tc).__name__, append=tc.exception)
-        #     except pure_pcapy.PcapError:
-        #         print("Bad file format!")
-
-        #     shutdown()
-
         # If we didn't manage to bind the request
         else:
             self.send_error(404)
             return
 
 job_id = 0
-
 
 __shutdown = False
 
@@ -1449,4 +1122,4 @@ for d in TMPDIR, DATADIR, LOGDIR:
 
 def reopen_log_file(signum, frame):
     global log_file
-    log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
+    log_file = open(os.path.join(LOGDIR, "coap-webserver.log"), "a")
