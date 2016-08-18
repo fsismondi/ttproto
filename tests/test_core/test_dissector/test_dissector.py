@@ -32,6 +32,7 @@ class DissectorTestCase(unittest.TestCase):
         """
         self.dissector = Dissector(self.PCAP_FILE)
 
+
     # #################### Utilities functions #########################
 
     def check_summary(self, summary):

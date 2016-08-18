@@ -46,6 +46,8 @@ from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
 
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger('[dissection]')
 
 __all__ = [
     'is_protocol',
@@ -186,7 +188,7 @@ class Frame:
         """
         return "<Frame %3d: %s>" % (self.__id, self.__msg.summary())
 
-    @typecheck
+    #@typecheck
     def __value_to_list(
         self,
         l: list,
@@ -209,39 +211,48 @@ class Frame:
         :type layer_dict: dict
         :type is_option: bool
         """
+        try:
+            # Points to packet
+            if isinstance(value, PacketValue):
 
-        # Points to packet
-        if isinstance(value, PacketValue):
+                # Prepare the storage dict
+                od = OrderedDict()
 
-            # Prepare the storage dict
-            od = OrderedDict()
+                # If an option
+                if is_option:
+                    od['Option'] = value.get_variant().__name__
 
-            # If an option
-            if is_option:
-                od['Option'] = value.get_variant().__name__
+                # If a protocol value
+                else:
+                    log.debug(' Protocol header:  ' + str(value.get_variant().__name__))
+                    od['_type'] = 'protocol'
+                    od['_protocol'] = value.get_variant().__name__
 
-            # If a protocol value
+                l.append(od)
+
+                i = 0
+                for f in value.get_variant().fields():
+                    self.__value_to_list(l, value[i], f.name, od)
+                    i += 1
+
+            # Points to list value
+            elif isinstance(value, ListValue):
+
+                prot_options = []
+                for i in range(0, len(value)):
+                    self.__value_to_list(prot_options, value[i], is_option=True)
+                log.debug(' options:    || value : ' + str(prot_options))
+                layer_dict['Options'] = prot_options
+
+            # If it's a single field
             else:
-                od['_type'] = 'protocol'
-                od['_protocol'] = value.get_variant().__name__
+                log.debug(' field:  ' + str(extra_data) + '|| value : ' + str(value))
+                layer_dict[extra_data] = str(value)
 
-            l.append(od)
-
-            i = 0
-            for f in value.get_variant().fields():
-                self.__value_to_list(l, value[i], f.name, od)
-                i += 1
-
-        # Points to list value
-        elif isinstance(value, ListValue):
-            prot_options = []
-            for i in range(0, len(value)):
-                self.__value_to_list(prot_options, value[i], is_option=True)
-            layer_dict['Options'] = prot_options
-
-        # If it's a single field
-        else:
-            layer_dict[extra_data] = str(value)
+        except TypeError.NoneType as e:
+            #log.error(e.__traceback__)
+            log.error(e, exc_info=True)
+            log.debug( 'extra_data:  ' + str(extra_data) + '|| value : ' + str(value))
 
     @typecheck
     def dict(self) -> OrderedDict:
@@ -541,7 +552,7 @@ class Dissector:
         :return: A list of Frame represented as API's dict form
         :rtype: [OrderedDict]
         """
-
+        log.debug('Starting dissection.')
         # Check the protocol is one entered
         if all((
             protocol,
