@@ -40,6 +40,8 @@ from ttproto.core.typecheck import *
 
 TMPDIR = "tmp"
 
+# #################### Filter Functions #########################
+
 @typecheck
 def remove_first_bytes( number_of_bytes: int, new_snaplen: int, new_network, pcap_filename : str, new_pcap_filename: str = TMPDIR+"/temp.pcap"  ):
 
@@ -48,21 +50,39 @@ def remove_first_bytes( number_of_bytes: int, new_snaplen: int, new_network, pca
 
     count = 0
     stop_iter = False
+    new_header, new_data = reader.next()
 
     while not stop_iter:
         try:
-            new_header , new_data =  reader.next()
-            if not new_header:
-                break
             count += 1
             new_header.incl_len = new_header.incl_len - number_of_bytes
             new_header.orig_len = new_header.incl_len
             new_data = new_data[number_of_bytes:] # take from jumplength bytes to the end of the data
             dumper.dump(new_header , new_data)
-
+            new_header , new_data =  reader.next()
+            if not new_header:
+                stop_iter = True
         except PcapError:
             print('the filtering has reached the end of the file :D, pakcet count %d'% count)
             break
+
+
+# #################### Filter Profiles #########################
+
+@typecheck
+def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR +'/temp.pcap') -> str:
+    """
+    This filter is usded to filter the extra layers added by openwsn openvisualizer when sniffing ieee802.15.4
+    and forwarding to the tun/tap interface
+    For openWSN/openvisualizer captures we need to ignore the first 5*16 bytes (as it always generates raw:ipv6:udp:zep:wpan)
+
+    :param pcap_filename:
+    :param new_pcap_filename:
+    :return: filename of new pcap file
+    """
+    JUMP_LENGTH = 16 * 5  # en bytes
+    remove_first_bytes(JUMP_LENGTH, 200, DLT_IEEE802_15_4, pcap_filename, new_pcap_filename )
+    return new_pcap_filename
 
 
 

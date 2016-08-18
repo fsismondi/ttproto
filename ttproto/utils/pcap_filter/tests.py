@@ -33,26 +33,7 @@
 
 from ttproto.utils.pure_pcapy import DLT_IEEE802_15_4
 from ttproto.core.lib.all import Ieee802154
-from ttproto.utils.pcap_filter import remove_first_bytes
-
-TMPDIR = "tmp"
-
-
-def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR +'/temp.pcap') -> str:
-    """
-    This filter is usded to filter the extra layers added by openwsn openvisualizer when sniffing ieee802.15.4
-    and forwarding to the tun/tap interface
-    For openWSN/openvisualizer captures we need to ignore the first 5*16 bytes (as it always generates raw:ipv6:udp:zep:wpan)
-
-    :param pcap_filename:
-    :param new_pcap_filename:
-    :return: filename of new pcap file
-    """
-    JUMP_LENGTH = 16 * 5  # en bytes
-    remove_first_bytes(JUMP_LENGTH, 200, DLT_IEEE802_15_4, pcap_filename, new_pcap_filename )
-    return new_pcap_filename
-
-
+from ttproto.utils.pcap_filter import remove_first_bytes, openwsn_profile_filter
 
 if __name__ == '__main__':
 
@@ -73,3 +54,4 @@ if __name__ == '__main__':
 
     for s in dissector.summary(protocol = Ieee802154):
         print(s)
+
