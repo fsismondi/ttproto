@@ -32,6 +32,8 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 import re
+import logging
+
 
 from    ttproto.core.exceptions     import Error, DecodeError
 from    ttproto.core.data       import *
@@ -42,6 +44,10 @@ from    ttproto.core.lib.inet.basics    import *
 from    ttproto.core.lib.inet.meta  import FixedLengthBytesClass
 from    ttproto.core.lib.inet.sixlowpan import SixLowpan
 from    ttproto.core.lib.inet.sixlowpan_hc import SixLowpanIPHC
+
+
+
+log = logging.getLogger('[802.15.4 - CoDec]')
 
 __all__ = [
     'Ieee802154ShortAddress',
@@ -114,7 +120,7 @@ class Ieee802154Address (
             return Eui64Address (value)
         else:
             if isinstance (value, int):
-                print ("***warning: deprecated*** Ieee802154 short addresses are now coded as bytes")
+                log.warning("***warning: deprecated*** Ieee802154 short addresses are now coded as bytes")
                 value = bytes ((value // 256, value % 256))
 
             return Ieee802154ShortAddress (value)
@@ -138,10 +144,8 @@ class Ieee802154 (
         ("DestinationAddress",      "dst",  Optional (Ieee802154Address),   _Reversed(Omit())),
         ("SourcePanId",         "spid", Optional (HexUInt16),       _Reversed(Omit())),
         ("SourceAddress",       "src",  Optional (Ieee802154Address),   _Reversed(Omit())),
-
         ("Payload",         "pl",   Value,      ""),
-
-        # ('FCS',     'fcs',  HexUInt16, 0)
+        ('FCS',     'fcs',  Optional ( HexUInt16), _Reversed(Omit()))
     ],
 
     id = 1, # Data frame by default
@@ -206,6 +210,7 @@ class Ieee802154 (
 
     @classmethod
     def _decode_message (cls, bin_slice):
+        log.info('Starting to decode 802.15.4 header')
         seq_id = cls.get_field_id ("seq")
 
         def reversed_slice (sl):
@@ -250,30 +255,40 @@ class Ieee802154 (
         bin_slice = decode_field ("spid", bin_slice, Omit if (intra or not sam) else None)
 
         # src address
+        log.debug(str(am_type[sam]))
         bin_slice = decode_field ("src", bin_slice, am_type[sam])
 
         # enter a ieee_addresses context before decoding the payload so that the current
         # hw source & destination addresses are known to the upper layers
         # (needed by 6lowpan-hc)
         with SixLowpanIPHC.encapsulating_iid_context (values["src"], values["dst"]):
+            log.info('Starting to decode 802.15.4 payload as 6lowpan')
             # Payload
-            bin_slice = decode_field ("pl", bin_slice, SixLowpan)
+            #bin_slice = decode_field ("pl", bin_slice, SixLowpan)
             #TODO: reimplement the fall-back in a smart way (which is passive-friendly)
-            """
+
             try:
                 bin_slice = decode_field ("pl", bin_slice, SixLowpan)
             except Exception as e:
                 # TODO: report this in a smarter way
                 # (this is ugly in the passive test tool)
                 import traceback
-                traceback.print_exc()
-                print ("Warning: unable to decode IEEE 802.15.4 payload as SixLowpan (%s)" % DecodeError (bin_slice.as_binary(), SixLowpan, e))
+                log.warning(traceback.print_exc())
+                log.warning("Warning: unable to decode IEEE 802.15.4 payload as SixLowpan (%s)" % \
+                       DecodeError (bin_slice.as_binary(), SixLowpan, e))
                 bin_slice = decode_field ("pl", bin_slice)
-            """
 
-        # try:
-        #     bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
-        # except Exception as e:
+
+
+        # let's make an educated guess and assume there's FCS if left bin_slice == 2
+
+        if len(bin_slice) == 2:
+            bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
+        log.debug(len(bin_slice))
+        log.debug(str(bin_slice))
+        log.debug(str(cls.get_field))
+
+
         #     # FIXME: The FCS field throw an IndexError for the non ICMPv6 packs
         #     #        Here is the traceback given:
         #     """
