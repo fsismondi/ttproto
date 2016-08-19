@@ -5,20 +5,8 @@
 	<head>
 		<title>IRISA CoAP interoperability Testing Tool</title>
 
-		<!-- Jquery -->
-		<script src="js-libs/jquery-2.2.4.min.js"></script>
-
-		<!-- Latest compiled and minified JavaScript -->
-		<script src="js-libs/bootstrap.min.js"></script>
-
-		<!-- React scripts -->
-		<script src="js-libs/react.js"></script>
-		<script src="js-libs/react-dom.js"></script>
-		<script src="js-libs/browser.js"></script>
-		<script src="js-libs/marked.min.js"></script>
-
-		<!-- Latest compiled and minified CSS -->
-		<link rel="stylesheet" href="js-libs/bootstrap.min.css" />
+		<!-- Latest compiled and minified CSS of Bootsrap -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous" />
 
 		<style type="text/css">
 			.input-group {
@@ -99,7 +87,7 @@
 					<div class="col-sm-6">
 
 						<div class="page-header">
-							<h1>Pcap file to analyse</h1>
+							<h1>Pcap file to analyze</h1>
 						</div>
 
 						<div class="input-group">
@@ -112,7 +100,7 @@
 					<div class="col-sm-6">
 
 						<div class="page-header">
-							<h1>Analyse options</h1>
+							<h1>analyze options</h1>
 						</div>
 
 						<div class="input-group" >
@@ -124,7 +112,7 @@
 
 							<div class="btn-group" data-toggle="buttons">
 								<label class="btn btn-info active">
-									<input type="radio" id="analyse-option" autocomplete="off" name="options" value="analyse" checked /> Analyse
+									<input type="radio" id="analyze-option" autocomplete="off" name="options" value="analyze" checked /> analyze
 								</label>
 								<label class="btn btn-info">
 									<input type="radio" id="dissect-option" autocomplete="off" name="options" value="dissect" /> Dissect
@@ -171,7 +159,7 @@
 							<p>
 								[Some more informations if needed]
 							</p>
-							
+
 							<div class="panel-group packet-content" id="frames" role="tablist" aria-multiselectable="true">
 
 								<div class="panel panel-default">
@@ -205,7 +193,7 @@
 												IPv4
 										</span>
 									</a>
-									
+
 									<div id="collapse2" class="panel-collapse collapse" role="tabpanel" aria-labelledby="frame2">
 										<div class="panel-body">
 											<div>Version: "4"</div>
