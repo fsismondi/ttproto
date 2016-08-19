@@ -62,6 +62,18 @@ class SixlowpanTestCase(TestCase):
     The test case extension representing a Sixlowpan test case
     """
 
+    @classmethod
+    @typecheck
+    def get_protocol(cls) -> is_protocol:
+        """
+        Get the protocol corresponding to this test case. This has to be
+        implemented into the protocol's common test case class.
+
+        :return: The protocol on which this TC will occur
+        :rtype: Value
+        """
+        return SixLowpanIPHC
+
     @typecheck
     def preprocess(
         self,
