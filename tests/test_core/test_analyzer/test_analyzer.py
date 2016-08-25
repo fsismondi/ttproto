@@ -1,6 +1,7 @@
-import unittest
+import unittest, logging
 
 from os import getcwd, path
+
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.typecheck3000 import InputParameterError
 from tests.test_tools.struct_checker import StructureChecker
@@ -20,12 +21,6 @@ class AnalyzerTestCase(unittest.TestCase):
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = 'TD_COAP_CORE_24'
     UNKNOWN_TEST_CASE_ID = 'TD_COAP_CORE_42'
 
-    # File path
-    TEST_FILE_DIR = 'tests/test_dumps/coap'
-    PCAP_FILE = TEST_FILE_DIR + '/TD_COAP_CORE_01_PASS.pcap'
-    WRONG_TEST_FILE_DIR = 'tests/test_dumps/WrongFilesForTests'
-    EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
-    NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
 
     # Create a struct checker object
     STRUCT_CHECKER = StructureChecker()
@@ -112,8 +107,8 @@ class AnalyzerTestCase(unittest.TestCase):
             filename = getcwd() + '/tests/test_dumps/coap/' + tc[0] + '_PASS.pcap'
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
-                print('verifying test case: ' + tc[0])
-                print('Filename used is %s' % filename)
+                #logging.info('verifying test case: ' + tc[0])
+                #logging.info('Filename used is %s' % filename)
                 tc_name, verdict, _, log, excepts = self.analyzer.analyse(filename, tc[0])
                 self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + verdict + '\nLOG:\n' + log)
 

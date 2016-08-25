@@ -12,8 +12,8 @@ class CaptureTestCase(unittest.TestCase):
 
     # File path
     TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
-    PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
-    WRONG_TEST_FILE_DIR = 'tests/test_dumps/WrongFilesForTests'
+    PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
+    WRONG_TEST_FILE_DIR = 'tests/test_dumps/exceptions'
     EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
     NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
     CAPTURE_LENGTH = 5

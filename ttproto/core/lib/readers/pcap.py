@@ -75,7 +75,7 @@ class PcapReader(CaptureReader):
         except Exception as e:
             self.__pcap_file.close()
             raise e
-        log.info("datalink: %d" % self.__reader.datalink())
+        #log.debug("datalink: %d" % self.__reader.datalink())
 
         try:
             decode_type = _map_link_type[self.__reader.datalink()]

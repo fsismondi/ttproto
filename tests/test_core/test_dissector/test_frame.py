@@ -17,7 +17,7 @@ class FrameTestCase(unittest.TestCase):
 
     # File path
     TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
-    PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
+    PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
 
     # Create a struct checker object
     STRUCT_CHECKER = StructureChecker()

@@ -1,4 +1,6 @@
 import unittest
+import os
+import logging
 
 from ttproto.core.dissector import Frame, Dissector, ReaderError
 from ttproto.core.typecheck3000 import InputParameterError
@@ -17,16 +19,10 @@ class DissectorTestCase(unittest.TestCase):
 
     # #################### Tests parameters #########################
 
-    # File path
-    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
-    #PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
-    PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS = TEST_FILE_DIR + '/wpan_802_15_4_LLT_195_icmpv6.pcap'
 
-    PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS = 'tests/test_dumps/6lowpan/6lowpan_stimuli_01.pcap'
-    PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS = 'tests/test_dumps/6lowpan/echo_req_and_reply_and_other_packets_with_openmote_sniffer.pcap'
-    #LINKTYPE_IEEE802_15_4_NOFCS= ""
-    #WRONG_TEST_FILE_DIR = 'tests/test_dumps/WrongFilesForTests'
-    #EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
+    # File path
+    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests/6lowpan'
+    TMP_DIR = 'tmp/'
 
     # Create a struct checker object
     STRUCT_CHECKER = StructureChecker()
@@ -36,10 +32,42 @@ class DissectorTestCase(unittest.TestCase):
         """
             Initialize the dissector instance
         """
-        # 15.4
-        self.dissector = Dissector(self.PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS)
-        self.filtered_pcap_filename = openwsn_profile_filter(self.PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS)
-        self.dissector = Dissector(self.filtered_pcap_filename)
+
+        self.pcap_for_test = []
+        self.pcap_to_be_preprocessed_first = []
+
+        for dirname, dirnames, filenames in os.walk('./' + self.TEST_FILE_DIR):
+            for filename in filenames:
+                #print("file: " + filename)
+                complete_filename = os.path.join(dirname, filename)
+
+                # case open wsn profile of pcap
+                if "openwsn_captures" in dirname:
+                    self.pcap_for_test.append(openwsn_profile_filter(complete_filename, self.TMP_DIR +
+                                                                     "filtered_%s" %filename))
+                # stack completelly dissectable by ttproto
+                elif filename.endswith('.pcap'):
+                    self.pcap_for_test.append(complete_filename)
+                else:
+                    logging.warning('[dissector unittests] file ignored for dissection: %s' %complete_filename)
+
+        #print(self.pcap_to_be_preprocessed_first)
+        #print(self.pcap_for_test)
+
+
+
+
+        # 15.4 complete file
+        #self.PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS = self.TEST_FILE_DIR + os.sep + "wpan_802_15_4_LLT_195_6lowpan.pcap"
+        #self.pcap_for_test = []
+        #self.pcap_for_test.append(self.PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS)
+        #self.filtered_pcap_filename = openwsn_profile_filter(self.PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS)
+        #self.dissector = Dissector(self.filtered_pcap_filename)
+
+        # 15.4 ACKS
+        #self.dissector = Dissector(self.PCAP_FILE_LINKTYPE_IEEE802_15_4_ACKS)
+        #self.filtered_pcap_filename = openwsn_profile_filter(self.PCAP_FILE_LINKTYPE_IEEE802_15_4_ACKS)
+        #self.dissector = Dissector(self.filtered_pcap_filename)
 
         # CoAP
         # TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
@@ -50,23 +78,15 @@ class DissectorTestCase(unittest.TestCase):
 
         #PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS= 'tests/test_dumps/6lowpan/802_15_4_with_FCS_13_frames.pcap'
         #self.dissector = Dissector(PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS)
-        #self.filtered_pcap_filename = openwsn_profile_filter(PCAP_FILE_LINKTYPE_IEEE802_15_4_FCS)
+        #
         #self.dissector = Dissector(self.filtered_pcap_filename)
 
-
-        self.summary = self.dissector.summary()
-        #for s in self.summary:
-        #    print(s)
-
-
-        self.dissect = self.dissector.dissect()
-        self.summary = self.dissector.summary()
-        #for s in self.summary:
-        #    print(s)
-        #    print('--')
-        #for f in self.dissect:
-        #    print(f)
-        #    print('--')
+        #802_15_4_simple_FCS_test
+        #pcap_name = "802_15_4_simple_FCS_test.pcap"
+        #self.pcap_for_test=[]
+        #file = os.path.join(self.TEST_FILE_DIR,"openwsn_captures",pcap_name)
+        #self.filtered_pcap_filename = openwsn_profile_filter(file,'filtered_'+ pcap_name)
+        #self.pcap_for_test.append(
 
     # #################### Utilities functions #########################
     #
@@ -90,6 +110,26 @@ class DissectorTestCase(unittest.TestCase):
         self.assertGreater(len(implemented_protocols), 0)
         for prot in implemented_protocols:
             self.assertTrue(issubclass(prot, PacketValue))
+
+    def test_dissect_pcaps_6lo(self):
+
+        logging.info("[dissector unittests] loaded PCAPs to be dissected:")
+        for p in self.pcap_for_test:
+            logging.info(p)
+
+        self.dissectors = []
+        self.summaries = []
+        for p_file in self.pcap_for_test:
+            try:
+                logging.debug('[dissector unittests] dissecting %s' %p_file )
+                d = Dissector(p_file)
+                self.dissectors.append(d)
+            except:
+                logging.error('[dissector unittests] exception trying to dissect %s' % p_file)
+                raise
+            finally:
+                self.summaries.append(d.summary())
+
 
 #     # ##### summary
 #     def test_summary_without_filtering(self):
@@ -226,4 +266,4 @@ class DissectorTestCase(unittest.TestCase):
 #
 # # #################### Main run the tests #########################
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=3)
