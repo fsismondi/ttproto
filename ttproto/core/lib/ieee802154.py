@@ -46,13 +46,14 @@ from    ttproto.core.lib.inet.sixlowpan import SixLowpan
 from    ttproto.core.lib.inet.sixlowpan_hc import SixLowpanIPHC
 
 
-
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('[802.15.4 - CoDec]')
 
 __all__ = [
     'Ieee802154ShortAddress',
     'Ieee802154Address',
     'Ieee802154',
+    #'Ieee802154Ack',
 ]
 
 
@@ -126,6 +127,9 @@ class Ieee802154Address (
             return Ieee802154ShortAddress (value)
 
 
+
+# TODO re-reimplement code/decode of ACK,DATA, BEACON and MAC control frames  with variants!
+
 class Ieee802154 (
     metaclass = PacketClass,
     fields    = [
@@ -148,7 +152,7 @@ class Ieee802154 (
         ('FCS',     'fcs',  Optional ( HexUInt16), _Reversed(Omit()))
     ],
 
-    id = 1, # Data frame by default
+    #id = 1, # Data frame by default
 
     descriptions = {
         "type": {
@@ -210,7 +214,7 @@ class Ieee802154 (
 
     @classmethod
     def _decode_message (cls, bin_slice):
-        log.info('Starting to decode 802.15.4 header')
+        #log.debug('[header] Starting to decode 802.15.4 header')
         seq_id = cls.get_field_id ("seq")
 
         def reversed_slice (sl):
@@ -221,7 +225,16 @@ class Ieee802154 (
             f = cls.get_field (i)
             v, sl = f.tag.decode_message (t if t else f.type, sl, None)
             values.append (v)
+            #log.debug('[header] [field] : ' + str(f)  + " || value : " +str(v))
             return sl
+
+
+        def decode_FCS(bin_slice):
+            bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
+            #log.debug(len(bin_slice))
+            #log.debug(str(bin_slice))
+            #log.debug(str(cls.get_field))
+            return bin_slice
 
         # decode the Frame Control Field
         fc_slice = reversed_slice (bin_slice[:2])
@@ -229,13 +242,26 @@ class Ieee802154 (
         values = []
         for i in range(seq_id-1,-1,-1):
             fc_slice = decode_field (i, fc_slice)
+            #log.debug('Decoding FC: ' + str(values))
         values = cls.List (reversed (values))
+
+        #log.debug('Decoded FC: '+ str(values))
+
         assert not fc_slice
 
         bin_slice = bin_slice[2:]
 
         # sequence number
         bin_slice = decode_field (seq_id, bin_slice)
+        #log.info('[header] [field] Decoded seq_id: ' + str(values["seq"]))
+
+        if values["type"]==2:
+            #log.info("[header] [field] The 802.15.4 message is an ACK")
+            # let's make an educated guess and assume there's FCS if left bin_slice == 2
+            if len(bin_slice) == 2:
+                bin_slice = decode_FCS(bin_slice)
+            assert len(bin_slice)==0
+            return cls(*values), bin_slice
 
         # addresses
         sam = values ["sam"]
@@ -247,7 +273,6 @@ class Ieee802154 (
 
         # dst pan-id
         bin_slice = decode_field ("dpid", bin_slice, None if dam else Omit)
-
         # dst address
         bin_slice = decode_field ("dst", bin_slice, am_type[dam])
 
@@ -255,14 +280,16 @@ class Ieee802154 (
         bin_slice = decode_field ("spid", bin_slice, Omit if (intra or not sam) else None)
 
         # src address
-        log.debug(str(am_type[sam]))
+        #log.debug(str(am_type[sam]))
         bin_slice = decode_field ("src", bin_slice, am_type[sam])
+
+        #log.debug('[header] finished processing header. Passing to Payload')
 
         # enter a ieee_addresses context before decoding the payload so that the current
         # hw source & destination addresses are known to the upper layers
         # (needed by 6lowpan-hc)
         with SixLowpanIPHC.encapsulating_iid_context (values["src"], values["dst"]):
-            log.info('Starting to decode 802.15.4 payload as 6lowpan')
+            #log.debug('Starting to decode 802.15.4 payload as 6lowpan')
             # Payload
             #bin_slice = decode_field ("pl", bin_slice, SixLowpan)
             #TODO: reimplement the fall-back in a smart way (which is passive-friendly)
@@ -278,15 +305,12 @@ class Ieee802154 (
                        DecodeError (bin_slice.as_binary(), SixLowpan, e))
                 bin_slice = decode_field ("pl", bin_slice)
 
-
-
         # let's make an educated guess and assume there's FCS if left bin_slice == 2
-
         if len(bin_slice) == 2:
-            bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
-        log.debug(len(bin_slice))
-        log.debug(str(bin_slice))
-        log.debug(str(cls.get_field))
+            bin_slice = decode_FCS(bin_slice)
+
+
+
 
 
         #     # FIXME: The FCS field throw an IndexError for the non ICMPv6 packs
@@ -315,6 +339,16 @@ class Ieee802154 (
         #     pass
 
         return cls (*values), bin_slice
+
+# class Ieee802154Ack (
+#     metaclass = PacketClass,
+#     variant_of = Ieee802154,
+#     prune = 2, # I want to just keep FrameType, I'll add again seq and FCS as not consecutives fileds in parent class
+#     fields = [
+#          ("SequenceNumber", "seq", UInt8, 0),
+#         ('FCS', 'fcs', Optional(HexUInt16), _Reversed(Omit()))
+#     ]):
+#     pass
 
 
 import  ttproto.core.lib.ethernet
