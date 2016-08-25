@@ -224,7 +224,7 @@ class Frame:
 
                 # If a protocol value
                 else:
-                    log.debug(' Protocol header:  ' + str(value.get_variant().__name__))
+                    #log.debug(' Protocol header:  ' + str(value.get_variant().__name__))
                     od['_type'] = 'protocol'
                     od['_protocol'] = value.get_variant().__name__
 
@@ -241,18 +241,18 @@ class Frame:
                 prot_options = []
                 for i in range(0, len(value)):
                     self.__value_to_list(prot_options, value[i], is_option=True)
-                log.debug(' options:    || value : ' + str(prot_options))
+                #log.debug(' options:    || value : ' + str(prot_options))
                 layer_dict['Options'] = prot_options
 
             # If it's a single field
             else:
-                log.debug(' field:  ' + str(extra_data) + '|| value : ' + str(value))
+                #log.debug(' field:  ' + str(extra_data) + '|| value : ' + str(value))
                 layer_dict[extra_data] = str(value)
 
         except TypeError.NoneType as e:
             #log.error(e.__traceback__)
             log.error(e, exc_info=True)
-            log.debug( 'extra_data:  ' + str(extra_data) + '|| value : ' + str(value))
+            #log.debug( 'extra_data:  ' + str(extra_data) + '|| value : ' + str(value))
 
     @typecheck
     def dict(self) -> OrderedDict:
@@ -552,7 +552,7 @@ class Dissector:
         :return: A list of Frame represented as API's dict form
         :rtype: [OrderedDict]
         """
-        log.debug('Starting dissection.')
+        #log.debug('Starting dissection.')
         # Check the protocol is one entered
         if all((
             protocol,

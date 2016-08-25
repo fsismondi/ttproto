@@ -31,13 +31,18 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import copy, functools
+import copy, functools, logging
 
 from ttproto.core.typecheck import *
 from ttproto.core.data import *
 from ttproto.core.exceptions import Error
 from ttproto.core.named import skip_parent_var_name
 from ttproto.core import exceptions
+
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger('[packet module]')
+
+
 
 __all__ = [
     'PacketValue',
@@ -1299,9 +1304,11 @@ class PacketValue(Value):
         # decode each field from left to right
         values = []
 
+
         try:
             for field in cls.fields():
                 v, bin_slice = field.tag.decode_message(field.type, bin_slice)
+                #log.debug('["Tag based decoder] Decoding field as: ' + str(field.type) + ' || vaue:' +str(v))
                 values.append(v)
         except Exception as e:
             exceptions.push_location(e, cls, field.name)
