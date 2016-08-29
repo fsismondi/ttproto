@@ -1,7 +1,6 @@
 import unittest, logging
 
 from os import getcwd, path
-
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.typecheck3000 import InputParameterError
 from tests.test_tools.struct_checker import StructureChecker

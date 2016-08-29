@@ -36,7 +36,7 @@ from lib2to3.fixes.fix_print import parend_expr
 from os import chdir, path, getcwd
 from importlib import import_module
 
-from ttproto.core.lib.ports.pcap import PcapReader
+from ttproto.core.lib.readers.pcap import PcapReader
 from ttproto.core.data import Data, Value
 from ttproto.core.list import ListValue
 from ttproto.core.packet import PacketValue

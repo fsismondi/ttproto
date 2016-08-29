@@ -126,6 +126,7 @@ class Frame:
 
         # Put the different variables of it
         self.__id = id
+        log.debug("[Frame Init] New Frame id: %d" %id )
 
         # Get the 3 values of a frame given by the PcapReader
         # ts: Its timestamp value (from the header)
@@ -213,6 +214,7 @@ class Frame:
         """
         try:
             # Points to packet
+            log.debug("dissecting value: " + str(value) + " || type : " + str(type(value)) )
             if isinstance(value, PacketValue):
 
                 # Prepare the storage dict
@@ -249,10 +251,10 @@ class Frame:
                 #log.debug(' field:  ' + str(extra_data) + '|| value : ' + str(value))
                 layer_dict[extra_data] = str(value)
 
-        except TypeError.NoneType as e:
+        except TypeError as e:
             #log.error(e.__traceback__)
             log.error(e, exc_info=True)
-            #log.debug( 'extra_data:  ' + str(extra_data) + '|| value : ' + str(value))
+            log.error( 'extra_data:  ' + str(extra_data) + '|| value : ' + str(value) + '|| layerDict : ' + str(layer_dict))
 
     @typecheck
     def dict(self) -> OrderedDict:
@@ -570,7 +572,7 @@ class Dissector:
             if protocol is not None:
                 frames, _ = Frame.filter_frames(frames, protocol)
 
-        # Then return the list of dictionnary frame representation
+        # Then return the list of dictionary frame representation
         return [frame.dict() for frame in frames]
 
 
