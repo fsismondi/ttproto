@@ -2,19 +2,26 @@
 
 // Some constant values
 var baseUrl = 'http://127.0.0.1:2080';
-var acceptedActions = ['analyse', 'dissect'];
+var acceptedActions = ['analyze', 'dissect'];
 
 // Urls of the API
 var dissectUrl = '/api/v1/dissector_dissectFile';
 var getFrameUrl = '/api/v1/analyzer_getFrames';
 var getProtocolsUrl = '/api/v1/dissector_getProtocols';
-var analyseUrl = '/api/v1/analyzer_testCaseAnalyze';
+var analyzeUrl = '/api/v1/analyzer_testCaseAnalyze';
 var getTestCasesUrl = '/api/v1/analyzer_getTestCases';
 var getTestCaseImplementation = '/api/v1/analyzer_getTestcaseImplementation';
 
 
 
 // ############### Utility functions ###############
+/**
+ * Every json response will be passed into this action and if there was an error
+ * it will be displayed into the console and an alert window
+ *
+ * @param errorTrigger The action during which the error was thrown
+ * @param data The Json response data to parse and check
+ */
 function checkError(errorTrigger, data) {
 
 	// Check the datas received
@@ -36,7 +43,7 @@ function checkError(errorTrigger, data) {
 
 			// Check the data we have
 			if (data.error != '') errorMessage += '<br/><br/>More informations:</br>' + data.error;
-			
+
 			// Display the error itself in a bootstrap model
 			$('#error-modal .modal-body .alert').append(errorMessage);
 			$('#error-modal').modal('show');
@@ -100,8 +107,8 @@ var SelectGroupBloc = React.createClass({
 	 */
 	mapOptionGroups: function(o) {
 
-		// Analyse function
-		if ((this.props.currentAction == 'analyse') && (o._type == 'tc_basic'))
+		// analyze function
+		if ((this.props.currentAction == 'analyze') && (o._type == 'tc_basic'))
 			return (
 				<option key={o.id} value={o.id} title={o.objective} >{o.id}</option>
 			);
@@ -123,8 +130,8 @@ var SelectGroupBloc = React.createClass({
 	 */
 	render: function() {
 
-		// Analyse action
-		if (this.props.currentAction == 'analyse') {
+		// analyze action
+		if (this.props.currentAction == 'analyze') {
 			var optionInputName = 'testcase_id';
 			var optionAddonText = 'Test case';
 
@@ -195,7 +202,7 @@ var FormBloc = React.createClass({
 
 					// Remove the current pcap file
 					this.setState({pcapFile: false});
-				
+
 				// If there's already a token, check that the values correspond!
 				} else if (this.state.token != newToken) console.log('WARNING: Token manager received a token that doesn\'t correspond to the current one');
 			}
@@ -220,8 +227,8 @@ var FormBloc = React.createClass({
 		// Prepare the post datas
 		var output = new FormData();
 
-		// Analyse or dissect
-		if (this.state.action == 'analyse') output.append('testcase_id', $("select[name=testcase_id]").val());
+		// analyze or dissect
+		if (this.state.action == 'analyze') output.append('testcase_id', $("select[name=testcase_id]").val());
 		else output.append('protocol_selection', $("select[name=protocol_selection]").val());
 
 		// The token or the file
@@ -251,14 +258,14 @@ var FormBloc = React.createClass({
 
 
 	/**
-	 * Handler for when the user change the action (dissect or analyse)
+	 * Handler for when the user change the action (dissect or analyze)
 	 */
 	switchAction: function(optionChoosed) {
 
 		// Check the new value before updating it
-		if ($.inArray(optionChoosed.currentTarget.value, acceptedActions) > -1)
-			this.setState({action: optionChoosed.currentTarget.value});
-		else console.log('WARNING: Unaccepted action value of ' + optionChoosed.currentTarget.value);
+		if ($.inArray(optionChoosed.currentTarget.getAttribute('value'), acceptedActions) > -1)
+			this.setState({action: optionChoosed.currentTarget.getAttribute('value')});
+		else console.log('WARNING: Unaccepted action value of ' + optionChoosed.currentTarget.getAttribute('value'));
 	},
 
 
@@ -309,7 +316,7 @@ var FormBloc = React.createClass({
 	 */
 	getInitialState: function() {
 		return {
-			action: 'analyse',
+			action: 'analyze',
 			token: false,
 			pcapFile: false,
 			testCases: false,
@@ -324,7 +331,7 @@ var FormBloc = React.createClass({
 	render: function() {
 
 		return (
-			<form action={ this.props.baseUrl + ((this.state.action == 'analyse') ? analyseUrl : dissectUrl) } method="post" enctype="multipart/form-data" onSubmit={this.handlePcapSubmit} >
+			<form action={ this.props.baseUrl + ((this.state.action == 'analyze') ? analyzeUrl : dissectUrl) } method="post" enctype="multipart/form-data" onSubmit={this.handlePcapSubmit} >
 
 				<div className="row">
 					<div className="col-sm-6">
@@ -342,14 +349,14 @@ var FormBloc = React.createClass({
 
 					<div className="col-sm-6">
 						<div className="page-header">
-							<h1>{ (this.state.action == 'analyse') ? 'Analysis options' : 'Dissection options' }</h1>
+							<h1>{ (this.state.action == 'analyze') ? 'Analysis options' : 'Dissection options' }</h1>
 						</div>
 
-						<SelectGroupBloc currentAction={this.state.action} optionGroups={ (this.state.action == 'analyse') ? this.state.testCases : this.state.protocols } />
+						<SelectGroupBloc currentAction={this.state.action} optionGroups={ (this.state.action == 'analyze') ? this.state.testCases : this.state.protocols } />
 
 						<div style={{textAlign: 'center'}}>
 							<div className="btn-group" data-toggle="buttons" >
-								<RadioButton inputName="options" inputValue="analyse" inputText="Analyse" currentAction={this.state.action} switchAction={this.switchAction} />
+								<RadioButton inputName="options" inputValue="analyze" inputText="analyze" currentAction={this.state.action} switchAction={this.switchAction} />
 								<RadioButton inputName="options" inputValue="dissect" inputText="Dissect" currentAction={this.state.action} switchAction={this.switchAction} />
 							</div>
 						</div>
@@ -472,7 +479,7 @@ var FrameBloc = React.createClass({
 
 					<div className="col-md-2"></div>
 				</div>
-				
+
 			);
 		else return null;
 	}
@@ -482,7 +489,7 @@ var FrameBloc = React.createClass({
 
 // The FrameNavigationBloc renderer
 var FrameNavigationBloc = React.createClass({
-	
+
 	/**
 	 * Render function for FrameNavigationBloc
 	 */

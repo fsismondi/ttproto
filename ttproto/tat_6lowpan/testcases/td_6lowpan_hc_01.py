@@ -45,18 +45,6 @@ TD_6LOWPAN_HC_01:
 
     @classmethod
     @typecheck
-    def get_protocol(cls) -> is_protocol:
-        """
-        Get the protocol corresponding to this test case. This has to be
-        implemented into the protocol's common test case class.
-
-        :return: The protocol on which this TC will occur
-        :rtype: Value
-        """
-        return SixLowpanIPHC
-
-    @classmethod
-    @typecheck
     def get_stimulis(cls) -> list_of(Value):
         """
         Get the stimulis of this test case. This has to be be implemented into
