@@ -4,6 +4,8 @@ Should be run as: python3 -m ttproto.ts_coap
 """
 from .webserver import *
 
+SERVER_CONFIG = ("0.0.0.0", 2080)
+
 if __name__ == "__main__":
 
     reopen_log_file(None, None)
@@ -33,8 +35,8 @@ reopen_log_file(None, None)
 # -> reopen the log file upon SIGHUP
 signal.signal(signal.SIGHUP, reopen_log_file)
 
-server = http.server.HTTPServer(("0.0.0.0", 2080), RequestHandler)
-print('Server is ready')
+server = http.server.HTTPServer(SERVER_CONFIG, RequestHandler)
+print('Server is ready: %s:%s'%(SERVER_CONFIG))
 while not __shutdown:
     try:
         l = log_file

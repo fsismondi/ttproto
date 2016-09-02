@@ -468,7 +468,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 test_cases = get_test_cases()
             except FileNotFoundError as fnfe:
                 self.api_error(
-                    'Problem during fetching the test cases list:\n' + fnfe
+                    'Problem during fetching the test cases list:\n' + str(fnfe)
                 )
                 return
 
@@ -760,7 +760,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     eval(protocol['name'])
                 )
             except TypeError as e:
-                self.api_error('Dissector error:\n' + e)
+                self.api_error('Dissector error:\n' + str(e))
                 return
             except:
                 self.api_error(
