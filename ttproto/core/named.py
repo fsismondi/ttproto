@@ -178,8 +178,8 @@ def get_parent_var_name():
 						self = f_self
 					elif not self is f_self:
 						# different object, we stop here
-						break;
-				else:
+						break
+                else:
 					# this function is not tagged and is not a constructor
 					# -> end of recursion
 					break

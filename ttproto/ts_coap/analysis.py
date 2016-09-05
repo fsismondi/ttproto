@@ -546,7 +546,7 @@ var a;
                 g.h3 (pair_txt)
                 for tc_type in my_testcases:
                     tc_results = []
-                    g.a(name="%x" % id(tc_results));
+                    g.a(name="%x" % id(tc_results))
                     g.h4 ("Testcase %s  -  %s" % (tc_type.__name__, tc_type.get_objective()))
                     for tr in conversations:
                         tc = tc_type (tr, urifilter, force)

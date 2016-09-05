@@ -718,9 +718,9 @@ class SUTActionManual (SUTAction):
 		if not self.__pid:
 			os.execl ("/usr/bin/zenity", "zenity", "--info", "--title=TTProto", "--text=SUT informal action requested:\n\n%s" % self.action)
 			print('error: execl("/usr/bin/zenity", ...) failed')
-			sys.exit (1);
+			sys.exit (1)
 
-		pid, status = os.waitpid (self.__pid, 0)
+        pid, status = os.waitpid (self.__pid, 0)
 
 		with self.lock:
 			self.__pid = None
