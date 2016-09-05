@@ -166,7 +166,7 @@ class Reader(object):
 
         i = 0
         while True:
-            if i >= maxcant and maxcant > -1:
+            if i >= maxcant > -1:
                 break
 
             hdr, data = self.next()
