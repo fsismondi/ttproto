@@ -429,6 +429,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # /param testcase_id => The unique id of the test case
         #
         elif url.path == '/api/v1/analyzer_getTestcaseSteps':
+            # TODO not used by the new version of the coordinator (it gets the TCs from another repo)
 
             # Send the header
             self.send_response(200)
