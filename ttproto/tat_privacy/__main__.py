@@ -25,10 +25,10 @@ if __name__ == "__main__":
 
     for res in result:
         print(res)
-    if result[1] != 'pass' and len(result[4]) > 0:
+    if result[1] != 'pass' and len(result[5]) > 0:
         import traceback
 
-        traceback.print_tb(result[4][0][2])
+        traceback.print_tb(result[5][0][2])
     shutdown()
 
 def reopen_log_file(signum, frame):

@@ -35,6 +35,7 @@
 from collections import OrderedDict
 from os import path
 import logging
+import re
 
 from ttproto.core.exceptions import Error, ReaderError
 from ttproto.core.data import Data, Message
@@ -338,7 +339,10 @@ class Frame:
         :rtype: (int, str)
         """
         if self.__summary is None:
-            self.__summary = (self.__id, self.__msg.summary())
+            one_line_msg_descriptiion = self.__msg.summary()
+            # delete more that one consecutive space
+            re.sub("\s\s+", " ", one_line_msg_descriptiion)
+            self.__summary = (self.__id, one_line_msg_descriptiion)
         return self.__summary
 
     @typecheck

@@ -161,6 +161,7 @@ class Verdict:
         """
         self.__value = 0
         self.__message = ''
+        self.__traceback =[]
         if initial_value is not None:
             self.update(initial_value)
 
@@ -176,6 +177,7 @@ class Verdict:
         """
         assert new_verdict in self.__values
 
+        self.__traceback.append((new_verdict,message))
         new_value = self.__values.index(new_verdict)
         if new_value > self.__value:
             self.__value = new_value
@@ -211,6 +213,15 @@ class Verdict:
         :rtype: str
         """
         return self.__message
+
+    def get_traceback(self):
+        """
+        Get the complete traceback of all partial verdicts
+
+        :return: list of partial verdicts, with their messages
+        :rtype: list of tuples: [(str, str)]
+        """
+        return self.__traceback
 
     @typecheck
     def __str__(self) -> str:
@@ -361,7 +372,9 @@ class TestCase(object):
         self._frame = None
 
         # Prepare the values to return after a TC is finished
+        # TODO just keep test_stack the structured representation of the logs, and delete self._text
         self._text = ''
+        self._text_stack = []
         self._failed_frames = []
         self._exceptions = []
 
@@ -455,7 +468,7 @@ class TestCase(object):
         # If it matches
         if template.match(self._frame[protocol], diff_list):
             if verdict is not None:
-                self.set_verdict('pass', 'Match: %s' % template)
+                self.set_verdict('pass', str(self._frame) + ' Match: %s' % template)
 
         # If it didn't match
         else:
@@ -523,26 +536,38 @@ class TestCase(object):
         :type msg: object
         """
         text = str(msg)
+        self._text_stack.append(msg)
         self._text += text if text.endswith('\n') else (text + '\n')
 
     @typecheck
-    def set_verdict(self, verdict: is_verdict, msg: str = ''):
+    def set_verdict(self, verdict: is_verdict, msg):
         """
         Update the current verdict of the current test case
 
         :param verdict: The new verdict
         :param msg: The message to associate with the verdict
-        :type verdict: str
-        :type msg: str
+
         """
-        self._verdict.update(verdict, msg)
-        self.log('  [%s] %s' % (format(verdict, "^6s"), msg))
+        msg_fix = ''
+        if msg is None:
+            pass
+        elif type(msg) is str:
+            msg_fix = msg
+            self.log('  [%s] %s' % (format(verdict, "^6s"), msg_fix))
+        elif type(msg) is list:
+            while msg:
+                msg_fix += msg.pop() + '\n'
+
+        # verdict msg can now log more that one line of messages
+        self._verdict.update(verdict, msg_fix)
+
 
     @typecheck
     def run_test_case(self) -> (
         str,
         list_of(int),
         str,
+        list_of((str, str)),
         list_of((type, Exception, is_traceback))
     ):
         """
@@ -551,9 +576,10 @@ class TestCase(object):
         :return: A tuple with the informations about the test results which are
                  - The verdict as a string
                  - The list of the result important frames
-                 - A string for extra informations
+                 - A string with the log of the test case
+                 - A list of all the partial verdicts and their messages
                  - A list of typles representing the exceptions that occured
-        :rtype: (str, [int], str, [(type, Exception, traceback)])
+        :rtype: (str, [int], str,[(str,str)], [(type, Exception, traceback)])
         """
 
         # Pre-process / filter conversations corresponding to the TC
@@ -602,12 +628,14 @@ class TestCase(object):
                 self.set_verdict('error', 'unhandled exception')
                 self.log(exc_info[1])
 
+
         # Return the results
         return (
             self._verdict.get_value(),
             self._failed_frames,
             self._text,
-            self._exceptions
+            self._verdict.get_traceback(),
+            self._exceptions,
         )
 
     @classmethod
@@ -873,9 +901,7 @@ class Analyzer:
         self,
         filename: str,
         tc_id: str
-    ) -> (str, str, list_of(int), str, list_of(
-             (type, Exception, is_traceback)
-         )):
+    ) -> (str, str, list_of(int), str, list_of((str,str)), list_of((type, Exception, is_traceback))):
         """
         Analyse a dump file associated to a test case
 
@@ -884,23 +910,24 @@ class Analyzer:
         :type filename: str
         :type tc_id: str
 
-        :return: A tuple with the informations about the analyse results:
+        :return: A tuple with the information about the analysis results:
                  - The id of the test case
                  - The verdict as a string
                  - The list of the result important frames
-                 - A string for extra informations
-                 - A list of typles representing the exceptions that occured
-        :rtype: (str, str, [int], str, [(type, Exception, traceback)])
+                 - A string with logs
+                 - A list of all the partial verdicts
+                 - A list of tuples representing the exceptions that occured
+        :rtype: (str, str, [int], str,[(str, str)], [(type, Exception, traceback)])
 
         :raises FileNotFoundError: If the test env of the tc is not found
         :raises ReaderError: If the capture didn't manage to read and decode
         :raises ObsoleteTestCase: If the test case if obsolete
 
         .. example::
-            ('TD_COAP_CORE_03', 'fail', [21, 22], 'verdict description', '')
+            ('TD_COAP_CORE_03', 'fail', [21, 22], [('fail', "some comment"),('fail', "some other comment")] , 'verdict description', '')
 
         .. note::
-            Allows multiple ocurrences of the testcase, returns as verdict:
+            Allows multiple occurrences of executions of the testcase, returns as verdict:
                 - fail: if at least one on the occurrences failed
                 - inconc: if all ocurrences returned a inconv verdict
                 - pass: all occurrences are inconc or at least one is PASS and
@@ -920,7 +947,7 @@ class Analyzer:
 
             # Initialize the TC with the list of conversations
             test_case = test_case_class(capture)
-            verdict, rev_frames, extra, exceptions = test_case.run_test_case()
+            verdict, rev_frames, log, partial_verdicts, exceptions = test_case.run_test_case()
 
             # print('##### Ignored')
             # print(ignored)
@@ -942,7 +969,8 @@ class Analyzer:
             # print('#####')
 
             # Return the result
-            return tc_id, verdict, rev_frames, extra, exceptions
+
+            return tc_id, verdict, rev_frames, log, partial_verdicts, exceptions
 
 
 if __name__ == "__main__":

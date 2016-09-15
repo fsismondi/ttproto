@@ -1076,8 +1076,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 assert type(analysis_results[1]) == str
                 assert type(analysis_results[2]) == list
                 assert type(analysis_results[3]) == str
-                assert type(analysis_results[4]) == list
-                for exception_tuple in analysis_results[4]:
+                assert type(analysis_results[5]) == list
+                for exception_tuple in analysis_results[5]:
                     assert type(exception_tuple) == tuple
                     assert len(exception_tuple) == 3
                     assert isinstance(exception_tuple[0], type)

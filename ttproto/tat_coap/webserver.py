@@ -885,16 +885,18 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                 testcase_id
                             )
 
+            assert type(analysis_results[4]) is list
+            assert type(analysis_results[4][0]) is tuple
             # Error for some test cases that the analysis doesn't manage to get
             try:
                 assert type(analysis_results) == tuple
-                assert len(analysis_results) == 5
+                assert len(analysis_results) == 6
                 assert type(analysis_results[0]) == str
                 assert type(analysis_results[1]) == str
                 assert type(analysis_results[2]) == list
                 assert type(analysis_results[3]) == str
-                assert type(analysis_results[4]) == list
-                for exception_tuple in analysis_results[4]:
+                assert type(analysis_results[5]) == list
+                for exception_tuple in analysis_results[5]:
                     assert type(exception_tuple) == tuple
                     assert len(exception_tuple) == 3
                     assert isinstance(exception_tuple[0], type)
@@ -915,6 +917,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             verdict['verdict'] = analysis_results[1]
             verdict['description'] = analysis_results[3]
             verdict['review_frames'] = analysis_results[2]
+            verdict['partial_verdicts'] = analysis_results[4]
 
             token_res = OrderedDict()
             token_res['_type'] = 'token'
@@ -929,10 +932,15 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 test_case['tc_basic'],
                 verdict
             ]
+            self.log_message("Analysis response sent: " + str((analysis_results[4])))
+
+            self.log_message("Analysis response sent: " + str(json.dumps(json_result)))
 
             # Here we will analyze the pcap file and get the results as json
             print(json.dumps(json_result))
             return
+
+
 
         # POST handler for the analyzer_allMightyAnalyze uri
         # It will allow users to analyze a pcap file without giving

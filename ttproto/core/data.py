@@ -2182,7 +2182,7 @@ class MessageDescription:
         if (not src) and (not dst):
             src, dst = self.hw_src, self.hw_dst
 
-        return "[%-32s -> %-32s] %s" % (src, dst, str(self.info))
+        return "[%-2s -> %-2s] %s" % (src, dst, str(self.info))
 
 
 from ttproto.core import primitive, packet
