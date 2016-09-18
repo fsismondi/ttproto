@@ -64,7 +64,7 @@ class Range(Template):
         self.__upper = self.store_data(upper_bound)
 
     def _template_match(self, value):
-        return value >= self.__lower and value <= self.__upper
+        return self.__lower <= value <= self.__upper
 
     def _repr(self):
         return "%s(%s, %s, %s)" % (
@@ -147,7 +147,7 @@ class Length(Template):
     def _template_match(self, data):
         l = len(data)
         for lower, upper in self.__length:
-            if lower <= l and l <= upper:
+            if lower <= l <= upper:
                 return True
         return False
 
