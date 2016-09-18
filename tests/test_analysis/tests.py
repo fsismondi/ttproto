@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-import unittest
+import unittest, json
 from ttproto.ts_coap.analysis import basic_dissect_pcap_to_list, dissect_pcap_to_list, analyse_file_rest_api, get_implemented_testcases
 from ttproto.core.lib.inet.coap import *
 from os import getcwd, path
-import json
 
-DUMPS_DIR = '/tests/test_dumps/coap'
+DUMPS_DIR = '/tests/test_dumps/AnalyzerTests/coap_core'
 
 class AnalysisTestCase(unittest.TestCase):
     """
@@ -17,7 +16,7 @@ class AnalysisTestCase(unittest.TestCase):
 
     """
 
-    PCAP_test = getcwd() + '/tests/test_dumps/coap/coap_get_migled_with_tcp_traffic.pcap'
+    PCAP_test = path.join(getcwd(), DUMPS_DIR, 'coap_get_migled_with_tcp_traffic.pcap')
 
     def test_basic_dissect_pcap_list_return_four_elements_coap(self):
         a = basic_dissect_pcap_to_list(self.PCAP_test, CoAP)

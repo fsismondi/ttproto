@@ -15,11 +15,11 @@ class AnalyzerTestCase(unittest.TestCase):
 
     # Test env (only tat_coap for the moment)
     TEST_ENV = 'tat_coap'
+    TEST_DIR = './tests/test_dumps/AnalyzerTests/coap_core/'
     UNKNOWN_TEST_ENV = 'unknown'
     TEST_CASE_ID = 'TD_COAP_CORE_01'
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = 'TD_COAP_CORE_24'
     UNKNOWN_TEST_CASE_ID = 'TD_COAP_CORE_42'
-
 
     # Create a struct checker object
     STRUCT_CHECKER = StructureChecker()
@@ -102,13 +102,14 @@ class AnalyzerTestCase(unittest.TestCase):
 
     # ##### analyse
     def test_analyse_basic_pass_PCAPs(self):
+        dir = self.TEST_DIR
+        print('looking for test dumps for testing the test cases: %s' %dir)
         for tc in self.analyzer.get_implemented_testcases():
-            filename = getcwd() + '/tests/test_dumps/coap/' + tc[0] + '_PASS.pcap'
+            filename = path.join(dir,tc[0] + '_PASS.pcap')
+            print('Testcase found %s , dump file %s for test exist: %s' %(tc[0],filename,path.isfile(filename)))
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
-                #logging.info('verifying test case: ' + tc[0])
-                #logging.info('Filename used is %s' % filename)
-                tc_name, verdict, _, log, excepts = self.analyzer.analyse(filename, tc[0])
+                tc_name, verdict, tc_bck,_ , log, excepts = self.analyzer.analyse(filename, tc[0])
                 self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + verdict + '\nLOG:\n' + log)
 
 
