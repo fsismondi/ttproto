@@ -585,10 +585,10 @@ class TestCase(object):
         # Pre-process / filter conversations corresponding to the TC
         self._conversations, self._ignored = self.preprocess(self._capture)
 
-        # print("----conversations----")
-        # print(self._conversations)
-        # print("----ignored----")
-        # print(self._ignored)
+        print("----conversations----")
+        print(self._conversations)
+        print("----ignored----")
+        print(self._ignored)
 
         # Run the test case for every conversations
         for conv in self._conversations:
@@ -615,7 +615,7 @@ class TestCase(object):
 
             except Exception:
 
-                # Get the execution informations, it's a tuple with
+                # Get the execution information, it's a tuple with
                 #     - The type of the exception being handled
                 #     - The exception instance
                 #     - The traceback object
@@ -738,7 +738,7 @@ class Analyzer:
         )
         if not path.isdir(test_dir):
             raise NotADirectoryError(
-                "The test environment wasn't found at %s"
+                "The test cases dir %s wasn't found"
                 %
                 test_dir
             )
@@ -974,4 +974,27 @@ class Analyzer:
 
 
 if __name__ == "__main__":
-    pass
+    from os import getcwd, path
+    analyzer = Analyzer('tat_coap')
+    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_PASS.pcap','TD_COAP_CORE_01'
+    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_PASS.pcap', 'TD_COAP_CORE_03'
+    params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
+    tc_name, verdict, rev_frames, str_log , lst_log,excepts = analyzer.analyse(params[0], params[1])
+    print('##### TC name')
+    print(tc_name)
+    print('#####')
+    print('##### Verdict given')
+    print(verdict)
+    print('#####')
+    print('##### Review frames')
+    print(rev_frames)
+    print('#####')
+    print('##### Text')
+    print(str_log)
+    print('##### Partial verdicts')
+    for s in lst_log:
+        print(str(s))
+    print('#####')
+    print('##### Exceptions')
+    print(exceptions)
+    print('#####')

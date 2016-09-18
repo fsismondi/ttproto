@@ -44,7 +44,7 @@ TD_COAP_CORE_03:
         :rtype: [Value]
         """
         return [
-            CoAP(type='con', code='put', opt=Opt(CoAPOptionContentFormat()))
+            CoAP(type='con', code='put')
         ]
 
     def run (self):

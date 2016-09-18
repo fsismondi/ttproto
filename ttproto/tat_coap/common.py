@@ -147,7 +147,7 @@ class CoAPTestCase(TestCase):
                 'Expected stimuli declaration from the test case'
             )
 
-        # Get the frames filtered on the protocol
+        # Get the frames related with the protocol under test
         frames, ignored = Frame.filter_frames(capture.frames, protocol)
 
         # Get a counter of the current stimuli
