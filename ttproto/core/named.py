@@ -37,219 +37,224 @@ from ttproto.core.typecheck import *
 import inspect, opcode, os
 
 __all__ = [
-	'NamedObject',
-	'get_parent_var_name',
-	'skip_parent_var_name',
+    'NamedObject',
+    'get_parent_var_name',
+    'skip_parent_var_name',
 ]
 
+
 class NamedObject:
-	"""A class of object whose instance name will be guessed by this module
+    """A class of object whose instance name will be guessed by this module
 
-	This function will store a name for this object in its __name__
-	attribute.
+    This function will store a name for this object in its __name__
+    attribute.
 
-	This name will be set to the value of the 'name' parameter if present.
-	Otherwise the function will use the result of get_parent_var_name().
+    This name will be set to the value of the 'name' parameter if present.
+    Otherwise the function will use the result of get_parent_var_name().
 
-	see help(get_parent_var_name)
-	"""
-	@typecheck
-	def __init__ (self, name: optional(str) = None):
-		self.__name__	= name if name else get_parent_var_name()
+    see help(get_parent_var_name)
+    """
+
+    @typecheck
+    def __init__(self, name: optional(str) = None):
+        self.__name__ = name if name else get_parent_var_name()
 
 
-def _print_stack (st):
-	i = len (st) - 1
-	for l in reversed (st):
-		l4 = l[4]
-		print("%d. %s() in %s:%d\n  %s" % (i, l[3], l[1], l[2], "\n" if l[4] is None else l4[0]), end=' ')
-		i -= 1
+def _print_stack(st):
+    i = len(st) - 1
+    for l in reversed(st):
+        l4 = l[4]
+        print("%d. %s() in %s:%d\n  %s" % (i, l[3], l[1], l[2], "\n" if l[4] is None else l4[0]), end=' ')
+        i -= 1
+
 
 # guess the name of the variable that will store the result of the calling function
 # TODO: handle storing attributes
-_OPCODES_CALL_FUNCTION_ANY = (	opcode.opmap['CALL_FUNCTION'],
-				opcode.opmap['CALL_FUNCTION_KW'],
-				opcode.opmap['CALL_FUNCTION_VAR'],
-				opcode.opmap['CALL_FUNCTION_VAR_KW'],
-			    )
+_OPCODES_CALL_FUNCTION_ANY = (opcode.opmap['CALL_FUNCTION'],
+                              opcode.opmap['CALL_FUNCTION_KW'],
+                              opcode.opmap['CALL_FUNCTION_VAR'],
+                              opcode.opmap['CALL_FUNCTION_VAR_KW'],
+                              )
 _OPCODES_CALL_OPERATOR_ANY = (
-				opcode.opmap['BINARY_TRUE_DIVIDE'],
-			    )
+    opcode.opmap['BINARY_TRUE_DIVIDE'],
+)
 
-_OPCODES_STORE_NAME =	    (
-				opcode.opmap['STORE_NAME'],
-				opcode.opmap['STORE_GLOBAL'],
-			    )
-_OPCODE_STORE_FAST =		opcode.opmap['STORE_FAST']
-_OPCODE_STORE_DEREF =		opcode.opmap['STORE_DEREF']
-_OPCODE_JUMP_FORWARD =		opcode.opmap['JUMP_FORWARD']
-_REJECTED_NEXT_OPCODES = (	opcode.opmap['BUILD_TUPLE'],
-				opcode.opmap['COMPARE_OP'],
-				opcode.opmap['LOAD_CONST'],
-				opcode.opmap['LOAD_FAST'],
-				opcode.opmap['LOAD_GLOBAL'],
-				opcode.opmap['LOAD_NAME'],
-				opcode.opmap['LOAD_ATTR'],
-				opcode.opmap['LOAD_DEREF'],
-				opcode.opmap['CALL_FUNCTION'],
-				opcode.opmap['BUILD_LIST'],
-				opcode.opmap['BUILD_MAP'],
-				opcode.opmap['ROT_TWO'],
-				opcode.opmap['BINARY_TRUE_DIVIDE'],
-				opcode.opmap['PRINT_EXPR'],
-				opcode.opmap['RETURN_VALUE'] #FIXME: maybe not reject this one
-			)
+_OPCODES_STORE_NAME = (
+    opcode.opmap['STORE_NAME'],
+    opcode.opmap['STORE_GLOBAL'],
+)
+_OPCODE_STORE_FAST = opcode.opmap['STORE_FAST']
+_OPCODE_STORE_DEREF = opcode.opmap['STORE_DEREF']
+_OPCODE_JUMP_FORWARD = opcode.opmap['JUMP_FORWARD']
+_REJECTED_NEXT_OPCODES = (opcode.opmap['BUILD_TUPLE'],
+                          opcode.opmap['COMPARE_OP'],
+                          opcode.opmap['LOAD_CONST'],
+                          opcode.opmap['LOAD_FAST'],
+                          opcode.opmap['LOAD_GLOBAL'],
+                          opcode.opmap['LOAD_NAME'],
+                          opcode.opmap['LOAD_ATTR'],
+                          opcode.opmap['LOAD_DEREF'],
+                          opcode.opmap['CALL_FUNCTION'],
+                          opcode.opmap['BUILD_LIST'],
+                          opcode.opmap['BUILD_MAP'],
+                          opcode.opmap['ROT_TWO'],
+                          opcode.opmap['BINARY_TRUE_DIVIDE'],
+                          opcode.opmap['PRINT_EXPR'],
+                          opcode.opmap['RETURN_VALUE']  # FIXME: maybe not reject this one
+                          )
 
-def _read_word (bytes_, offset):
-	return bytes_[offset] + bytes_[offset + 1]*256
+
+def _read_word(bytes_, offset):
+    return bytes_[offset] + bytes_[offset + 1] * 256
+
 
 def get_parent_var_name():
-	"""A function that inspects the execution stack to guess the name of
-	the variable in which is stored the result of the calling function.
+    """A function that inspects the execution stack to guess the name of
+    the variable in which is stored the result of the calling function.
 
-	NOTE: this feature might be broken at any time. The scripts should not
-	rely on this feature at all. Its purpose is just to bring some useful
-	indicative into the test logs.
+    NOTE: this feature might be broken at any time. The scripts should not
+    rely on this feature at all. Its purpose is just to bring some useful
+    indicative into the test logs.
 
-	Exemples:
-		>>> blah_blah_blah = NamedObject()
-		>>> blah_blah_blah.__name__
-		'blah_blah_blah'
+    Exemples:
+        >>> blah_blah_blah = NamedObject()
+        >>> blah_blah_blah.__name__
+        'blah_blah_blah'
 
-		>>> NamedObject().__name__
-		'(anon)'
+        >>> NamedObject().__name__
+        '(anon)'
 
-		>>> IPv6_multicast = IPv6(dst=IPv6Prefix("ff00::/8"))
-		>>> IPv6_multicast.__name__
-		'IPv6_multicast'
-	"""
+        >>> IPv6_multicast = IPv6(dst=IPv6Prefix("ff00::/8"))
+        >>> IPv6_multicast.__name__
+        'IPv6_multicast'
+    """  # identify the frame of the caller of the parent function
+    name = "(anon)"
+    self = None
+    try:
+        stack = inspect.stack()
+        #		_print_stack (stack)
+        #		print stack[3]
+        #		f = stack[3][0]
+        #		print f.f_locals
+        #		print dir(f)
+        #		for par in 'co_argcount', 'co_cellvars', 'co_consts', 'co_filename', 'co_firstlineno', 'co_flags', 'co_freevars', 'co_lnotab', 'co_name', 'co_names', 'co_nlocals', 'co_stacksize', 'co_varnames':
+        #			print "%s: %s" % (par, getattr (f.f_code, par))
+        #
+        #		print "-------------------------------------------------------\n"
+        id = 1
+        while True:
+            id_next = id + 1
+            layer = stack[id]
+            func = layer[3]
+            frame = layer[0]
 
-	# identify the frame of the caller of the parent function
-	name = "(anon)"
-	self = None
-	try:
-		stack = inspect.stack()
-#		_print_stack (stack)
-#		print stack[3]
-#		f = stack[3][0]
-#		print f.f_locals
-#		print dir(f)
-#		for par in 'co_argcount', 'co_cellvars', 'co_consts', 'co_filename', 'co_firstlineno', 'co_flags', 'co_freevars', 'co_lnotab', 'co_name', 'co_names', 'co_nlocals', 'co_stacksize', 'co_varnames':
-#			print "%s: %s" % (par, getattr (f.f_code, par))
-#
-#		print "-------------------------------------------------------\n"
-		id = 1
-		while True:
-			id_next = id + 1
-			layer = stack[id]
-			func = layer[3]
-			frame = layer[0]
+            # will be set if this function is enclosed by a fake_function_skip_parent_var_name
+            # from a @skip_parent_var_name
+            skip_tagged = False
 
-			# will be set if this function is enclosed by a fake_function_skip_parent_var_name
-			# from a @skip_parent_var_name
-			skip_tagged = False
+            try:
+                if func == "type_definition":
+                    name = frame.f_locals["cls"].__name__
+                    raise IndexError()
 
-			try:
-				if func == "type_definition":
-					name = frame.f_locals["cls"].__name__
-					raise IndexError()
+                # check if this function is tagged with @typecheck
+                if stack[id_next][3] == "typecheck_invocation_proxy":
+                    # skip it
+                    id_next += 1
 
-				# check if this function is tagged with @typecheck
-				if stack[id_next][3] == "typecheck_invocation_proxy":
-					# skip it
-					id_next += 1
+                # check if this function is tagged with @skip_parent_var_name
+                if stack[id_next][3] == "fake_function_skip_parent_var_name":
+                    # skip it
+                    id_next += 1
+                    skip_tagged = True
 
-				# check if this function is tagged with @skip_parent_var_name
-				if stack[id_next][3] == "fake_function_skip_parent_var_name":
-					# skip it
-					id_next += 1
-					skip_tagged = True
+            except IndexError:
+                pass
 
-			except IndexError:
-				pass
-
-			if not skip_tagged:
-				# if the calling function is a constructor
-				# then we will skip the parent callers if they are
-				# constructors for the same object
-				if func == '__init__' and frame.f_code.co_argcount:
-					f_self = frame.f_locals[frame.f_code.co_varnames[0]]
-					if id == 1:
-						self = f_self
-					elif not self is f_self:
-						# different object, we stop here
-						break
+            if not skip_tagged:
+                # if the calling function is a constructor
+                # then we will skip the parent callers if they are
+                # constructors for the same object
+                if func == '__init__' and frame.f_code.co_argcount:
+                    f_self = frame.f_locals[frame.f_code.co_varnames[0]]
+                    if id == 1:
+                        self = f_self
+                    elif not self is f_self:
+                        # different object, we stop here
+                        break
                 else:
-					# this function is not tagged and is not a constructor
-					# -> end of recursion
-					break
+                    # this function is not tagged and is not a constructor
+                    # -> end of recursion
+                    break
 
-			id = id_next
+            id = id_next
 
-#		print ("frame id:", id)
-		code = frame.f_code.co_code
+        #		print ("frame id:", id)
+        code = frame.f_code.co_code
 
-		currop = code[frame.f_lasti]
-#		print ("currop", opcode.opname [currop])
+        currop = code[frame.f_lasti]
+        #		print ("currop", opcode.opname [currop])
 
-		if currop in _OPCODES_CALL_FUNCTION_ANY:
-			id_nexti = frame.f_lasti+3
-		elif currop in _OPCODES_CALL_OPERATOR_ANY:
-			id_nexti = frame.f_lasti+1
-		else:
-			raise Error ("Current instruction is %d %s but should be a function call" % (currop, opcode.opname[currop]))
+        if currop in _OPCODES_CALL_FUNCTION_ANY:
+            id_nexti = frame.f_lasti + 3
+        elif currop in _OPCODES_CALL_OPERATOR_ANY:
+            id_nexti = frame.f_lasti + 1
+        else:
+            raise Error("Current instruction is %d %s but should be a function call" % (currop, opcode.opname[currop]))
 
-		nextop = code[id_nexti]
-		while nextop == _OPCODE_JUMP_FORWARD:
-			id_nexti += _read_word (code, id_nexti+1) + 3
-			nextop = code[id_nexti]
+        nextop = code[id_nexti]
+        while nextop == _OPCODE_JUMP_FORWARD:
+            id_nexti += _read_word(code, id_nexti + 1) + 3
+            nextop = code[id_nexti]
 
-#		print ("nextop", opcode.opname [nextop])
+        # print ("nextop", opcode.opname [nextop])
 
-		nameid = _read_word (code, id_nexti+1)
-		if nextop in _OPCODES_STORE_NAME:
-			name = frame.f_code.co_names[nameid]
-		elif nextop == _OPCODE_STORE_FAST:
-			name = frame.f_code.co_varnames[nameid]
-		elif nextop == _OPCODE_STORE_DEREF:
-			name = frame.f_code.co_cellvars[nameid]
-		else:
-			if nextop not in _REJECTED_NEXT_OPCODES:
-				_print_stack (stack)
-				print("Now in frame", id)
-				print("Warning: cannot guess the caller var name (opcode: %d %s)" % (nextop, opcode.opname[nextop]))
-				global frame_fail
-				frame_fail = frame
+        nameid = _read_word(code, id_nexti + 1)
+        if nextop in _OPCODES_STORE_NAME:
+            name = frame.f_code.co_names[nameid]
+        elif nextop == _OPCODE_STORE_FAST:
+            name = frame.f_code.co_varnames[nameid]
+        elif nextop == _OPCODE_STORE_DEREF:
+            name = frame.f_code.co_cellvars[nameid]
+        else:
+            if nextop not in _REJECTED_NEXT_OPCODES:
+                _print_stack(stack)
+                print("Now in frame", id)
+                print("Warning: cannot guess the caller var name (opcode: %d %s)" % (nextop, opcode.opname[nextop]))
+                global frame_fail
+                frame_fail = frame
 
-	except IndexError:
-#		print "IndexError"
-		pass
+    except IndexError:
+        #		print "IndexError"
+        pass
 
-#	print ("Result:", name)
-	return name
+    # print ("Result:", name)
+    return name
 
-def skip_parent_var_name (func):
-	"""A decorator for functions that should be skipped by
-	get_parent_var_name() when inspecting the stack.
 
-	Exemple:
-		>>> def some_factory_function():
-		...   result = NamedObject()
-		...   return result
-		...
-		>>> @skip_parent_var_name
-		... def some_smart_factory_function():
-		...   smart_result = NamedObject()
-		...   return smart_result
-		...
-		>>> foo = some_factory_function()
-		>>> foo.__name__
-		'result'
-		>>> bar = some_smart_factory_function()
-		>>> bar.__name__
-		'bar'
-	"""
-	def fake_function_skip_parent_var_name (*k, **kw):
-		return func (*k, **kw)
-	return fake_function_skip_parent_var_name
+def skip_parent_var_name(func):
+    """A decorator for functions that should be skipped by
+    get_parent_var_name() when inspecting the stack.
 
+    Exemple:
+        >>> def some_factory_function():
+        ...   result = NamedObject()
+        ...   return result
+        ...
+        >>> @skip_parent_var_name
+        ... def some_smart_factory_function():
+        ...   smart_result = NamedObject()
+        ...   return smart_result
+        ...
+        >>> foo = some_factory_function()
+        >>> foo.__name__
+        'result'
+        >>> bar = some_smart_factory_function()
+        >>> bar.__name__
+        'bar'
+    """
+
+    def fake_function_skip_parent_var_name(*k, **kw):
+        return func(*k, **kw)
+
+    return fake_function_skip_parent_var_name
