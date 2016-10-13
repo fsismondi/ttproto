@@ -885,10 +885,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                                 testcase_id
                             )
 
-            assert type(analysis_results[4]) is list
-            assert type(analysis_results[4][0]) is tuple
+            self.log_message("Analysis result: " + str(analysis_results))
+
             # Error for some test cases that the analysis doesn't manage to get
             try:
+                assert type(analysis_results[4]) is list
+                if len(analysis_results[4]) != 0:
+                    assert type(analysis_results[4][0]) is tuple
                 assert type(analysis_results) == tuple
                 assert len(analysis_results) == 6
                 assert type(analysis_results[0]) == str
