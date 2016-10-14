@@ -24,6 +24,7 @@ var/
 .ropeproject
 
 # ttproto related
+drafts/
 log/
 tmp/
 reports/
