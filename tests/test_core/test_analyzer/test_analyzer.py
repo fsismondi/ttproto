@@ -106,11 +106,11 @@ class AnalyzerTestCase(unittest.TestCase):
         print('looking for test dumps for testing the test cases: %s' %dir)
         for tc in self.analyzer.get_implemented_testcases():
             filename = path.join(dir,tc[0] + '_PASS.pcap')
-            print('Testcase found %s , dump file %s for test exist: %s' %(tc[0],filename,path.isfile(filename)))
+            print('Testcase found %s , dump file %s for test exist: %s' %(str(tc[0]),filename,path.isfile(filename)))
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
                 tc_name, verdict, tc_bck,_ , log, excepts = self.analyzer.analyse(filename, tc[0])
-                self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + verdict + '\nLOG:\n' + log)
+                self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + str(verdict) + '\nLOG:\n' + str(log))
 
 
 # #################### Main run the tests #########################
