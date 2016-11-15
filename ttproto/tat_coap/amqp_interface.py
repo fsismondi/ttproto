@@ -75,17 +75,18 @@ def get_test_cases(
     verbose: bool = False
 ) -> OrderedDict:
     """
-    Function to get the implemented test cases
+    Function to get the test cases from files
 
     :param testcase_id: The id of the single test case if one wanted
-    :param verbose: True if we want a verbose response
+    :param verbose: True if we want to retrieve more informations
     :type testcase_id: str
     :type verbose: bool
 
-    :return: The implemented test cases using doc.f-interop.eu format
+    :return: The implemented test cases
     :rtype: OrderedDict
     """
 
+    # New way by analyzer tool
     test_cases = OrderedDict()
     tc_query = [] if not testcase_id else [testcase_id]
     raw_tcs = Analyzer('tat_coap').get_implemented_testcases(
