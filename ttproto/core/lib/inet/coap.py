@@ -82,8 +82,10 @@ __all__ = [
 	'CoAPOptionUriPath',
 	'CoAPOptionUriPort',
 	'CoAPOptionUriQuery',
+	'CoAPOptionOneM2MFrom',
 	'CoAPCode',
 	'CoAPType',
+
 ]
 
 class _CoAPOptionHdrInt (metaclass = SubtypeClass (Range (int, 0, 65804))):
@@ -699,6 +701,9 @@ for i, n, t, l, d in (
 		# draft-ietf-core-observe-11
 
 		(6,	"Observe",		"UInt",		(0, 3),		None),
+
+		# OneM2M binding
+		(256, "OneM2MFrom" , "String" , (0, 255) , None),
 	):
 	exec(
 """
