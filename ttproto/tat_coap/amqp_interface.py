@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 #  (c) 2012  Universite de Rennes 1
 #
@@ -35,10 +36,13 @@ from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Dissector
 from ttproto.core.typecheck import *
 from collections import OrderedDict
-from kombu.mixins import ConsumerMixin
-from kombu import Connection, Exchange, Queue, Producer
+import base64
+import pika
+import json, errno, logging, os
 
-import json, os, errno, logging, time
+PCAP_DIR = 'finterop/sniffer/dumps'
+ALLOWED_EXTENSIONS = set(['pcap'])
+
 
 
 #AMQP: component identification & bus params
@@ -57,10 +61,8 @@ HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
 
-logging.basicConfig(level=logging.DEBUG)
-log = logging.getLogger(__name__)
 
-
+## AUXILIARY FUNCTIONS ##
 @typecheck
 def get_test_cases(
     testcase_id: optional(str) = None,
@@ -110,119 +112,90 @@ def get_test_cases(
     return test_cases
 
 
-class ServiceHandler(ConsumerMixin):
-
-    def __init__(self, amqp_connection):
-
-        # queues & default exchange declaration
-        self.connection = amqp_connection
-        self.exchange = Exchange(DEFAULT_EXCHANGE, type="topic", durable=True)
-        self.control_queue = Queue("control.analysis.service@{name}".format(name=COMPONENT_ID),
-                                   exchange=self.exchange,
-                                   routing_key='control.analysis.service',
-                                   durable=False)
-
-        self.producer = self.connection.Producer(serializer='json')
-
-
-    def log_message(self, format, *args, append=""):
-        global log_file
-        host = self.address_string()
-
-        txt = ("%s - - [%s] %s - %s\n%s" %
-               (host,
-                time.time(),
-                format % args,
-                self.headers.get("user-agent"),
-                "".join("\t%s\n" % l for l in append.splitlines()),
-                ))
-
-        logging.debug()
+def api_error( amqp_channel, error_msg):
+    """
+        Function for generating a json error
+        The error message is logged at the same time
+    """
+    logging.error(' Critical exception found: %s' % error_msg)
+    # lets push the error message into the bus
+    amqp_channel.basic_publish(
+        body=json.dumps(
+            {
+                '_type': 'analysis.error',
+                'message': error_msg
+            }
+        ),
+        exchange=DEFAULT_EXCHANGE,
+        routing_key='control.analysis.error'
+    )
 
 
 
-    def api_error(self, message):
-        """
-            Function for generating a json error
-            The error message is logged at the same time
-        """
-        self.log_message("%s error: %s", self.path, message)
-        to_dump = OrderedDict()
-        to_dump['_type'] = 'response'
-        to_dump['ok'] = False
-        to_dump['error'] = message
-        print(json.dumps(to_dump))
+def on_request(ch, method, props, body):
 
-    def do_GET(self):
+    req_body_dict = json.loads(body.decode('ascii'))
+    logging.info("Service request received: %s, body: %s" %(str(req_body_dict),str(body)))
+    logging.info(type(body))
 
-        # Get the url and parse it
-        url = urlparse(self.path)
+    try:
+        # get type to trigger the right ttproto call
+        req_type = req_body_dict['_type']
 
-        # ##### Personnal remarks
-        #
-        # For the moment, using this webserver is right but for scaling maybe a
-        # strong web platform using a framework will be better. This one is
-        # sufficient for the moment.
-        #
-        # We check on the path for whole uri, maybe we should bind a version to
-        # a beginning like "/api/v1" and then bind the methods put behind it.
-        #
-        # ##### End of remarks
+    except Exception as e:
+        api_error(ch,str(e))
 
-        # GET handler for the analyzer_getTestCases uri
-        # It will give to the gui the list of the test cases
-        #
-        if url.path == '/api/v1/analyzer_getTestCases':
+    if req_type == 'analysis.testCaseAnalyze':
+        logging.info("Starting analysis of PCAP ...")
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        logging.info("Decoding PCAP file into base64 ...")
+        try:
+            pcap_file_base64 = req_body_dict['value']
+            filename = req_body_dict['filename']
+            testcase_id = req_body_dict['testcase_id']
+            testcase_ref = req_body_dict['testcase_ref']
+            # save to file
+            with open(os.path.join(TMPDIR, filename), "wb") as pcap_file:
+                nb = pcap_file.write(base64.b64decode(pcap_file_base64))
+                logging.info("Pcap correctly saved %dB at %s from sniffer" % (nb, TMPDIR))
 
-            # Send the header
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json;charset=utf-8')
-            self.end_headers()
+            # we run the analysis
+            analysis_results = Analyzer('tat_coap').analyse(os.path.join(TMPDIR, filename), testcase_id)
+            print(str(analysis_results))
 
-            # Bind the stdout to the http output
-            os.dup2(self.wfile.fileno(), sys.stdout.fileno())
+        except Exception as e:
+            api_error(ch,str(e))
+            raise e
 
-            # Get the list of test cases
-            try:
-                test_cases = get_test_cases()
-            except FileNotFoundError as fnfe:
-                self.api_error(
-                    'Problem during fetching the test cases list:\n' + str(fnfe)
-                )
-                return
 
-            clean_test_cases = []
-            for tc in test_cases:
-                clean_test_cases.append(test_cases[tc]['tc_basic'])
+            #let's prepare the message
+        try:
+            verdict = OrderedDict()
+            verdict['_type'] = 'analysis.testCaseAnalyze.verdict'
+            verdict['ok'] = True
+            verdict['verdict'] = analysis_results[1]
+            # TODO make a description less verborragic -> fix in ttproto.analyse method , not here..
+            verdict['description'] = analysis_results[3]
+            verdict['review_frames'] = analysis_results[2]
+            verdict['partial_verdicts'] = analysis_results[4]
+            verdict['token'] = 'NOT YET IMPLEMENTED'
+            verdict['testcase_id'] = testcase_id
+            verdict['testcase_ref'] = testcase_ref
+            logging.info("Analysis response sent: " + str(json.dumps(verdict)))
 
-            # If no test case found
-            if len(clean_test_cases) == 0:
-                self.api_error('No test cases found')
-                return
+        except Exception as e :
+            api_error(ch, str(e))
+            raise e
 
-            # The result to return
-            json_result = OrderedDict()
-            json_result['_type'] = 'response'
-            json_result['ok'] = True
-            json_result['content'] = clean_test_cases
+        logging.info("Sending PCAP through the AMQP interface ...")
+        ch.basic_publish(exchange=DEFAULT_EXCHANGE,
+                          routing_key=props.reply_to,
+                          properties=pika.BasicProperties(correlation_id = \
+                                                              props.correlation_id),
+                          body=json.dumps(verdict))
 
-            # Just give the json representation of the test cases list
-            print(json.dumps(json_result))
-            return
-
-        # GET handler for the analyzer_getTestcaseImplementation uri
-        # It will allow developpers to get the implementation script of a TC
-        #
-        # /param testcase_id => The unique id of the test case
-        #
-
-job_id = 0
-
-__shutdown = False
-
-def shutdown():
-    global __shutdown
-    __shutdown = True
+    else:
+        api_error(ch,'Coulnt process the service request: %s' %str(req_body_dict))
 
 for d in TMPDIR, DATADIR, LOGDIR:
     try:
@@ -232,6 +205,34 @@ for d in TMPDIR, DATADIR, LOGDIR:
             raise
 
 
-def reopen_log_file(signum, frame):
-    global log_file
-    log_file = open(os.path.join(LOGDIR, "coap-webserver.log"), "a")
+## AMQP API ENTRY POINTS ##
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.WARNING)
+
+connection = pika.BlockingConnection(pika.ConnectionParameters(
+        host='localhost'))
+
+channel = connection.channel()
+
+services_queue_name = 'services_queue@%s'%COMPONENT_ID
+channel.queue_declare(queue=services_queue_name)
+
+channel.queue_bind(exchange=DEFAULT_EXCHANGE,
+                       queue=services_queue_name,
+                       routing_key='control.analysis.service')
+# Hello world message
+channel.basic_publish(
+    body=json.dumps({'_type': 'analysis.info', 'value': 'TAT is up!'}),
+    routing_key='control.analysis.info',
+    exchange=DEFAULT_EXCHANGE,
+)
+
+
+channel.basic_qos(prefetch_count=1)
+channel.basic_consume(on_request, queue=services_queue_name)
+
+print(" [x] Awaiting RPC requests")
+channel.start_consuming()
+
+
+
+
