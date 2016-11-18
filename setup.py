@@ -6,8 +6,7 @@ from setuptools import setup, find_packages
 
 PACKAGE = 'ttproto'
 LICENSE = 'CeCILL'
-SCRIPTS = ['ttproto']
-
+#SCRIPTS = ['ttproto']
 
 # Read version without importing for coverage issues
 def get_version(package):
@@ -35,8 +34,8 @@ setup(
                  'tools, for conformance and interoperability testing mainly.'),
     license=LICENSE,
     packages=find_packages(),
-    scripts=SCRIPTS,
+    #scripts=SCRIPTS,
     classifiers=['Development Status :: 2 - Pre-Alpha',
                  'Programming Language :: Python :: 2'],
-    install_requires=['yaml','requests'],
+    install_requires=['pyyaml','requests'],
 )
