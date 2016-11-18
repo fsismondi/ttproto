@@ -61,7 +61,7 @@ class _TC_NestedError(_TC_Exception):
         try:
             return ", " + self.inner.error_message()
         except:
-            print "'%s'" % self.inner.message
+            print("'%s'" % self.inner.message)
             raw_input()
             raise
 
