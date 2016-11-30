@@ -315,8 +315,8 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
     NOTES:
      - allows multiple ocurrences of the testcase, returns as verdict:
             - fail: if at least one on the occurrences failed
-            - inconc : if all ocurrences returned a inconv verdict
-            - pass: all occurrences are inconc or at least one is PASS and the rest is inconc
+            - inconclusive : if all ocurrences returned a inconv verdict
+            - pass: all occurrences are inconclusive or at least one is PASS and the rest is inconclusive
     """
     testcases, _ = import_testcases(regex)
     my_testcases = [t for t in testcases if t.reverse_proxy == (profile == "reverse-proxy") ]
@@ -365,7 +365,7 @@ def analyse_file_rest_api(filename, urifilter = False, exceptions = None, regex 
 
                 pair_results.append(tc_results)
 
-        verdicts = None, "inconc", "pass", "fail", "error"
+        verdicts = None, "inconclusive", "pass", "fail", "error"
         for tc_type, tc_results in filter(lambda x: regex in x[0].__name__, zip(my_testcases, pair_results)):
             review_frames=[]
             v = 0
@@ -440,13 +440,13 @@ def analyse_file_html (filename, orig_name, urifilter = False, exceptions = None
             g.style ("""
 a {color: inherit; text-decoration: inherit}
 .pass {color: green;}
-.inconc {color: #e87500;}
+.inconclusive {color: #e87500;}
 .fail {color: red;}
 .error {color: red;}
 .mismatch {color: #803000;}
 .chaining {color: #808080; font-style: italic;}
 .bgpass {background-color: #B0FFB0;}
-.bginconc {background-color: #FFB080;}
+.bginconclusive {background-color: #FFB080;}
 .bgfail {background-color: #FF9090;}
 .bgerror {background-color: #FF9090;}
 .bgnone {background-color: #FFFFB0;}
@@ -574,7 +574,7 @@ c.innerHTML=%s;
 c.colSpan=4;
 r.appendChild(c);
 ''' % repr (pair_txt))
-                    verdicts = None, "inconc", "pass", "fail", "error"
+                    verdicts = None, "inconclusive", "pass", "fail", "error"
                     for title, func in (
                             ("ETSI interoperability test scenarios",(lambda x: "IRISA" not in x[0].__name__)),
                             ("IRISA interoperability test scenarios",(lambda x: "IRISA" in x[0].__name__))

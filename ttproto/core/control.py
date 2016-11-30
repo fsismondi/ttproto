@@ -79,7 +79,7 @@ class Verdict:
 	Known verdict values are:
 	 - "none"	no verdict set yet
 	 - "pass"	the NUT fulfilled the test purpose
-	 - "inconc"	the NUT did not fulfill the test purpose but did not display bad behaviour
+	 - "inconclusive"	the NUT did not fulfill the test purpose but did not display bad behaviour
 	 - "fail"	the NUT did not fulfill the test purpose and displayed a bad behaviour
 	 - "aborted"	the test execution was aborted by the user
 	 - "error"	a runtime error occured during the test
@@ -95,7 +95,7 @@ class Verdict:
 	the new verdict is worse than the previous one.
 	"""
 
-	__values = ("none", "pass", "inconc", "fail", "aborted", "error")
+	__values = ("none", "pass", "inconclusive", "fail", "aborted", "error")
 
 	def __init__ (self, initial_value = None):
 		self.__value = 0

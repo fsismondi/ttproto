@@ -108,7 +108,7 @@ Response contains:
             if self.match_coap("client", CoAP(type="con", code="get",
                                               opt=Opt(CoAPOptionUriPath("validate"))),
                                None):
-                raise self.setverdict("inconc",
+                raise self.setverdict("inconclusive",
                                       "Proxy sent a new GET request after %.1f seconds whereas Max-Age is set to %d seconds" % (
                                       interval, maxage))
                 raise self.Stop()

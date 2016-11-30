@@ -145,7 +145,7 @@ def on_request(ch, method, props, body):
     except Exception as e:
         api_error(ch,str(e))
 
-    if req_type == 'analysis.testCaseAnalyze':
+    if req_type == 'analysis.testcase.analyze':
         logging.info("Starting analysis of PCAP ...")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         logging.info("Decoding PCAP file into base64 ...")
@@ -171,7 +171,7 @@ def on_request(ch, method, props, body):
             #let's prepare the message
         try:
             verdict = OrderedDict()
-            verdict['_type'] = 'analysis.testCaseAnalyze.verdict'
+            verdict['_type'] = 'analysis.testcase.analyze.verdict'
             verdict['ok'] = True
             verdict['verdict'] = analysis_results[1]
             # TODO make a description less verborragic -> fix in ttproto.analyse method , not here..

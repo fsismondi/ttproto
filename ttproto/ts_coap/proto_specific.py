@@ -84,7 +84,7 @@ class CoAPTestcase(object):
     obsolete = False
     reverse_proxy = False
 
-    __verdicts = None, "pass", "inconc", "fail", "error"
+    __verdicts = None, "pass", "inconclusive", "fail", "error"
 
     class Stop (Exception):
         pass
@@ -108,13 +108,13 @@ class CoAPTestcase(object):
             # ensure we're at the end of the communication
             try:
                 self.log (next (self.__iter))
-                self.setverdict ("inconc", "unexpected frame")
+                self.setverdict ("inconclusive", "unexpected frame")
             except StopIteration:
                 pass
 
         except self.Stop:
-            # ignore this testcase result if the first frame gives an inconc verdict
-            if self.verdict == "inconc" and self.frame == self.conversation[0] and not self.force:
+            # ignore this testcase result if the first frame gives an inconclusive verdict
+            if self.verdict == "inconclusive" and self.frame == self.conversation[0] and not self.force:
                 # no match
                 self.verdict = None
 
@@ -136,7 +136,7 @@ class CoAPTestcase(object):
             if not optional:
                 self.__iter = None
                 self.log ("<Frame  ?>")
-                self.setverdict ("inconc", "premature end of conversation")
+                self.setverdict ("inconclusive", "premature end of conversation")
         except TypeError:
             raise self.Stop()
 
@@ -144,7 +144,7 @@ class CoAPTestcase(object):
         # ensure we're at the end of the current conversation
         try:
             self.log (next (self.__iter))
-            self.setverdict ("inconc", "unexpected frame")
+            self.setverdict ("inconclusive", "unexpected frame")
             raise self.Stop()
         except StopIteration:
             pass
@@ -159,7 +159,7 @@ class CoAPTestcase(object):
                 return False
             else:
                 self.log ("<Frame  ?>")
-                self.setverdict ("inconc", "expected another CoAP conversation")
+                self.setverdict ("inconclusive", "expected another CoAP conversation")
                 raise self.Stop()
 
 
@@ -170,13 +170,13 @@ class CoAPTestcase(object):
         self.log ("Chaining to conversation %d %s" % (c.id, c.tag))
         self.next()
         if self.frame.ts < last_frame.ts:
-            self.setverdict ("inconc", "concurrency issue: frame %d was received earlier than frame %d" % (self.frame.id, last_frame.id))
+            self.setverdict ("inconclusive", "concurrency issue: frame %d was received earlier than frame %d" % (self.frame.id, last_frame.id))
             raise self.Stop()
 
         return True
 
     def setverdict (self, v, text = ""):
-        if self.verdict is None and v == "inconc" and not self.force:
+        if self.verdict is None and v == "inconclusive" and not self.force:
             raise self.Stop()
 
         if self.__verdicts.index (v) > self.__verdicts.index (self.verdict):
@@ -207,7 +207,7 @@ class CoAPTestcase(object):
 
         return self.frame
 
-    def match_coap(self, sender, template, verdict="inconc"):
+    def match_coap(self, sender, template, verdict="inconclusive"):
         assert sender in (None, "client", "server")
 
         if not self.__iter:
@@ -342,13 +342,13 @@ class CoAPTestcase(object):
 
                 # filter by query name
                 if n not in store_data(filter):
-                    verdict = "inconc"
+                    verdict = "inconclusive"
 
                 if value is not None:
                     # filter by query value
                     msg += " matching %s" % value
                     if v not in store_data(value):
-                        verdict = "inconc"
+                        verdict = "inconclusive"
 
                 self.setverdict(verdict, msg)
 
@@ -381,7 +381,7 @@ class CoAPTestcase(object):
                 elif bl2["szx"] != szx:
                     # block size was modified
                     if bl2["szx"] > szx:
-                        self.setverdict("inconc", "block size seems to be increasing")
+                        self.setverdict("inconclusive", "block size seems to be increasing")
                         raise self.Stop()
 
                     # block size was reduced
@@ -414,7 +414,7 @@ class CoAPTestcase(object):
                 b = blocks.get(i)
                 if b is None:
                     bad = True
-                    self.setverdict("inconc", "block #%d is missing" % i)
+                    self.setverdict("inconclusive", "block #%d is missing" % i)
                 else:
                     pl.append(b)
             if bad:

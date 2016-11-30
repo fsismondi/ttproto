@@ -115,7 +115,7 @@ class CoAPTestCase(TestCase):
         conversations.
 
         :param Capture: The capture which will be filtered/preprocessed
-        :return:
+        :return: list of conversations and list of ignored frames
         """
 
         # TODO assert is subclass of TesCase?
