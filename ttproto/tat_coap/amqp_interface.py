@@ -157,7 +157,7 @@ def on_request(ch, method, props, body):
             # save to file
             with open(os.path.join(TMPDIR, filename), "wb") as pcap_file:
                 nb = pcap_file.write(base64.b64decode(pcap_file_base64))
-                logging.info("Pcap correctly saved %dB at %s from sniffer" % (nb, TMPDIR))
+                logging.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
             # we run the analysis
             analysis_results = Analyzer('tat_coap').analyse(os.path.join(TMPDIR, filename), testcase_id)
