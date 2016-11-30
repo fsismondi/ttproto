@@ -74,7 +74,7 @@ TD_COAP_CORE_29:
             if self.match("client", CoAP(type="con", code="get",
                                               opt=Opt(CoAPOptionUriPath("validate"))),
                                None):
-                raise self.set_verdict("inconc",
+                raise self.set_verdict("inconclusive",
                                       "Proxy sent a new GET request after %.1f seconds whereas Max-Age is set to %d seconds" % (
                                       interval, maxage))
                 raise self.Stop()

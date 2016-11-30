@@ -131,7 +131,7 @@ class Verdict:
     Known verdict values are:
      - 'none': No verdict set yet
      - 'pass': The NUT fulfilled the test purpose
-     - 'inconc': The NUT did not fulfill the test purpose but did not display
+     - 'inconclusive': The NUT did not fulfill the test purpose but did not display
                  bad behaviour
      - 'fail': The NUT did not fulfill the test purpose and displayed a bad
                behaviour
@@ -149,7 +149,7 @@ class Verdict:
     the new verdict is worse than the previous one.
     """
 
-    __values = ('none', 'pass', 'inconc', 'fail', 'aborted', 'error')
+    __values = ('none', 'pass', 'inconclusive', 'fail', 'aborted', 'error')
 
     @typecheck
     def __init__(self, initial_value: optional(str) = None):
@@ -401,7 +401,7 @@ class TestCase(object):
         self,
         node_name: optional(str),
         template: Value,
-        verdict: optional(is_verdict) = 'inconc',
+        verdict: optional(is_verdict) = 'inconclusive',
         msg: str = ''
     ) -> bool:
         """
@@ -522,7 +522,7 @@ class TestCase(object):
             if not optional:
                 self._iter = None
                 self.log('<Frame  ?>')
-                self.set_verdict('inconc', 'premature end of conversation')
+                self.set_verdict('inconclusive', 'premature end of conversation')
 
         except TypeError:
             raise self.Stop()
@@ -606,9 +606,9 @@ class TestCase(object):
 
             except self.Stop:
                 # Ignore this testcase result if the first frame gives an
-                # inconc verdict
+                # inconclusive verdict
                 if all((
-                    self._verdict.get_value() == 'inconc',
+                    self._verdict.get_value() == 'inconclusive',
                     self._frame == conv[0]
                 )):
                     self.set_verdict('none', 'no match')
@@ -929,9 +929,9 @@ class Analyzer:
         .. note::
             Allows multiple occurrences of executions of the testcase, returns as verdict:
                 - fail: if at least one on the occurrences failed
-                - inconc: if all ocurrences returned a inconv verdict
-                - pass: all occurrences are inconc or at least one is PASS and
-                        the rest is inconc
+                - inconclusive: if all ocurrences returned a inconv verdict
+                - pass: all occurrences are inconclusive or at least one is PASS and
+                        the rest is inconclusive
         """
 
         # Get the test case class

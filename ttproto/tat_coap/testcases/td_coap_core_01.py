@@ -40,7 +40,7 @@ TD_COAP_CORE_01:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        return [CoAP(type='con', code='get')]
+        return [CoAP(code='get')]
 
     def run(self):
         self.match(

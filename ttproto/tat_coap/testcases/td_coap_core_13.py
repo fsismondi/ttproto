@@ -66,7 +66,7 @@ TD_COAP_CORE_13:
         if len (opts) > 1:
             self.set_verdict ("pass", "multiple UriPath options")
         else:
-            self.set_verdict ("inconc", "only one UriPath option")
+            self.set_verdict ("inconclusive", "only one UriPath option")
 
         # TODO: move this checks outside the testcases
         for o in opts:

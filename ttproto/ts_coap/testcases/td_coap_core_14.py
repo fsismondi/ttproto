@@ -67,7 +67,7 @@ Client displays the response
         opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.frame.coap["opt"]))
 
         if len (opts) < 2:
-            self.setverdict ("inconc", "expect multiple UriQuery options")
+            self.setverdict ("inconclusive", "expect multiple UriQuery options")
 
         self.next_skip_ack()
 

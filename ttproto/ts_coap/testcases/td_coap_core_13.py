@@ -73,7 +73,7 @@ Client displays the response
         if len (opts) > 1:
             self.setverdict ("pass", "multiple UriPath options")
         else:
-            self.setverdict ("inconc", "only one UriPath option")
+            self.setverdict ("inconclusive", "only one UriPath option")
 
         # TODO: move this checks outside the testcases
         for o in opts:

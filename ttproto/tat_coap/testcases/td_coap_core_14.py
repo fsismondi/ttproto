@@ -71,7 +71,7 @@ TD_COAP_CORE_14:
         opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.coap["opt"]))
 
         if len (opts) < 2:
-            self.set_verdict ("inconc", "expect multiple UriQuery options")
+            self.set_verdict ("inconclusive", "expect multiple UriQuery options")
 
         self.next_skip_ack()
 

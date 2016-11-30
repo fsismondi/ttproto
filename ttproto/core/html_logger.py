@@ -66,7 +66,7 @@ class HTMLLogger(logger.Logger):
         None: "#FF9090",
         "none": "#FFFFA0",
         "pass": "#B0FFB0",
-        "inconc": "#DCBAFF",
+        "inconclusive": "#DCBAFF",
     }
 
     class __RuntimeError(Exception):
