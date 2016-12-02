@@ -187,7 +187,7 @@ def on_request(ch, method, props, body):
             api_error(ch, str(e))
             raise e
 
-        logging.info("Sending PCAP through the AMQP interface ...")
+        logging.info("Sending test case analysis through the AMQP interface ...")
         ch.basic_publish(exchange=DEFAULT_EXCHANGE,
                           routing_key=props.reply_to,
                           properties=pika.BasicProperties(correlation_id = \
@@ -197,41 +197,6 @@ def on_request(ch, method, props, body):
     else:
         api_error(ch,'Coulnt process the service request: %s' %str(req_body_dict))
 
-for d in TMPDIR, DATADIR, LOGDIR:
-    try:
-        os.makedirs(d)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-
-
-## AMQP API ENTRY POINTS ##
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.WARNING)
-
-connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host='localhost'))
-
-channel = connection.channel()
-
-services_queue_name = 'services_queue@%s'%COMPONENT_ID
-channel.queue_declare(queue=services_queue_name)
-
-channel.queue_bind(exchange=DEFAULT_EXCHANGE,
-                       queue=services_queue_name,
-                       routing_key='control.analysis.service')
-# Hello world message
-channel.basic_publish(
-    body=json.dumps({'_type': 'analysis.info', 'value': 'TAT is up!'}),
-    routing_key='control.analysis.info',
-    exchange=DEFAULT_EXCHANGE,
-)
-
-
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(on_request, queue=services_queue_name)
-
-print(" [x] Awaiting RPC requests")
-channel.start_consuming()
 
 
 
