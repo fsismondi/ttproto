@@ -57,5 +57,5 @@ if __name__ == "__main__":
 
 
         ## AMQP CONNECTION ##
-        bootsrap_amqp_interface()
+        bootstrap_amqp_interface()
 
