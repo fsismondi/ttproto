@@ -47,9 +47,7 @@ ALLOWED_EXTENSIONS = set(['pcap'])
 
 #AMQP: component identification & bus params
 COMPONENT_ID = 'tat'
-COMPONENT_DIR = 'ttproto/core/tat_coap'
-DEFAULT_PLATFORM = "127.0.0.1:15672"
-DEFAULT_EXCHANGE = "default"
+COMPONENT_DIR = 'ttproto/tat_coap'
 
 # Directories
 DATADIR = "data"
@@ -60,6 +58,53 @@ LOGDIR = "log"
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
+
+
+
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
+# rewrite default values with ENV variables
+try:
+    AMQP_SERVER = str(os.environ['AMQP_SERVER'])
+    AMQP_USER = str(os.environ['AMQP_USER'])
+    AMQP_PASS = str(os.environ['AMQP_PASS'])
+    AMQP_VHOST = str(os.environ['AMQP_VHOST'])
+    AMQP_EXCHANGE = str(os.environ['AMQP_EXCHANGE'])
+
+    logging.info('Env vars for AMQP connection succesfully imported')
+
+except KeyError as e:
+    logging.error(' Cannot retrieve environment variables for AMQP connection')
+
+def bootsrap_amqp_interface():
+
+
+    credentials = pika.PlainCredentials(AMQP_USER, AMQP_PASS)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+                host=AMQP_SERVER,
+                virtual_host=AMQP_VHOST,
+                credentials=credentials))
+    channel = connection.channel()
+
+    services_queue_name = 'services_queue@%s' % COMPONENT_ID
+    channel.queue_declare(queue=services_queue_name)
+
+    channel.queue_bind(exchange=AMQP_EXCHANGE,
+                       queue=services_queue_name,
+                       routing_key='control.analysis.service')
+    # Hello world message
+    channel.basic_publish(
+            body=json.dumps({'value': 'TAT is up!', '_type': 'analysis.info'}),
+            routing_key='control.analysis.info',
+            exchange=AMQP_EXCHANGE,
+    )
+
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(on_request, queue=services_queue_name)
+
+    print(" [x] Awaiting for analysis requests")
+    channel.start_consuming()
+
 
 
 ## AUXILIARY FUNCTIONS ##
@@ -126,7 +171,7 @@ def api_error( amqp_channel, error_msg):
                 'message': error_msg
             }
         ),
-        exchange=DEFAULT_EXCHANGE,
+        exchange=AMQP_EXCHANGE,
         routing_key='control.analysis.error'
     )
 
@@ -188,7 +233,7 @@ def on_request(ch, method, props, body):
             raise e
 
         logging.info("Sending test case analysis through the AMQP interface ...")
-        ch.basic_publish(exchange=DEFAULT_EXCHANGE,
+        ch.basic_publish(exchange=AMQP_EXCHANGE,
                           routing_key=props.reply_to,
                           properties=pika.BasicProperties(correlation_id = \
                                                               props.correlation_id),

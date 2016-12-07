@@ -12,6 +12,7 @@ INTERFACE = 'amqp'
 
 if __name__ == "__main__":
 
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
     reopen_log_file(None, None)
 
     __shutdown = False
@@ -54,36 +55,7 @@ if __name__ == "__main__":
                 break
     elif INTERFACE == 'amqp':
 
-        for d in TMPDIR, DATADIR, LOGDIR:
-            try:
-                os.makedirs(d)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise
 
-        ## AMQP API ENTRY POINTS ##
-        logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.WARNING)
+        ## AMQP CONNECTION ##
+        bootsrap_amqp_interface()
 
-        connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host='localhost'))
-
-        channel = connection.channel()
-
-        services_queue_name = 'services_queue@%s' % COMPONENT_ID
-        channel.queue_declare(queue=services_queue_name)
-
-        channel.queue_bind(exchange=DEFAULT_EXCHANGE,
-                           queue=services_queue_name,
-                           routing_key='control.analysis.service')
-        # Hello world message
-        channel.basic_publish(
-            body=json.dumps({'value': 'TAT is up!','_type': 'analysis.info'}),
-            routing_key='control.analysis.info',
-            exchange=DEFAULT_EXCHANGE,
-        )
-
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(on_request, queue=services_queue_name)
-
-        print(" [x] Awaiting for analysis requests")
-        channel.start_consuming()
