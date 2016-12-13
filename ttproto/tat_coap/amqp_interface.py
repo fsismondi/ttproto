@@ -32,14 +32,17 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from ttproto.core.analyzer import Analyzer
-from ttproto.core.dissector import Dissector
-from ttproto.core.typecheck import typecheck, optional, either
-from collections import OrderedDict
 import base64
 import pika
 import time, hashlib
 import json, errno, logging, os
+import uuid
+from multiprocessing import Process
+
+from ttproto.core.analyzer import Analyzer
+from ttproto.core.dissector import Dissector
+from ttproto.core.typecheck import typecheck, optional, either
+from collections import OrderedDict
 from ttproto.utils import pure_pcapy
 # this imports all protocol implementations
 from ttproto.core.lib.all import *
@@ -47,7 +50,11 @@ from ttproto.core.lib.all import *
 PCAP_DIR = 'finterop/sniffer/dumps'
 ALLOWED_EXTENSIONS = set(['pcap'])
 
-
+# flag that triggers automatic dissection periodically
+automatic_dissection_enabled = True
+# period in seconds
+auto_diss_perdiod = 15
+last_polled_pcap = None
 
 #AMQP: component identification & bus params
 COMPONENT_ID = 'tat'
@@ -119,13 +126,17 @@ def bootstrap_amqp_interface():
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(on_request, queue=services_queue_name)
 
-    print(" [x] Awaiting for analysis requests")
+
+    # automated dissection flag then launch job as another process
+    if automatic_dissection_enabled:
+        logging.info("strating second process with automated dissections")
+        p1 = Process(target=publish_auto_dissection)
+        p1.start()
+
+    # start main job
+    print("Awaiting for analysis requests")
     channel.start_consuming()
-
-
-
-
-
+    p1.join()
 
 
 def on_request(ch, method, props, body):
@@ -141,6 +152,8 @@ def on_request(ch, method, props, body):
     except Exception as e:
         api_error(ch,str(e))
 
+    response = OrderedDict()
+
     if req_type == 'analysis.testcase.analyze':
         logging.info("Starting analysis of PCAP ...")
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -155,17 +168,12 @@ def on_request(ch, method, props, body):
 
             # if pcap file has less than 24 bytes then its an empty pcap file
             if (nb <= 24):
-                ch.basic_publish(exchange=AMQP_EXCHANGE,
-                                 routing_key=props.reply_to,
-                                 properties=pika.BasicProperties(correlation_id= \
-                                                                     props.correlation_id),
-                                 body=json.dumps(
-                                         {
-                                             'message': 'Empty PCAP file received',
-                                             'ok': False,
-                                             '_type': req_type,
-
-                                         }))
+                response['_type'] = req_type
+                response['ok'] = False
+                response['error_message'] = 'Empty PCAP file received'
+                response['error_code'] = 'TBD'
+                # send the reposnse with ok=false
+                amqp_reply(ch,props,response)
                 logging.error("Empty PCAP received")
                 return
 
@@ -174,7 +182,7 @@ def on_request(ch, method, props, body):
 
             # we run the analysis
             analysis_results = Analyzer('tat_coap').analyse(os.path.join(TMPDIR, filename), testcase_id)
-            print(str(analysis_results))
+            logging.debug('analysis result: %s' %str(analysis_results))
 
         except Exception as e:
             api_error(ch,str(e))
@@ -197,15 +205,55 @@ def on_request(ch, method, props, body):
             logging.info("Analysis response sent: " + str(json.dumps(verdict)))
 
         except Exception as e :
+
+            response['_type'] = req_type
+            response['ok'] = False
+            response['error_message'] = 'str(e)'
+            response['error_code'] = 'TBD'
+            # send the reposnse with ok=false
+            amqp_reply(ch, props, response)
             api_error(ch, str(e))
             raise e
 
+        # send response
         logging.info("Sending test case analysis through the AMQP interface ...")
-        ch.basic_publish(exchange=AMQP_EXCHANGE,
-                          routing_key=props.reply_to,
-                          properties=pika.BasicProperties(correlation_id = \
-                                                              props.correlation_id),
-                          body=json.dumps(verdict))
+        amqp_reply(ch, props, response)
+
+    elif req_type == 'analysis.testsuite.gettestcases':
+        logging.info("Getting test cases implemented in TAT ...")
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # Get the list of test cases
+        try:
+            test_cases = get_test_cases()
+        except FileNotFoundError as fnfe:
+            response['_type'] = req_type
+            response['ok'] = False
+            response['error_message'] = 'Empty PCAP file received'
+            response['error_code'] = 'TBD'
+            # send the reposnse with ok=false
+            amqp_reply(ch, props, response)
+
+            api_error(ch,'Problem ecnountered while fetching the test cases list:\n' + str(fnfe))
+            return
+
+        # lets prepare content of response
+        tc_list = []
+        for tc in test_cases:
+            tc_list.append(test_cases[tc]['tc_basic'])
+
+        # # If no test case found
+        # if len(tc_list) == 0:
+        #     api_error(ch,'No test cases found')
+        #     return
+
+        # The result to return
+        response['_type'] = req_type
+        response['ok'] = True
+        response['tc_list'] = tc_list
+
+        #send response
+        amqp_reply(ch,props,response)
 
     elif req_type == 'dissection.dissectcapture':
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -230,9 +278,15 @@ def on_request(ch, method, props, body):
                 if proto_matched is None:
                     api_error(ch, 'Unknown protocol %s' % proto_filter)
                     return
-        except Exception as e:
-            logging.error(str(e))
 
+        except Exception as e:
+            response['_type'] = req_type
+            response['ok'] = False
+            response['error_message'] = str(e)
+            response['error_code'] = 'TBD'
+            # send the reposnse with ok=false
+            amqp_reply(ch, props, response)
+            api_error(ch,str(e))
 
         logging.info("Decoding PCAP file using base64 ...")
 
@@ -241,52 +295,50 @@ def on_request(ch, method, props, body):
 
         # if pcap file has less than 24 bytes then its an empty pcap file
         if (nb <= 24):
-            ch.basic_publish(exchange=AMQP_EXCHANGE,
-                             routing_key=props.reply_to,
-                             properties=pika.BasicProperties(correlation_id= \
-                                                                 props.correlation_id),
-                             body=json.dumps(
-                                     {
-                                         'message': 'Empty PCAP file received',
-                                         'ok': False,
-                                         '_type': req_type,
-
-                                     }))
+            response['_type'] = req_type
+            response['ok'] = False
+            response['error_message'] = 'Empty PCAP file received'
+            response['error_code'] = 'TBD'
+            # send the reposnse with ok=false
+            amqp_reply(ch, props, response)
             logging.error("Empty PCAP received")
             return
 
         else:
             logging.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
-
-        # Get the dissection from dissector tool
+        # Lets dissect
         try:
-            if len(proto_matched) == 1:
+            if proto_matched and len(proto_matched) == 1:
                 dissection = Dissector(TMPDIR + '/' + filename).dissect(eval(proto_matched[0]['name']))
             else:
                 dissection = Dissector(TMPDIR + '/' + filename).dissect()
 
             logging.debug('Dissected PCAP: %s' %json.dumps(dissection))
 
-        except TypeError as e:
-            api_error(ch, 'Dissector error: ' + str(e))
+        except (TypeError, pure_pcapy.PcapError) as e:
+
+            response['_type'] = req_type
+            response['ok'] = False
+            response['error_message'] = str(e)
+            response['error_code'] = 'TBD'
+            # send the reposnse with ok=false
+            amqp_reply(ch, props, response)
+            logging.error("Empty PCAP received")
+            # send error message thought the .error topic
+            api_error(ch, str(e))
             return
-        except pure_pcapy.PcapError:
-            api_error(
-                    ch,
-                    "Expected 'pcap_file' to be a non empty pcap file"
-            )
-            return
+
         except:
-            api_error(
-                    ch,
-                    "Couldn't read the file %s and protocol is %s"
-                        %
-                        (
-                            filename,
-                            str(proto_matched)
-                        )
-            )
+            response['_type'] = req_type
+            response['ok'] = False
+            response['error_message'] = str(e)
+            response['error_code'] = 'TBD'
+            # send the reposnse with ok=false
+            amqp_reply(ch, props, response)
+            logging.error("Empty PCAP received")
+            # send error message thought the .error topic
+            api_error(ch, str(e))
             return
 
         # prepare response with dissection info:
@@ -295,25 +347,19 @@ def on_request(ch, method, props, body):
         response.update({'ok' : True})
         response.update({'token': _get_token()})
         response.update({'frames': dissection})
-
-        logging.info("Sending test case analysis through the AMQP interface ...")
-
-        ch.basic_publish(exchange=AMQP_EXCHANGE,
-                          routing_key=props.reply_to,
-                          properties=pika.BasicProperties(correlation_id = \
-                                                              props.correlation_id),
-                          body=json.dumps(response))
-
-
-
+        amqp_reply(ch,props,response)
 
     else:
         api_error(ch,'Coulnt process the service request: %s' %str(req_body_dict))
 
+    #finally:
+    logging.info("Sending test case analysis through the AMQP interface %s" % json.dumps(response))
 
 
 
-## AUXILIARY FUNCTIONS ##
+
+# # # AUXILIARY FUNCTIONS # # #
+
 @typecheck
 def get_test_cases(
     testcase_id: optional(str) = None,
@@ -362,6 +408,166 @@ def get_test_cases(
     # Return the results
     return test_cases
 
+
+def publish_auto_dissection():
+    global auto_diss_perdiod
+    global last_polled_pcap
+
+    # setup process own connection and channel
+    credentials = pika.PlainCredentials(AMQP_USER, AMQP_PASS)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+            host=AMQP_SERVER,
+            virtual_host=AMQP_VHOST,
+            credentials=credentials))
+    channel = connection.channel()
+
+    # reques/reply queues configs
+    request_r_key= 'control.sniffing.service'
+    response_r_key = request_r_key + '.reply'
+    request_message_type = 'sniffing.getcapture'
+
+
+    reply_queue_name = 'auto_triggered_dissection@%s'%COMPONENT_ID
+    result = channel.queue_declare(queue=reply_queue_name)
+    callback_queue = result.method.queue
+
+    # by convention routing key of answer is routing_key + .reply
+    channel.queue_bind(exchange=AMQP_EXCHANGE,
+                       queue=callback_queue,
+                       routing_key=response_r_key)
+
+    while True:
+        time.sleep(auto_diss_perdiod)
+
+        logging.debug('Entering auto triggered dissection process')
+
+        def on_exit_clean_up():
+            # cleaning up
+            channel.queue_delete(reply_queue_name)
+
+
+        #request to sniffing component
+        body = OrderedDict()
+        body['_type'] = request_message_type
+        corr_id = str(uuid.uuid4())
+
+        channel.basic_qos(prefetch_count=1)
+        channel.basic_publish(exchange=AMQP_EXCHANGE,
+                              routing_key=request_r_key,
+                              properties=pika.BasicProperties(
+                                      reply_to=response_r_key,
+                                      correlation_id=corr_id,
+                              ),
+                              body=json.dumps(body),
+                              )
+
+        time.sleep(2)
+
+
+        # get message and drop all those with different corr_id
+        method, header, body = channel.basic_get(queue=reply_queue_name)
+        while body is not None and corr_id != header.correlation_id:
+            method, header, body = channel.basic_get(queue=reply_queue_name)
+
+
+        if body is None:
+            api_error(channel,"Response timeout for request: routing_key: %s,body%s"%(request_message_type, json.dumps(body)))
+
+        else:
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+
+            body = json.loads(body.decode('utf-8'), object_pairs_hook=OrderedDict)
+
+            #check if response ok
+            if body['ok'] is False:
+                logging.error('Sniffing component coundlt process the %s request correcly, response: %s'
+                              % (request_message_type, body))
+
+            # elif corr_id != header.correlation_id:
+            #     logging.debug('drop message, not intereted in this event. expected corr_id %s, but got %s'%(corr_id,header.correlation_id))
+
+            else:
+                # let's try to save the file and then push it to results repo
+                pcap_file_base64 = ''
+                pcap_file_base64 = body['value']
+                filename = body['filename']
+                # save pcap as file
+                nb = _save_capture(filename, pcap_file_base64)
+
+
+                if last_polled_pcap and last_polled_pcap==pcap_file_base64:
+                    logging.debug('No new sniffed packets')
+                else:
+                    last_polled_pcap = pcap_file_base64
+
+                    logging.info("Starting dissection of PCAP ...")
+
+                    # response params
+                    event_type = 'dissection.autotriggered'
+                    event_r_key =  'control.dissection.info'
+
+                    logging.info("Decoding PCAP file using base64 ...")
+
+                    # if pcap file has less than 24 bytes then its an empty pcap file
+                    if (nb <= 24):
+                        logging.error("Empty PCAP received")
+
+                    else:
+                        logging.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
+
+                        # Lets dissect
+                        try:
+                            dissection = Dissector(TMPDIR + '/' + filename).dissect()
+
+                            logging.debug('Dissected PCAP: %s' % json.dumps(dissection))
+
+                            # prepare response with dissection info:
+                            event = OrderedDict()
+                            event.update({'_type': event_type})
+                            event.update({'ok': True})
+                            event.update({'token': _get_token()})
+                            event.update({'frames': dissection})
+
+                            channel.basic_publish(
+                                    body=json.dumps(event, ensure_ascii=False),
+                                    routing_key=event_r_key,
+                                    exchange=AMQP_EXCHANGE,
+                                    properties=pika.BasicProperties(
+                                            content_type='application/json',
+                                    )
+                            )
+
+                        except (TypeError, pure_pcapy.PcapError) as e:
+                            logging.error("Error found trying to dissect %s"%str(e))
+
+                        except Exception as e:
+                            logging.error("Error found trying to dissect %s" % str(e))
+
+
+
+
+
+def amqp_reply(channel, props, response):
+    # check first that sender didnt forget about reply to and corr id
+    try:
+        reply_to = props.reply_to
+        correlation_id = props.correlation_id
+        logging.info("reply_to: %s type: %s"%(str(reply_to),str(type(reply_to))))
+        logging.info("corr_id: %s type: %s" % (str(correlation_id), str(type(correlation_id))))
+    except KeyError:
+        logging.error(msg='There is an error on the request, either reply_to or correlation_id not provided')
+        return
+
+    logging.debug('Sending reply through the bus: r_key: %s , corr_id: %s'%(reply_to,correlation_id))
+    channel.basic_publish(
+        body=json.dumps(response, ensure_ascii=False),
+        routing_key=reply_to,
+        exchange=AMQP_EXCHANGE,
+        properties=pika.BasicProperties(
+            content_type='application/json',
+            correlation_id=correlation_id,
+        )
+    )
 
 def api_error( amqp_channel, error_msg):
     """
@@ -486,5 +692,8 @@ def _get_token(tok: optional(str) = None):
 
 
 if __name__ == "__main__":
-    print(str(get_protocol('CoAP')))
+    #print(str(get_protocol('CoAP')))
     #print(str(get_protocol()))
+    print(str(eval('CoAP')))
+    dissection = Dissector(TMPDIR + '/TD_COAP_CORE_01.pcap').dissect(eval('CoAP'))
+    print(dissection)

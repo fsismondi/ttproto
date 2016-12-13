@@ -50,7 +50,7 @@ from urllib.parse import urlparse, parse_qs
 from ttproto.utils import pure_pcapy
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Dissector
-from ttproto.core.typecheck import *
+from ttproto.core.typecheck import typecheck,optional,either,list_of
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
 
@@ -1114,23 +1114,4 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(404)
             return
 
-job_id = 0
 
-__shutdown = False
-
-
-def shutdown():
-    global __shutdown
-    __shutdown = True
-
-for d in TMPDIR, DATADIR, LOGDIR:
-    try:
-        os.makedirs(d)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-
-
-def reopen_log_file(signum, frame):
-    global log_file
-    log_file = open(os.path.join(LOGDIR, "coap-webserver.log"), "a")
