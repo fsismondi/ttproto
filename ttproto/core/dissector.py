@@ -41,7 +41,7 @@ from ttproto.core.exceptions import Error, ReaderError
 from ttproto.core.data import Data, Message
 from ttproto.core.list import ListValue
 from ttproto.core.packet import Value, PacketValue
-from ttproto.core.typecheck import *
+from ttproto.core.typecheck import typecheck, list_of, optional, anything, either
 from ttproto.core.lib.all import *
 from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
@@ -682,16 +682,16 @@ class Capture:
 
 
 if __name__ == "__main__":
-    # dis = Dissector(
-    #     'tests/test_dumps/coap/TD_COAP_CORE_07_FAIL_No_CoAPOptionContentFormat_plus_random_UDP_messages.pcap'
-    # )
-    # print(dis.summary())
-    # print('#####')
-    # print('##### Dissect with filtering on CoAP #####')
-    # print(dis.dissect(CoAP))
-    # print('#####')
-    # print('##### Dissect without filtering #####')
-    # print(dis.dissect())
+    dis = Dissector(
+         'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
+     )
+    print(dis.summary())
+    print('#####')
+    print('##### Dissect with filtering on CoAP #####')
+    print(dis.dissect(CoAP))
+    print('#####')
+    print('##### Dissect without filtering #####')
+    print(dis.dissect())
     # print('#####')
     # print('#####')
     # print(Dissector.get_implemented_protocols())
@@ -818,4 +818,4 @@ if __name__ == "__main__":
     # for i in ignored:
     #     print('%d: %s' % (c, i['value']))
     #     c += 1
-    pass
+    #pass
