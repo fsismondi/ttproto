@@ -37,6 +37,7 @@ import pika
 import time, hashlib
 import json, errno, logging, os
 import uuid
+import signal
 from multiprocessing import Process
 
 from ttproto.core.analyzer import Analyzer
@@ -70,7 +71,7 @@ HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
 
 # rewrite default values with ENV variables
 try:
@@ -126,6 +127,18 @@ def bootstrap_amqp_interface():
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(on_request, queue=services_queue_name)
 
+    # handler for sigint signal
+    def _sigint_handler(sig, frame):
+        """A handler for the SIGINT signal
+        This function notifies the running processes that the user is
+        interrupting the execution, so that they can terminate cleanly.
+        """
+        # TODO something more gentle? dump logs files?
+        p1.terminate()
+        p1.join()
+
+
+    signal.signal(signal.SIGINT, _sigint_handler)
 
     # automated dissection flag then launch job as another process
     if automatic_dissection_enabled:
@@ -137,6 +150,7 @@ def bootstrap_amqp_interface():
     print("Awaiting for analysis requests")
     channel.start_consuming()
     p1.join()
+
 
 
 def on_request(ch, method, props, body):
@@ -191,18 +205,18 @@ def on_request(ch, method, props, body):
 
             #let's prepare the message
         try:
-            verdict = OrderedDict()
-            verdict['_type'] = 'analysis.testcase.analyze.verdict'
-            verdict['ok'] = True
-            verdict['verdict'] = analysis_results[1]
+            response = OrderedDict()
+            response['_type'] = 'analysis.testcase.analyze.verdict'
+            response['ok'] = True
+            response['verdict'] = analysis_results[1]
             # TODO make a description less verborragic -> fix in ttproto.analyse method , not here..
-            verdict['description'] = analysis_results[3]
-            verdict['review_frames'] = analysis_results[2]
-            verdict['partial_verdicts'] = analysis_results[4]
-            verdict['token'] = _get_token()
-            verdict['testcase_id'] = testcase_id
-            verdict['testcase_ref'] = testcase_ref
-            logging.info("Analysis response sent: " + str(json.dumps(verdict)))
+            response['description'] = analysis_results[3]
+            response['review_frames'] = analysis_results[2]
+            response['partial_verdicts'] = analysis_results[4]
+            response['token'] = _get_token()
+            response['testcase_id'] = testcase_id
+            response['testcase_ref'] = testcase_ref
+            logging.info("Analysis response sent: " + str(json.dumps(response)))
 
         except Exception as e :
 

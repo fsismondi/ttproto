@@ -3,10 +3,12 @@ Invokes webserver to be run at 127.0.0.1:2080
 Should be run as: python3 -m ttproto.tat_coap
 """
 import select
+import logging
 from .webserver import *
 from .amqp_interface import *
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
+
 # either amqp (amqp interface) or http (webserver)
 INTERFACE = 'amqp'
 
@@ -47,7 +49,7 @@ if __name__ == "__main__":
             log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
 
         server = http.server.HTTPServer(SERVER_CONFIG, RequestHandler)
-        print('Server is ready: %s:%s' %SERVER_CONFIG)
+        logging.info('Server is ready: %s:%s' %SERVER_CONFIG)
         while not __shutdown:
             try:
                 l = log_file
@@ -61,7 +63,7 @@ if __name__ == "__main__":
                 break
 
     elif INTERFACE == 'amqp':
-        print('Starting AMQP interface of TAT')
+        logging.info('Starting AMQP interface of TAT')
         ## AMQP CONNECTION ##
         bootstrap_amqp_interface()
 
