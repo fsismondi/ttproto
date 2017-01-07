@@ -35,7 +35,7 @@
 import base64
 import pika
 import time, hashlib
-import json, errno, logging, os
+import json, errno, logging, os, sys
 import uuid
 import signal
 from multiprocessing import Process
@@ -54,7 +54,7 @@ ALLOWED_EXTENSIONS = set(['pcap'])
 # flag that triggers automatic dissection periodically
 automatic_dissection_enabled = True
 # period in seconds
-auto_diss_perdiod = 15
+auto_diss_perdiod = 5
 last_polled_pcap = None
 
 #AMQP: component identification & bus params
@@ -85,6 +85,14 @@ try:
 
 except KeyError as e:
     logging.error(' Cannot retrieve environment variables for AMQP connection')
+
+
+def signal_term_handler(signal, frame):
+    global shutdown
+    logging.warning('got SIGTERM')
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, signal_term_handler)
 
 def bootstrap_amqp_interface():
 
@@ -127,24 +135,14 @@ def bootstrap_amqp_interface():
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(on_request, queue=services_queue_name)
 
-    # handler for sigint signal
-    def _sigint_handler(sig, frame):
-        """A handler for the SIGINT signal
-        This function notifies the running processes that the user is
-        interrupting the execution, so that they can terminate cleanly.
-        """
-        # TODO something more gentle? dump logs files?
-        p1.terminate()
-        p1.join()
-
-
-    signal.signal(signal.SIGINT, _sigint_handler)
-
     # automated dissection flag then launch job as another process
     if automatic_dissection_enabled:
         logging.info("strating second process with automated dissections")
-        p1 = Process(target=publish_auto_dissection)
+        p1 = Process(target=publish_auto_dissection,daemon=True)
         p1.start()
+
+
+
 
     # start main job
     print("Awaiting for analysis requests")
@@ -426,6 +424,7 @@ def get_test_cases(
 def publish_auto_dissection():
     global auto_diss_perdiod
     global last_polled_pcap
+    global shutdown
 
     # setup process own connection and channel
     credentials = pika.PlainCredentials(AMQP_USER, AMQP_PASS)
@@ -451,6 +450,7 @@ def publish_auto_dissection():
                        routing_key=response_r_key)
 
     while True:
+
         time.sleep(auto_diss_perdiod)
 
         logging.debug('Entering auto triggered dissection process')
@@ -463,6 +463,7 @@ def publish_auto_dissection():
         #request to sniffing component
         body = OrderedDict()
         body['_type'] = request_message_type
+        body['get_last'] = True
         corr_id = str(uuid.uuid4())
 
         channel.basic_qos(prefetch_count=1)
