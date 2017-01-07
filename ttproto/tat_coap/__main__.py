@@ -4,14 +4,16 @@ Should be run as: python3 -m ttproto.tat_coap
 """
 import select
 import logging
-from .webserver import *
-from .amqp_interface import *
+import signal
+import os
+import errno
+from ttproto import TMPDIR, DATADIR, LOGDIR
+
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
-
 # either amqp (amqp interface) or http (webserver)
 INTERFACE = 'amqp'
-
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def shutdown():
     global __shutdown
@@ -25,9 +27,7 @@ def reopen_log_file(signum, frame):
 
 if __name__ == "__main__":
 
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
     reopen_log_file(None, None)
-
     # log rotation
     # -> reopen the log file upon SIGHUP
     signal.signal(signal.SIGHUP, reopen_log_file)
@@ -44,6 +44,8 @@ if __name__ == "__main__":
                 raise
 
     if INTERFACE == 'http':
+        from .webserver import *
+
         def reopen_log_file(signum, frame):
             global log_file
             log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
@@ -63,6 +65,8 @@ if __name__ == "__main__":
                 break
 
     elif INTERFACE == 'amqp':
+        from .amqp_interface import *
+
         logging.info('Starting AMQP interface of TAT')
         ## AMQP CONNECTION ##
         bootstrap_amqp_interface()
