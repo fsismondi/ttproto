@@ -54,8 +54,10 @@ ALLOWED_EXTENSIONS = set(['pcap'])
 # flag that triggers automatic dissection periodically
 automatic_dissection_enabled = True
 # period in seconds
-auto_diss_perdiod = 5
+auto_diss_perdiod = 15
 last_polled_pcap = None
+# process for polling pcaps and processing the dissections
+process_auto_diss = None
 
 #AMQP: component identification & bus params
 COMPONENT_ID = 'tat'
@@ -71,6 +73,7 @@ HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
 
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
 # rewrite default values with ENV variables
@@ -96,7 +99,6 @@ signal.signal(signal.SIGTERM, signal_term_handler)
 
 def bootstrap_amqp_interface():
 
-
     credentials = pika.PlainCredentials(AMQP_USER, AMQP_PASS)
     connection = pika.BlockingConnection(pika.ConnectionParameters(
                 host=AMQP_SERVER,
@@ -107,15 +109,23 @@ def bootstrap_amqp_interface():
     services_queue_name = 'services_queue@%s' % COMPONENT_ID
     channel.queue_declare(queue=services_queue_name)
 
+    events_queue_name = 'events_queue@%s' % COMPONENT_ID
+    channel.queue_declare(queue=events_queue_name)
+
     # subscribe to analysis services requests
     channel.queue_bind(exchange=AMQP_EXCHANGE,
                        queue=services_queue_name,
                        routing_key='control.analysis.service')
 
-    # subscribe to dissection servives requests
+    # subscribe to dissection services requests
     channel.queue_bind(exchange=AMQP_EXCHANGE,
                        queue=services_queue_name,
                        routing_key='control.dissection.service')
+
+    # subscribe to analysis services requests
+    channel.queue_bind(exchange=AMQP_EXCHANGE,
+                       queue=events_queue_name,
+                       routing_key='control.testcoordination')
 
 
     # Hello world message from tat
@@ -133,27 +143,50 @@ def bootstrap_amqp_interface():
     )
 
     channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(on_request, queue=services_queue_name)
+    channel.basic_consume(on_service_request, queue=services_queue_name)
 
-    # automated dissection flag then launch job as another process
-    if automatic_dissection_enabled:
-        logging.info("strating second process with automated dissections")
-        p1 = Process(target=publish_auto_dissection,daemon=True)
-        p1.start()
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(on_event_received, queue=events_queue_name)
 
 
 
 
     # start main job
-    print("Awaiting for analysis requests")
+    logging.info("Awaiting for analysis & dissection requests")
     channel.start_consuming()
-    p1.join()
+
+    global process_auto_diss
+    #process_auto_diss.terminate()
+    process_auto_diss.join()
+
+def on_event_received(ch, method, props, body):
+
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    req_body_dict = json.loads(body.decode('utf-8'))
+    logging.info("Event received: %s, body: %s" %(str(req_body_dict),str(body)))
+    logging.info(type(body))
+
+    try:
+        # get type to trigger the right ttproto call
+        req_type = req_body_dict['_type']
+
+    except Exception as e:
+        api_error(ch,str(e))
+
+    if req_type == 'testcoordination.testsuite.start':
+
+        # if automated dissection flag true then launch job as another process
+        if automatic_dissection_enabled:
+            global process_auto_diss
+            logging.info("[auto_triggered_dissector] starting second process for automated dissections")
+            process_auto_diss = Process(name='auto_triggered_dissector',target=publish_auto_dissection)
+            process_auto_diss.start()
 
 
+def on_service_request(ch, method, props, body):
 
-def on_request(ch, method, props, body):
-
-    req_body_dict = json.loads(body.decode('ascii'))
+    req_body_dict = json.loads(body.decode('utf-8'))
     logging.info("Service request received: %s, body: %s" %(str(req_body_dict),str(body)))
     logging.info(type(body))
 
@@ -424,7 +457,6 @@ def get_test_cases(
 def publish_auto_dissection():
     global auto_diss_perdiod
     global last_polled_pcap
-    global shutdown
 
     # setup process own connection and channel
     credentials = pika.PlainCredentials(AMQP_USER, AMQP_PASS)
@@ -441,8 +473,12 @@ def publish_auto_dissection():
 
 
     reply_queue_name = 'auto_triggered_dissection@%s'%COMPONENT_ID
+
     result = channel.queue_declare(queue=reply_queue_name)
     callback_queue = result.method.queue
+
+    #lets purge in case there are old messages
+    channel.queue_purge(reply_queue_name)
 
     # by convention routing key of answer is routing_key + .reply
     channel.queue_bind(exchange=AMQP_EXCHANGE,
@@ -450,7 +486,6 @@ def publish_auto_dissection():
                        routing_key=response_r_key)
 
     while True:
-
         time.sleep(auto_diss_perdiod)
 
         logging.debug('Entering auto triggered dissection process')
@@ -476,20 +511,21 @@ def publish_auto_dissection():
                               body=json.dumps(body),
                               )
 
-        time.sleep(2)
-
-
+        time.sleep(1)
         # get message and drop all those with different corr_id
         method, header, body = channel.basic_get(queue=reply_queue_name)
-        while body is not None and corr_id != header.correlation_id:
-            method, header, body = channel.basic_get(queue=reply_queue_name)
+        if body is not None:
+            channel.basic_ack(delivery_tag=method.delivery_tag)
 
+        while body is None or corr_id != header.correlation_id:
+            method, header, body = channel.basic_get(queue=reply_queue_name)
+            if body is not None:
+                channel.basic_ack(delivery_tag=method.delivery_tag)
 
         if body is None:
             api_error(channel,"Response timeout for request: routing_key: %s,body%s"%(request_message_type, json.dumps(body)))
 
         else:
-            channel.basic_ack(delivery_tag=method.delivery_tag)
 
             body = json.loads(body.decode('utf-8'), object_pairs_hook=OrderedDict)
 
