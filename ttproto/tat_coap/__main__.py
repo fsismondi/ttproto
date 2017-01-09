@@ -7,8 +7,16 @@ import logging
 import signal
 import os
 import errno
-from ttproto import TMPDIR, DATADIR, LOGDIR
+from ttproto import *
 
+
+### TTPROTO CONSTANTS ###
+COMPONENT_ID = 'tat'
+
+# Directories
+DATADIR = "data"
+TMPDIR = "tmp"
+LOGDIR = "log"
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
 # either amqp (amqp interface) or http (webserver)
@@ -69,5 +77,5 @@ if __name__ == "__main__":
 
         logging.info('Starting AMQP interface of TAT')
         ## AMQP CONNECTION ##
-        bootstrap_amqp_interface()
+        start_amqp_interface()
 
