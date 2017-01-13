@@ -128,17 +128,30 @@ def bootstrap_amqp_interface():
                        routing_key='control.testcoordination')
 
 
+
+    #  let's send bootstrap message (tat)
+    msg = {
+        'message': '{component} is up!'.format(component=COMPONENT_ID),
+        "_type": '{component}.ready'.format(component='analysis.ready')
+    }
+
     # Hello world message from tat
     channel.basic_publish(
-            body=json.dumps({'value': 'TAT is up!', '_type': 'analysis.info'}),
-            routing_key='control.analysis.info',
+            body=json.dumps(msg),
+            routing_key='control.session.bootstrap',
             exchange=AMQP_EXCHANGE,
     )
 
+    #  let's send bootstrap message (dissector)
+    msg = {
+        'message': '{component} is up!'.format(component='dissection'),
+        "_type": '{component}.ready'.format(component='dissection.ready')
+    }
+
     # Hello world message from dissector (api implemented by this component too)
     channel.basic_publish(
-            body=json.dumps({'value': 'Dissector is up!', '_type': 'dissection.info'}),
-            routing_key='control.dissection.info',
+            body=json.dumps(msg),
+            routing_key='control.session.bootstrap',
             exchange=AMQP_EXCHANGE,
     )
 
