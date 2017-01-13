@@ -236,10 +236,10 @@ class Verdict:
 
 class Node:
     """
-    The Node object which represents an node communicating with another one
+    A node object is any communicating entity, taking part
     on a conversation. It can be a node, a client/server, an host, etc.
 
-    It will have a name (ex: client, node1, iut2, border_router) and an
+    It has a name (ex: client, node1, iut2, border_router) and an
     associated template, like an IP or a MAC address template for example.
     """
 
@@ -340,7 +340,8 @@ class Conversation(list):
 
 class TestCase(object):
     """
-    A class handling a test case for an analysis
+    A class handling a test case for an analysis.
+    Test cases in ttproto context is a set of checks steps of a test specification
     """
 
     class Stop(Exception):
@@ -372,7 +373,7 @@ class TestCase(object):
         self._frame = None
 
         # Prepare the values to return after a TC is finished
-        # TODO just keep test_stack the structured representation of the logs, and delete self._text
+        # TODO keep & use test_stack (structured representation of the logs in an array) and delete self._text (string)
         self._text = ''
         self._text_stack = []
         self._failed_frames = []
