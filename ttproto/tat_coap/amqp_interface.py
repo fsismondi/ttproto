@@ -143,7 +143,7 @@ def start_amqp_interface():
     #  let's send bootstrap message (tat)
     msg = {
         'message': '{component} is up!'.format(component=COMPONENT_ID),
-        "_type": '{component}.ready'.format(component='analysis.ready')
+        "_type": '{component}.ready'.format(component='analysis')
     }
 
     # Hello world message from tat
@@ -159,7 +159,7 @@ def start_amqp_interface():
     #  let's send bootstrap message (dissector)
     msg = {
         'message': '{component} is up!'.format(component='dissection'),
-        "_type": '{component}.ready'.format(component='dissection.ready')
+        "_type": '{component}.ready'.format(component='dissection')
     }
 
     # Hello world message from dissector (api implemented by this component too)
