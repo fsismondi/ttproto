@@ -33,25 +33,42 @@
 
 from ttproto.utils.pure_pcapy import DLT_IEEE802_15_4
 from ttproto.core.lib.all import Ieee802154
-from ttproto.utils.pcap_filter import remove_first_bytes, openwsn_profile_filter
+from ttproto.utils.pcap_filter import remove_first_bytes, openwsn_profile_filter, finterop_tun_profile_filter
 
 if __name__ == '__main__':
 
+    # from ttproto.core.dissector import Dissector
+    #
+    # #filename = 'tests/test_dumps/6lowpan/echo_req_and_reply_and_other_packets_with_openmote_sniffer.pcap'
+    #
+    # openwsn_profile_filter(filename)
+    #
+    # print('starting dissection')
+    # dissector = Dissector('tmp/temp.pcap')
+    #
+    # for s in dissector.summary():
+    #     print(s)
+    #
+    # print("\n Ieee802154 frames: \n")
+    #
+    # for s in dissector.summary(protocol = Ieee802154):
+    #     print(s)
+
     from ttproto.core.dissector import Dissector
 
-    filename = 'tests/test_dumps/6lowpan/echo_req_and_reply_and_other_packets_with_openmote_sniffer.pcap'
+    #filename = 'tmp/ipv6_loopback_icmp6.pcap'
+    #filename = 'tmp/loopback_1e00_ipv6.pcap'
+    #filename = 'tmp/tun_sniffed_coap_switch_endiannes.pcap'
+    #filename = 'tmp/tun_sniffed_coap.pcap'
+    filename = '/Users/fsismondi/TD_COAP_CORE_01.pcap'
 
+    # dissect with no modifs
+    dissector = Dissector(filename)
 
-    openwsn_profile_filter(filename)
-
-    print('starting dissection')
-    dissector = Dissector('tmp/temp.pcap')
-
-    for s in dissector.summary():
-        print(s)
-
-    print("\n Ieee802154 frames: \n")
-
-    for s in dissector.summary(protocol = Ieee802154):
-        print(s)
+    # dissect with filter
+    finterop_tun_profile_filter(filename)
+    #dissector = Dissector('tmp/temp.pcap')
+    print(dissector.summary())
+    print('#####')
+    print(dissector.dissect())
 

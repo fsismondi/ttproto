@@ -84,6 +84,16 @@ def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR 
     remove_first_bytes(JUMP_LENGTH, 200, DLT_IEEE802_15_4, pcap_filename, new_pcap_filename )
     return new_pcap_filename
 
-
+@typecheck
+def finterop_tun_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR +'/temp.pcap') -> str:
+    """
+    For rewriting link type on f-interop captures
+    :param pcap_filename:
+    :param new_pcap_filename:
+    :return: filename of new pcap file
+    """
+    JUMP_LENGTH = 0  # en bytes
+    remove_first_bytes(JUMP_LENGTH, 200, DLT_RAW, pcap_filename, new_pcap_filename )
+    return new_pcap_filename
 
 
