@@ -31,64 +31,63 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-from	ttproto.core.data		import Value, BidictValueType
-from	ttproto.core.lib.inet.meta	import *
-from	ttproto.core.lib.inet.basics 	import *
-from	ttproto.core.lib.inet.ip 	import *
-from	ttproto.core.lib.encap	import encap_type_bidict
-import	ttproto.core.lib.ethernet
+from    ttproto.core.data import Value, BidictValueType
+from    ttproto.core.lib.inet.meta import *
+from    ttproto.core.lib.inet.basics import *
+from    ttproto.core.lib.inet.ip import *
+from    ttproto.core.lib.encap import encap_type_bidict
+import ttproto.core.lib.ethernet
 
 __all__ = [
-	"IPv6",
-	"IPV6_ALL_NODES",
-	"IPV6_ALL_ROUTERS",
-	"IPV6_UNSPECIFIED_ADDRESS",
+    "IPv6",
+    "IPV6_ALL_NODES",
+    "IPV6_ALL_ROUTERS",
+    "IPV6_UNSPECIFIED_ADDRESS",
 ]
 
 
-class IPv6 (
-	metaclass = InetPacketClass,
-	fields    = [
-		("Version",		"ver",		UInt4,		6),
-		("TrafficClass",	"tc",		Hex (UInt8),	0),
-		("FlowLabel",		"fl",		Hex (UInt20),	0),
-		("PayloadLength",	"len",		UInt16,		InetLength ("Payload")),
-		("NextHeader",		"nh",		UInt8,		InetType (ip_next_header_bidict, "Payload")),
-		("HopLimit",		"hl", 		UInt8,		64), #FIXME: should be 255 for NS messages
-		("SourceAddress",	"src", 		IPv6Address, 	"::"),
-		("DestinationAddress",	"dst", 		IPv6Address,	"::"),
-		("Payload",		"pl", 		Value,		b"")
-	],
-	descriptions = { "nh": ip_next_header_descriptions },
-	):
+class IPv6(
+        metaclass=InetPacketClass,
+        fields=[
+            ("Version", "ver", UInt4, 6),
+            ("TrafficClass", "tc", Hex(UInt8), 0),
+            ("FlowLabel", "fl", Hex(UInt20), 0),
+            ("PayloadLength", "len", UInt16, InetLength("Payload")),
+            ("NextHeader", "nh", UInt8, InetType(ip_next_header_bidict, "Payload")),
+            ("HopLimit", "hl", UInt8, 64),  # FIXME: should be 255 for NS messages
+            ("SourceAddress", "src", IPv6Address, "::"),
+            ("DestinationAddress", "dst", IPv6Address, "::"),
+            ("Payload", "pl", Value, b"")
+        ],
+        descriptions={"nh": ip_next_header_descriptions},
+):
+    def describe(self, desc):
+        desc.src = self["src"]
+        desc.dst = self["dst"]
+        if not self.describe_payload(desc):
+            txt_desc = self.get_description("nh")
+            desc.info = txt_desc if txt_desc else  "IPv6 nh: %d" % self["nh"]
 
-	def describe (self, desc):
-		desc.src = self["src"]
-		desc.dst = self["dst"]
-		if not self.describe_payload (desc):
-			txt_desc = self.get_description ("nh")
-			desc.info = txt_desc if txt_desc else  "IPv6 nh: %d" % self["nh"]
+        return True
 
-		return True
-
-	_build_message = InetPacketValue._build_message_ipv6_header
+    _build_message = InetPacketValue._build_message_ipv6_header
 
 
 # tell the ethernet module that ether payload type 0x86dd should be mapped to the IPv6 class
 ttproto.core.lib.ethernet.ethernet_type_bidict.update({
-	0x86dd:	IPv6,
+    0x86dd: IPv6,
 })
 
 # tell the encap module that encap  payload type 24, 28 and 30 should be mapped to the IPv6 class
 ttproto.core.lib.encap.encap_type_bidict.update({
-        24: IPv6,
-	28: IPv6,
-	30: IPv6
+    24: IPv6,
+    28: IPv6,
+    30: IPv6
 })
 
 # map ip next header 41 to the IPv6 class (IPv6 over IPv6)
 ip_next_header_bidict.update({
-	41:	IPv6,
+    41: IPv6,
 })
 
 #
@@ -98,7 +97,6 @@ ip_next_header_bidict.update({
 # TODO: implement a description dict of well known ipv6 addresses
 
 # http://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xml
-IPV6_ALL_NODES	= IPv6Address ("ff02::1")
-IPV6_ALL_ROUTERS= IPv6Address ("ff02::2")
-IPV6_UNSPECIFIED_ADDRESS = IPv6Address ("::")
-
+IPV6_ALL_NODES = IPv6Address("ff02::1")
+IPV6_ALL_ROUTERS = IPv6Address("ff02::2")
+IPV6_UNSPECIFIED_ADDRESS = IPv6Address("::")
