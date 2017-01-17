@@ -38,6 +38,7 @@ import logging
 from ttproto.core.typecheck import *
 from ttproto.core.lib.ethernet import Ethernet
 from ttproto.core.lib.encap import *
+from ttproto.core.lib.inet.ipv6 import IPv6
 from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.readers.capture_reader import CaptureReader
 
@@ -46,11 +47,13 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 _map_link_type = {
-    pure_pcapy.DLT_EN10MB: Ethernet,
     pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
     pure_pcapy.DLT_NULL: NullLoopback,
+    pure_pcapy.DLT_EN10MB: Ethernet,
     pure_pcapy.DLT_IEEE802_15_4: Ieee802154,
     pure_pcapy.DLT_IEEE802_15_4_NOFCS: Ieee802154,
+    # TODO DLT_RAW could be ipv4, need to do some introspection of packet before mapping this DLT
+    pure_pcapy.DLT_RAW: IPv6
     # pure_pcapy.DLT_IEEE802_15_4_NONASK_PHY: Ieee802154
 }
 
@@ -75,7 +78,7 @@ class PcapReader(CaptureReader):
         except Exception as e:
             self.__pcap_file.close()
             raise e
-        #log.debug("datalink: %d" % self.__reader.datalink())
+        log.debug("datalink: %d" % self.__reader.datalink())
 
         try:
             decode_type = _map_link_type[self.__reader.datalink()]
