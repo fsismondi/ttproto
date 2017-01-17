@@ -33,44 +33,45 @@
 
 import re
 
-from	ttproto.core.exceptions		import Error
-from	ttproto.core.data		import Value, BidictValueType
-from	ttproto.core.typecheck		import *
-from	ttproto.core.lib.inet.meta	import *
-from	ttproto.core.lib.inet.basics	import *
-from	ttproto.core.lib.ports		import socat
-from	ttproto.core.lib.ethernet	import ethernet_type_bidict
-
+from ttproto.core.exceptions import Error
+from ttproto.core.data import Value, BidictValueType
+from ttproto.core.typecheck import *
+from ttproto.core.lib.inet.meta import *
+from ttproto.core.lib.inet.basics import *
+from ttproto.core.lib.ports import socat
+from ttproto.core.lib.ethernet import ethernet_type_bidict
 
 __all__ = [
-	'LinuxCookedCapture',
-	'NullLoopback',
+    'LinuxCookedCapture',
+    'NullLoopback',
 ]
 
-class LinuxCookedCapture (
-	metaclass = InetPacketClass,
-	fields    = [
-		("PacketType",		"pty",	UInt16),
-		("AddressType",		"aty",	UInt16),
-		("AddressLength",	"aln",	UInt16),
-		("Address",		"adr",	Bytes8),
-		("Protocol",		"pro",	UInt16, 	InetType (ethernet_type_bidict, "Payload")), #FIXME: values below 1537 are treated differently (see wireshark dissector packet-sll.c)
-		("Payload",		"pl",	Value),
-	],
-	descriptions = {
-		"PacketType": {
-			0:	"unicast to us",
-			1:	"broadcast",
-			2:	"multicast",
-			3:	"unicast to another host",
-			4:	"sent by us",
-		}
-	}):
-	def describe (self, desc):
-		return self.describe_payload (desc)
+
+class LinuxCookedCapture(
+        metaclass=InetPacketClass,
+        fields=[
+            ("PacketType", "pty", UInt16),
+            ("AddressType", "aty", UInt16),
+            ("AddressLength", "aln", UInt16),
+            ("Address", "adr", Bytes8),
+            ("Protocol", "pro", UInt16, InetType(ethernet_type_bidict, "Payload")),
+            # FIXME: values below 1537 are treated differently (see wireshark dissector packet-sll.c)
+            ("Payload", "pl", Value),
+        ],
+        descriptions={
+            "PacketType": {
+                0: "unicast to us",
+                1: "broadcast",
+                2: "multicast",
+                3: "unicast to another host",
+                4: "sent by us",
+            }
+        }):
+    def describe(self, desc):
+        return self.describe_payload(desc)
 
 
-#Null Loopback cooked L2 generated in BSD systems
+# Null Loopback cooked L2 generated in BSD systems
 
 # check packet-null.c in wireshark for more info
 
@@ -83,27 +84,26 @@ class LinuxCookedCapture (
 # BSD_AF_INET6_FREEBSD	28	/* FreeBSD, DragonFly BSD */
 # BSD_AF_INET6_DARWIN	30	/* OS X, iOS, anything else Darwin-based */
 
-encap_type_bidict = BidictValueType (0, UInt32)
-
-class NullLoopback (
-	metaclass = InetPacketClass,
-	fields    = [
-		("AddressFamily",	"AF",	UInt8 , InetType (encap_type_bidict, "Payload")),
-		("ProtocolFamily",	"PF",	UInt24),
-		("Payload",	"pl",	Value),			],
-	descriptions = {
-		"AddressFamily": {
-			2:	"BSD INET",
-			7:	"BSD ISO",
-			16:	"BSD APPLETALK",
-			23:	"BSD IPX",
-			24:	"BSD INET6 BSD",
-			28:	"BSD INET6 FREEBSD",
-			30:	"BSD INET6 DARWIN"
-		}
-
-	}):
-	def describe (self, desc):
-		return self.describe_payload (desc)
+encap_type_bidict = BidictValueType(0, UInt32)
 
 
+class NullLoopback(
+        metaclass=InetPacketClass,
+        fields=[
+            ("AddressFamily", "AF", UInt8, InetType(encap_type_bidict, "Payload")),
+            ("ProtocolFamily", "PF", UInt24),
+            ("Payload", "pl", Value), ],
+        descriptions={
+            "AddressFamily": {
+                2: "BSD INET",
+                7: "BSD ISO",
+                16: "BSD APPLETALK",
+                23: "BSD IPX",
+                24: "BSD INET6 BSD",
+                28: "BSD INET6 FREEBSD",
+                30: "BSD INET6 DARWIN"
+            }
+
+        }):
+    def describe(self, desc):
+        return self.describe_payload(desc)
