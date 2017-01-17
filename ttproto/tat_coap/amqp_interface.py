@@ -194,8 +194,6 @@ def on_event_received(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
     req_body_dict = json.loads(body.decode('utf-8'))
-    logging.info("Event received: %s, body: %s" %(str(req_body_dict),str(body)))
-    logging.info(type(body))
 
     try:
         # get type to trigger the right ttproto call
@@ -206,13 +204,16 @@ def on_event_received(ch, method, props, body):
 
     if req_type == 'testcoordination.testsuite.start':
 
+        logging.info("Test suite started: %s, body: %s" % (str(req_body_dict), str(body)))
+
         # if automated dissection flag true then launch job as another process
         if AUTOMATIC_DISSECTION_ENA:
             global process_auto_diss
             logging.info("[auto_triggered_dissector] starting second process for automated dissections")
             process_auto_diss = Process(name='auto_triggered_dissector',target=_auto_dissect_service)
             process_auto_diss.start()
-
+    else:
+        logging.info("Event received ignored: %s" % (str(req_body_dict)))
 
 def on_service_request(ch, method, props, body):
 
@@ -779,5 +780,6 @@ if __name__ == "__main__":
     #print(str(_get_protocol('CoAP')))
     #print(str(_get_protocol()))
     print(str(eval('CoAP')))
-    dissection = Dissector(TMPDIR + '/TD_COAP_CORE_01.pcap').dissect(eval('CoAP'))
+    #dissection = Dissector(TMPDIR + '/TD_COAP_CORE_01.pcap').dissect(eval('CoAP'))
+    dissection = Dissector(TMPDIR + '/tun_sniffed_coap.pcap').dissect(eval('CoAP'))
     print(dissection)
