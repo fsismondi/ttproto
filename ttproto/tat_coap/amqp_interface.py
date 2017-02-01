@@ -101,12 +101,12 @@ process_auto_diss = None
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
-def signal_term_handler(signal, frame):
+def signal_int_handler(signal, frame):
     global shutdown
-    logging.warning('got SIGTERM')
+    logging.warning('got SIGINT')
     sys.exit(0)
 
-signal.signal(signal.SIGTERM, signal_term_handler)
+signal.signal(signal.SIGINT, signal_int_handler)
 
 def start_amqp_interface():
 

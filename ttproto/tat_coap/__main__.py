@@ -35,10 +35,7 @@ def reopen_log_file(signum, frame):
 
 if __name__ == "__main__":
 
-    reopen_log_file(None, None)
-    # log rotation
-    # -> reopen the log file upon SIGHUP
-    signal.signal(signal.SIGHUP, reopen_log_file)
+
 
     job_id = 0
 
@@ -50,6 +47,13 @@ if __name__ == "__main__":
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
+
+
+    reopen_log_file(None, None)
+    # log rotation
+    # -> reopen the log file upon SIGHUP
+    signal.signal(signal.SIGHUP, reopen_log_file)
+
 
     if INTERFACE == 'http':
         from .webserver import *
