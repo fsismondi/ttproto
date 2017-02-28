@@ -1,11 +1,11 @@
 # TTProto ( Testing Tool Prototype)
 -------------------------
+
 ttproto is an experimental tool for implementing testing tools, for conformance and interoperability testing.
 It was first implemented to explore new features and concepts for the TTCN-3 standard, but we also used it to implement a passive interoperability test suite we provided for the CoAP interoperability event held in Paris in March 2012.
-ttproto is now being used for the purpose of developping testing tools (for interoperability and conformance testing) for the [f-interop european project](http://www.f-interop.eu/)
-This tool is implemented in python3 and its design was influenced mainly by TTCN-3 (abstract model, templates, snapshots, behavior trees, communication ports, logging) and by Scapy (syntax, flexibility, customisability)
+ttproto is now being used for the purpose of developing testing tools (for interoperability and conformance testing) for the [f-interop european project](http://www.f-interop.eu/)
+This tool is implemented in python3 and its design was influenced mainly by TTCN-3 (abstract model, templates, snapshots, behavior trees, communication ports, logging) and by Scapy (syntax, flexibility, customizability)
 Its purpose is to facilitate rapid prototyping and experimentation (rather than production use). We chose to maximize its modularity and readability rather than performances and real-time considerations.
-
 
 # The git repository contains the following testing tools:
 -----------------------------------
@@ -19,7 +19,6 @@ run CoAP TAT as a webserver at [127.0.0.1:2080](127.0.0.1:2080).
 ```
 cd ttproto
 python3 -m ttproto.tat_coap
-
 ```
 
 The HTTP API consists of HTTP RPC-style methods:
@@ -43,7 +42,6 @@ run CoAP TAT as a webserver at [127.0.0.1:2080](127.0.0.1:2080)
 ```
 cd ttproto
 python3 -m ttproto.ts_coap
-
 ```
 open web-browser at 127.0.0.1:2080 and upload your PCAP file to be analyzed!
 

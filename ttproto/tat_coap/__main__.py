@@ -1,5 +1,6 @@
 """
-Invokes webserver to be run at 127.0.0.1:2080
+Invokes webserver to be run at 127.0.0.1:2080 if INTERFACE is amqp,
+else runs amqp interface
 Should be run as: python3 -m ttproto.tat_coap
 """
 import select
@@ -30,12 +31,11 @@ def shutdown():
 
 def reopen_log_file(signum, frame):
     global log_file
+    # "a" -> in case the file doesnt exist
     log_file = open(os.path.join(LOGDIR, "ttproto.tat_coap.log"), "a")
 
 
 if __name__ == "__main__":
-
-
 
     job_id = 0
 

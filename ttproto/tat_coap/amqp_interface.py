@@ -89,7 +89,7 @@ ALLOWED_EXTENSIONS = set(['pcap'])
 COMPONENT_DIR = 'ttproto/tat_coap'
 
 # flag that triggers automatic dissection periodically
-AUTOMATIC_DISSECTION_ENA = True
+AUTOMATIC_DISSECTION_ENA = False
 # period in seconds
 AUTO_DISSECT_PERIOD = 5
 
