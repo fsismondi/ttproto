@@ -21,25 +21,17 @@ LOGDIR = "log"
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
 # either amqp (amqp interface) or http (webserver)
-INTERFACE = 'amqp'
+INTERFACE = 'http'
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
-
-def shutdown():
-    global __shutdown
-    __shutdown = True
-
-
-def reopen_log_file(signum, frame):
-    global log_file
-    # "a" -> in case the file doesnt exist
-    log_file = open(os.path.join(LOGDIR, "ttproto.tat_coap.log"), "a")
 
 
 if __name__ == "__main__":
 
-    job_id = 0
-
     __shutdown = False
+
+    def shutdown():
+        global __shutdown
+        __shutdown = True
 
     for d in TMPDIR, DATADIR, LOGDIR:
         try:
@@ -49,29 +41,17 @@ if __name__ == "__main__":
                 raise
 
 
-    reopen_log_file(None, None)
-    # log rotation
-    # -> reopen the log file upon SIGHUP
-    signal.signal(signal.SIGHUP, reopen_log_file)
-
-
     if INTERFACE == 'http':
         from .webserver import *
 
-        def reopen_log_file(signum, frame):
-            global log_file
-            log_file = open(os.path.join(LOGDIR, "webserver.log"), "a")
-
         server = http.server.HTTPServer(SERVER_CONFIG, RequestHandler)
         logging.info('Server is ready: %s:%s' %SERVER_CONFIG)
+
         while not __shutdown:
             try:
-                l = log_file
                 server.handle_request()
-            except select.error:
-                # do not abort when we receive a signal
-                if l == log_file:
-                    raise
+            except Exception as e:
+                logging.error(str(e))
 
             if len(sys.argv) > 1:
                 break

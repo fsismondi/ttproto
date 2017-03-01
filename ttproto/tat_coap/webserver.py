@@ -43,7 +43,7 @@ import cgi
 import json
 import hashlib
 import base64
-import requests
+import logging
 
 from collections import OrderedDict
 from urllib.parse import urlparse, parse_qs
@@ -68,6 +68,12 @@ TOKEN_LENGTH = 28
 # The different implemented protocols
 PROTOCOLS = OrderedDict()
 
+job_id = 0
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# This is PoC of a RPC-like API over http (and not a REST api!) #
+# The official and supported API is the AMQP one                #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 @typecheck
 def get_test_cases(
@@ -293,8 +299,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 ))
 
         sys.stderr.write(txt)
-        log_file.write(txt)
-        log_file.flush()
+        logging.info(txt)
 
     def api_error(self, message):
         """
@@ -370,7 +375,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         #
         # /param testcase_id => The unique id of the test case
         #
-        elif url.path == '/api/v1/analyzer_getTestcaseImplementation':
+        elif url.path == '/api/v1/analyzer_getTestCaseImplementation':
 
             # Send the header
             self.send_response(200)
@@ -428,7 +433,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # /param testcase_id => The unique id of the test case
         #
         elif url.path == '/api/v1/analyzer_getTestcaseSteps':
-            # TODO not used by the new version of the coordinator (it gets the TCs from another repo)
 
             # Send the header
             self.send_response(200)
