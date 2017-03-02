@@ -10,8 +10,7 @@ import os
 import errno
 from ttproto import *
 
-
-### TTPROTO CONSTANTS ###
+# TTPROTO CONSTANTS
 COMPONENT_ID = 'tat'
 
 # Directories
@@ -21,9 +20,8 @@ LOGDIR = "log"
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
 # either amqp (amqp interface) or http (webserver)
-INTERFACE = 'http'
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
-
+INTERFACE = 'amqp'
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 if __name__ == "__main__":
 
@@ -39,7 +37,6 @@ if __name__ == "__main__":
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-
 
     if INTERFACE == 'http':
         from .webserver import *

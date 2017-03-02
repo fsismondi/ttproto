@@ -48,8 +48,6 @@ from ttproto.utils import pure_pcapy
 # this imports all protocol implementations
 from ttproto.core.lib.all import *
 
-
-
 ### TTPROTO CONSTANTS ###
 COMPONENT_ID = 'tat'
 
@@ -89,7 +87,7 @@ ALLOWED_EXTENSIONS = set(['pcap'])
 COMPONENT_DIR = 'ttproto/tat_coap'
 
 # flag that triggers automatic dissection periodically
-AUTOMATIC_DISSECTION_ENA = False
+AUTOMATIC_DISSECTION_ENA = True
 # period in seconds
 AUTO_DISSECT_PERIOD = 5
 
@@ -103,7 +101,7 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def signal_int_handler(signal, frame):
     global shutdown
-    logging.warning('got SIGINT')
+    logging.warning('got SIGINT \n Bye bye!')
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_int_handler)
@@ -178,12 +176,38 @@ def start_amqp_interface():
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(on_event_received, queue=events_queue_name)
 
-
-
-
-    # start main job
+    # STARTING main job( the following is blocking call )
     logging.info("Awaiting for analysis & dissection requests")
     channel.start_consuming()
+
+    # FINISHING... let's send a goodby message
+
+    msg = {
+        'message': '{component} is out! Bye bye..'.format(component='dissector'),
+        "_type": '{component}.shutdown'.format(component='dissection')
+    }
+
+    channel.basic_publish(
+            body=json.dumps(msg),
+            routing_key='control.session.info',
+            exchange=AMQP_EXCHANGE,
+            properties=pika.BasicProperties(
+                    content_type='application/json',
+            )
+    )
+    msg = {
+        'message': '{component} is out! Bye bye..'.format(component=COMPONENT_ID),
+        "_type": '{component}.shutdown'.format(component='analysis')
+    }
+
+    channel.basic_publish(
+            body=json.dumps(msg),
+            routing_key='control.session.info',
+            exchange=AMQP_EXCHANGE,
+            properties=pika.BasicProperties(
+                    content_type='application/json',
+            )
+    )
 
     global process_auto_diss
     #process_auto_diss.terminate()
