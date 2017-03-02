@@ -100,8 +100,44 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
 def signal_int_handler(signal, frame):
-    global shutdown
-    logging.warning('got SIGINT \n Bye bye!')
+    logging.info('got SIGINT \n Bye bye!')
+
+    credentials = pika.PlainCredentials(AMQP_USER, AMQP_PASS)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+                host=AMQP_SERVER,
+                virtual_host=AMQP_VHOST,
+                credentials=credentials))
+    channel = connection.channel()
+
+    # FINISHING... let's send a goodby message
+
+    msg = {
+        'message': '{component} is out! Bye bye..'.format(component='dissector'),
+        "_type": '{component}.shutdown'.format(component='dissection')
+    }
+
+    channel.basic_publish(
+            body=json.dumps(msg),
+            routing_key='control.session.info',
+            exchange=AMQP_EXCHANGE,
+            properties=pika.BasicProperties(
+                    content_type='application/json',
+            )
+    )
+    msg = {
+        'message': '{component} is out! Bye bye..'.format(component=COMPONENT_ID),
+        "_type": '{component}.shutdown'.format(component='analysis')
+    }
+
+    channel.basic_publish(
+            body=json.dumps(msg),
+            routing_key='control.session.info',
+            exchange=AMQP_EXCHANGE,
+            properties=pika.BasicProperties(
+                    content_type='application/json',
+            )
+    )
+
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_int_handler)
@@ -135,8 +171,6 @@ def start_amqp_interface():
     channel.queue_bind(exchange=AMQP_EXCHANGE,
                        queue=events_queue_name,
                        routing_key='control.testcoordination')
-
-
 
     #  let's send bootstrap message (tat)
     msg = {
@@ -180,38 +214,6 @@ def start_amqp_interface():
     logging.info("Awaiting for analysis & dissection requests")
     channel.start_consuming()
 
-    # FINISHING... let's send a goodby message
-
-    msg = {
-        'message': '{component} is out! Bye bye..'.format(component='dissector'),
-        "_type": '{component}.shutdown'.format(component='dissection')
-    }
-
-    channel.basic_publish(
-            body=json.dumps(msg),
-            routing_key='control.session.info',
-            exchange=AMQP_EXCHANGE,
-            properties=pika.BasicProperties(
-                    content_type='application/json',
-            )
-    )
-    msg = {
-        'message': '{component} is out! Bye bye..'.format(component=COMPONENT_ID),
-        "_type": '{component}.shutdown'.format(component='analysis')
-    }
-
-    channel.basic_publish(
-            body=json.dumps(msg),
-            routing_key='control.session.info',
-            exchange=AMQP_EXCHANGE,
-            properties=pika.BasicProperties(
-                    content_type='application/json',
-            )
-    )
-
-    global process_auto_diss
-    #process_auto_diss.terminate()
-    process_auto_diss.join()
 
 def on_event_received(ch, method, props, body):
 
