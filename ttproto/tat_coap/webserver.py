@@ -75,6 +75,8 @@ job_id = 0
 # The official and supported API is the AMQP one                #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+logger = logging.getLogger(__name__)
+
 @typecheck
 def get_test_cases(
     testcase_id: optional(str) = None,
@@ -283,7 +285,6 @@ def get_test_steps(tc: str) -> list_of(OrderedDict):
 class RequestHandler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, format, *args, append=""):
-        global log_file
         host = self.address_string()
         if host in("172.17.42.1", "localhost", "127.0.0.1", "::1"):
             xff = self.headers.get("x-forwarded-for")
@@ -299,7 +300,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 ))
 
         sys.stderr.write(txt)
-        logging.info(txt)
+        logger.info(txt)
 
     def api_error(self, message):
         """

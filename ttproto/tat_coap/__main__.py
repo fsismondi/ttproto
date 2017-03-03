@@ -4,11 +4,12 @@ else runs amqp interface
 Should be run as: python3 -m ttproto.tat_coap
 """
 import select
-import logging
 import signal
 import os
 import errno
+import logging
 from ttproto import *
+from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
 
 # TTPROTO CONSTANTS
 COMPONENT_ID = 'tat'
@@ -21,7 +22,12 @@ LOGDIR = "log"
 SERVER_CONFIG = ("0.0.0.0", 2080)
 # either amqp (amqp interface) or http (webserver)
 INTERFACE = 'amqp'
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+
+# default handler
+logger = logging.getLogger(__name__)
+sh = logging.StreamHandler()
+logger.addHandler(sh)
+
 
 if __name__ == "__main__":
 
@@ -42,13 +48,13 @@ if __name__ == "__main__":
         from .webserver import *
 
         server = http.server.HTTPServer(SERVER_CONFIG, RequestHandler)
-        logging.info('Server is ready: %s:%s' %SERVER_CONFIG)
+        logger.info('Server is ready: %s:%s' %SERVER_CONFIG)
 
         while not __shutdown:
             try:
                 server.handle_request()
             except Exception as e:
-                logging.error(str(e))
+                logger.error(str(e))
 
             if len(sys.argv) > 1:
                 break
@@ -56,7 +62,16 @@ if __name__ == "__main__":
     elif INTERFACE == 'amqp':
         from .amqp_interface import *
 
-        logging.info('Starting AMQP interface of TAT')
+        logger.info('TAT starting..')
+
+        # use F-Interop logger handler & formatter
+        rabbitmq_handler = RabbitMQHandler(AMQP_URL, COMPONENT_ID)
+        json_formatter = JsonFormatter()
+        rabbitmq_handler.setFormatter(json_formatter)
+        logger.addHandler(rabbitmq_handler)
+        logger.setLevel(logging.DEBUG)
+
+        logger.info('Starting AMQP interface of TAT')
         ## AMQP CONNECTION ##
         start_amqp_interface()
 
