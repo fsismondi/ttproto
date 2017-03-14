@@ -35,6 +35,7 @@ support should match the original though.
 
 
 import struct
+import logging
 
 DLT_NULL = 0
 DLT_EN10MB = 1
@@ -59,6 +60,8 @@ DLT_IEEE802_15_4 = 195
 DLT_IEEE802_15_4_NONASK_PHY = 215
 DLT_IEEE802_15_4_NOFCS = 230
 
+
+logger = logging.getLogger()
 
 class PcapError(Exception):
     """ General Pcap module exception class """
@@ -149,6 +152,8 @@ class Reader(object):
         hdr_values = struct.unpack("IHHIIII", header)
         if header[:4] in fixup_sets:
             self.fixup_short, self.fixup_long = fixup_sets[header[:4]]
+            logger.debug(header[:4])
+            logger.debug(hdr_values)
         else:
             raise PcapError("bad dump file format")
 
@@ -158,6 +163,7 @@ class Reader(object):
                                                                    for x in hdr_values[3:]]
 
         self.last_good_position = self.__GLOBAL_HEADER_LEN
+        logger.debug('pcap header: network: %s sigfigs: %s snaplen: %s network %s'%(self.thiszone, self.sigfigs, self.snaplen, self.network))
 
     def __loop_and_count(self, maxcant, callback):
         """

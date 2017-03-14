@@ -40,11 +40,11 @@ import uuid
 import signal
 import logging
 
+from collections import OrderedDict
 from multiprocessing import Process
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Dissector
 from ttproto.core.typecheck import typecheck, optional, either
-from collections import OrderedDict
 from ttproto.utils import pure_pcapy
 from ttproto.core.lib.all import *
 from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
@@ -199,7 +199,8 @@ def on_event_received(ch, method, props, body):
         req_type = req_body_dict['_type']
 
     except Exception as e:
-        _api_error(ch,str(e))
+        logger.error(ch,str(e))
+        return
 
     if req_type == 'testcoordination.testsuite.start':
 
@@ -212,25 +213,24 @@ def on_event_received(ch, method, props, body):
             process_auto_diss = Process(name='auto_triggered_dissector',target=_auto_dissect_service)
             process_auto_diss.start()
     else:
-        logger.info("Event received ignored: %s" % (str(req_body_dict)))
+        logger.debug("Event received ignored: %s" % (str(req_body_dict)))
 
 def on_service_request(ch, method, props, body):
 
     req_body_dict = json.loads(body.decode('utf-8'))
-    logger.info("Service request received: %s, body: %s" %(str(req_body_dict),str(body)))
-    logger.info(type(body))
+    logger.debug("Service request received: %s, body: %s" %(str(req_body_dict),str(body)))
 
     try:
         # get type to trigger the right ttproto call
         req_type = req_body_dict['_type']
 
     except Exception as e:
-        _api_error(ch,str(e))
+        logger.error(ch,str(e))
 
     response = OrderedDict()
 
     if req_type == 'analysis.testcase.analyze':
-        logger.info("Starting analysis of PCAP ...")
+        logger.info("Starting analysis of PCAP")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         logger.info("Decoding PCAP file using base64 ...")
         try:
@@ -260,9 +260,8 @@ def on_service_request(ch, method, props, body):
             logger.debug('analysis result: %s' %str(analysis_results))
 
         except Exception as e:
-            _api_error(ch,str(e))
-            raise e
-
+            logger.error(ch,str(e))
+            return
 
             #let's prepare the message
         try:
@@ -287,8 +286,8 @@ def on_service_request(ch, method, props, body):
             response['error_code'] = 'TBD'
             # send the reposnse with ok=false
             _amqp_reply(ch, props, response)
-            _api_error(ch, str(e))
-            raise e
+            logger.error(ch, str(e))
+            return
 
         # send response
         logger.info("Sending test case analysis through the AMQP interface ...")
@@ -309,18 +308,13 @@ def on_service_request(ch, method, props, body):
             # send the reposnse with ok=false
             _amqp_reply(ch, props, response)
 
-            _api_error(ch,'Problem ecnountered while fetching the test cases list:\n' + str(fnfe))
+            logger.error(ch,'Cannot fetch test cases list:\n' + str(fnfe))
             return
 
         # lets prepare content of response
         tc_list = []
         for tc in test_cases:
             tc_list.append(test_cases[tc]['tc_basic'])
-
-        # # If no test case found
-        # if len(tc_list) == 0:
-        #     _api_error(ch,'No test cases found')
-        #     return
 
         # The result to return
         response['_type'] = req_type
@@ -345,13 +339,13 @@ def on_service_request(ch, method, props, body):
 
                 # Check the protocol_selection value
                 if not type(proto_filter) == str:
-                    _api_error(ch, 'Expected protocol_selection post value to be a text (eq string)')
+                    logger.error(ch, 'Expected protocol_selection post value to be a text (eq string)')
                     return
 
                 # In function of the protocol asked
                 proto_matched = _get_protocol(proto_filter)
                 if proto_matched is None:
-                    _api_error(ch, 'Unknown protocol %s' % proto_filter)
+                    logger.error(ch, 'Unknown protocol %s' % proto_filter)
                     return
 
         except Exception as e:
@@ -361,7 +355,8 @@ def on_service_request(ch, method, props, body):
             response['error_code'] = 'TBD'
             # send the reposnse with ok=false
             _amqp_reply(ch, props, response)
-            _api_error(ch,str(e))
+            logger.error(ch,str(e))
+            return
 
         logger.info("Decoding PCAP file using base64 ...")
 
@@ -399,9 +394,8 @@ def on_service_request(ch, method, props, body):
             response['error_code'] = 'TBD'
             # send the reposnse with ok=false
             _amqp_reply(ch, props, response)
-            logger.error("Empty PCAP received")
-            # send error message thought the .error topic
-            _api_error(ch, str(e))
+            logger.error("Error processing PCAP")
+            logger.error(ch, str(e))
             return
 
         except:
@@ -411,9 +405,7 @@ def on_service_request(ch, method, props, body):
             response['error_code'] = 'TBD'
             # send the reposnse with ok=false
             _amqp_reply(ch, props, response)
-            logger.error("Empty PCAP received")
-            # send error message thought the .error topic
-            _api_error(ch, str(e))
+            logger.error(ch, str(e))
             return
 
         # prepare response with dissection info:
@@ -425,7 +417,7 @@ def on_service_request(ch, method, props, body):
         _amqp_reply(ch,props,response)
 
     else:
-        _api_error(ch,'Coulnt process the service request: %s' %str(req_body_dict))
+        logger.warning(ch,'Coulnt process the service request: %s' %str(req_body_dict))
 
     #finally:
     logger.info("Sending test case analysis through the AMQP interface %s" % json.dumps(response))
@@ -552,7 +544,7 @@ def _auto_dissect_service():
                 channel.basic_ack(delivery_tag=method.delivery_tag)
 
         if body is None:
-            _api_error(channel,"Response timeout for request: routing_key: %s,body%s"%(request_message_type, json.dumps(body)))
+            logger.error(channel,"Response timeout for request: routing_key: %s,body%s"%(request_message_type, json.dumps(body)))
 
         else:
 
@@ -646,26 +638,6 @@ def _amqp_reply(channel, props, response):
         )
     )
 
-def _api_error( amqp_channel, error_msg):
-    """
-        Function for generating a json error
-        The error message is logged at the same time
-    """
-    logger.error(' Critical exception found: %s' % error_msg)
-    # lets push the error message into the bus
-    amqp_channel.basic_publish(
-        body=json.dumps(
-            {
-                '_type': 'analysis.error',
-                'message': error_msg
-            }
-        ),
-        exchange=AMQP_EXCHANGE,
-        routing_key='control.analysis.error',
-        properties=pika.BasicProperties(
-                    content_type='application/json',
-        )
-    )
 
 @typecheck
 def _get_protocol(
@@ -775,6 +747,6 @@ if __name__ == "__main__":
     #print(str(_get_protocol('CoAP')))
     #print(str(_get_protocol()))
     print(str(eval('CoAP')))
-    #dissection = Dissector(TMPDIR + '/TD_COAP_CORE_01.pcap').dissect(eval('CoAP'))
-    dissection = Dissector(TMPDIR + '/tun_sniffed_coap.pcap').dissect(eval('CoAP'))
+    dissection = Dissector(TMPDIR + '/TD_COAP_CORE_02.pcap').dissect()#eval('CoAP'))
+    #dissection = Dissector(TMPDIR + '/tun_sniffed_coap.pcap').dissect(eval('CoAP'))
     print(dissection)
