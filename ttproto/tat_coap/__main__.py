@@ -14,10 +14,7 @@ from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
 # TTPROTO CONSTANTS
 COMPONENT_ID = 'tat'
 
-# Directories
-DATADIR = "data"
-TMPDIR = "tmp"
-LOGDIR = "log"
+
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
 # either amqp (amqp interface) or http (webserver)
@@ -36,13 +33,6 @@ if __name__ == "__main__":
     def shutdown():
         global __shutdown
         __shutdown = True
-
-    for d in TMPDIR, DATADIR, LOGDIR:
-        try:
-            os.makedirs(d)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
 
     if INTERFACE == 'http':
         from .webserver import *
