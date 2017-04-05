@@ -203,14 +203,19 @@ def on_event_received(ch, method, props, body):
         return
 
     if isinstance(event_received, amqp_messages.MsgTestSuiteStart):
-        logger.info("Test suite started: %s, body: %s" %event_received)
+        logger.info("Test suite start event received")
+        logger.debug("Message body: %s" % repr(event_received))
         # if automated dissection flag true then launch job as another process
-        if AUTOMATIC_DISSECTION_ENA & process_auto_diss is None:
+        if AUTOMATIC_DISSECTION_ENA and process_auto_diss is None:
             logger.info("Starting second process for automated dissections")
             process_auto_diss = Process(name='auto_triggered_dissector',target=_auto_dissect_service)
             process_auto_diss.start()
     else:
-        logger.debug("Event received ignored: %s" %event_received )
+        try:
+            logger.debug("Event received ignored: %s" %repr(event_received) )
+        except:
+            logger.warning("Malformed event received")
+
 
 def on_service_request(ch, method, props, body):
 

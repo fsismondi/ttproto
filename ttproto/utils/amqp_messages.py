@@ -179,12 +179,7 @@ class Message:
             raise NonCompliantMessageFormatError('Cannot load json message: %s'%str(body))
 
     def __repr__(self):
-
-
         ret = '%s(' %self.__class__.__name__
-        # _type field first
-        #ret += '%s = %s, ' % ('_type', getattr(self,'_type'))
-
         for key, value in self.to_dict().items():
                 ret += '%s = %s, '%(key,value)
         ret += ')'
