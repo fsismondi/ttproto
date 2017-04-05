@@ -48,6 +48,7 @@ from ttproto.core.typecheck import typecheck, optional, either
 from ttproto.utils import pure_pcapy
 from ttproto.core.lib.all import *
 from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
+from ttproto.utils import amqp_messages
 
 COMPONENT_ID = 'tat'
 AMQP_EXCHANGE = 'default'
@@ -113,11 +114,12 @@ def signal_int_handler(signal, frame):
             )
     )
 
-    logger.info('got SIGINT \n Bye bye!')
+    logger.info('got SIGINT. Bye bye!')
 
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_int_handler)
+
 
 def start_amqp_interface():
 
@@ -140,7 +142,7 @@ def start_amqp_interface():
                        queue=services_queue_name,
                        routing_key='control.dissection.service')
 
-    # subscribe to analysis services requests
+    # subscribe to test coordination events
     channel.queue_bind(exchange=AMQP_EXCHANGE,
                        queue=events_queue_name,
                        routing_key='control.testcoordination')
@@ -190,65 +192,60 @@ def start_amqp_interface():
 
 def on_event_received(ch, method, props, body):
 
+    global process_auto_diss
+
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    req_body_dict = json.loads(body.decode('utf-8'))
-
     try:
-        # get type to trigger the right ttproto call
-        req_type = req_body_dict['_type']
-
+        event_received = amqp_messages.Message.from_json(body)
     except Exception as e:
-        logger.error(ch,str(e))
+        logger.error(str(e))
         return
 
-    if req_type == 'testcoordination.testsuite.start':
-
-        logger.info("Test suite started: %s, body: %s" % (str(req_body_dict), str(body)))
-
+    if isinstance(event_received, amqp_messages.MsgTestSuiteStart):
+        logger.info("Test suite started: %s, body: %s" %event_received)
         # if automated dissection flag true then launch job as another process
-        if AUTOMATIC_DISSECTION_ENA:
-            global process_auto_diss
-            logger.info("[auto_triggered_dissector] starting second process for automated dissections")
+        if AUTOMATIC_DISSECTION_ENA & process_auto_diss is None:
+            logger.info("Starting second process for automated dissections")
             process_auto_diss = Process(name='auto_triggered_dissector',target=_auto_dissect_service)
             process_auto_diss.start()
     else:
-        logger.debug("Event received ignored: %s" % (str(req_body_dict)))
+        logger.debug("Event received ignored: %s" %event_received )
 
 def on_service_request(ch, method, props, body):
 
-    req_body_dict = json.loads(body.decode('utf-8'))
-    logger.debug("Service request received: %s, body: %s" %(str(req_body_dict),str(body)))
-
     try:
-        # get type to trigger the right ttproto call
-        req_type = req_body_dict['_type']
-
+        service_request = amqp_messages.Message.from_json(body)
     except Exception as e:
-        logger.error(ch,str(e))
+        logger.error(str(e))
+        return
 
-    response = OrderedDict()
+    if isinstance(service_request, amqp_messages.MsgInteropTestCaseAnalyze):
 
-    if req_type == 'analysis.testcase.analyze':
-        logger.info("Starting analysis of PCAP")
+        # generation of token
+        operation_token = _get_token()
+
+        logger.debug("Starting analysis of PCAP")
         ch.basic_ack(delivery_tag=method.delivery_tag)
-        logger.info("Decoding PCAP file using base64 ...")
+
         try:
-            pcap_file_base64 = req_body_dict['value']
-            filename = req_body_dict['filename']
-            testcase_id = req_body_dict['testcase_id']
-            testcase_ref = req_body_dict['testcase_ref']
+            pcap_file_base64 = service_request.value
+            filename = service_request.filename
+            testcase_id = service_request.testcase_id
+            testcase_ref = service_request.testcase_ref
 
             nb = _save_capture(filename,pcap_file_base64)
 
             # if pcap file has less than 24 bytes then its an empty pcap file
             if (nb <= 24):
-                response['_type'] = req_type
-                response['ok'] = False
-                response['error_message'] = 'Empty PCAP file received'
-                response['error_code'] = 'TBD'
-                # send the reposnse with ok=false
-                _amqp_reply(ch,props,response)
+                _publish_message(
+                        ch,
+                        amqp_messages.MsgErrorReply(
+                                service_request,
+                                ok = False,
+                                error_message = 'Empty PCAP file received'
+                        )
+                )
                 logger.error("Empty PCAP received")
                 return
 
@@ -260,169 +257,158 @@ def on_service_request(ch, method, props, body):
             logger.debug('analysis result: %s' %str(analysis_results))
 
         except Exception as e:
-            logger.error(ch,str(e))
+            logger.error(str(e))
             return
 
-            #let's prepare the message
+        # save analysis response
+        _dump_json_to_file(json.dumps(analysis_results), operation_token)
+
+        #let's prepare the message
         try:
-            response = OrderedDict()
-            response['_type'] = 'analysis.testcase.analyze.verdict'
-            response['ok'] = True
-            response['verdict'] = analysis_results[1]
-            # TODO make a description less verborragic -> fix in ttproto.analyse method , not here..
-            response['description'] = analysis_results[3]
-            response['review_frames'] = analysis_results[2]
-            response['partial_verdicts'] = analysis_results[4]
-            response['token'] = _get_token()
-            response['testcase_id'] = testcase_id
-            response['testcase_ref'] = testcase_ref
-            logger.info("Analysis response sent: " + str(json.dumps(response)))
+            response = amqp_messages.MsgInteropTestCaseAnalyzeReply(
+                    service_request,
+                    ok=True,
+                    verdict = analysis_results[1],
+                    description = analysis_results[3],
+                    review_frames = analysis_results[2],
+                    partial_verdicts = analysis_results[4],
+                    token = operation_token,
+                    testcase_id = testcase_id,
+                    testcase_ref = testcase_ref
+            )
+            # send response
+            _publish_message(ch, response)
+            logger.info("Analysis response sent: " + repr(response))
+            return
 
         except Exception as e :
-
-            response['_type'] = req_type
-            response['ok'] = False
-            response['error_message'] = 'str(e)'
-            response['error_code'] = 'TBD'
-            # send the reposnse with ok=false
-            _amqp_reply(ch, props, response)
-            logger.error(ch, str(e))
+            _publish_message(
+                    ch,
+                    amqp_messages.MsgErrorReply(
+                            service_request,
+                            error_message=str(e)
+                    )
+            )
+            logger.error(str(e))
             return
 
-        # send response
-        logger.info("Sending test case analysis through the AMQP interface ...")
-        _amqp_reply(ch, props, response)
-
-    elif req_type == 'analysis.testsuite.gettestcases':
-        logger.info("Getting test cases implemented in TAT ...")
+    elif isinstance(service_request, amqp_messages.MsgTestSuiteGetTestCases):
+        logger.warning("API call not implemented. Test coordinator provides this service.")
         ch.basic_ack(delivery_tag=method.delivery_tag)
+        return
 
-        # Get the list of test cases
-        try:
-            test_cases = _get_test_cases()
-        except FileNotFoundError as fnfe:
-            response['_type'] = req_type
-            response['ok'] = False
-            response['error_message'] = 'Empty PCAP file received'
-            response['error_code'] = 'TBD'
-            # send the reposnse with ok=false
-            _amqp_reply(ch, props, response)
+        # # Get the list of test cases
+        # try:
+        #     test_cases = _get_test_cases()
+        #
+        #     # lets prepare content of response
+        #     tc_list = []
+        #     for tc in test_cases:
+        #         tc_list.append(test_cases[tc]['tc_basic'])
+        #     #TODO build & send response
+        # except FileNotFoundError as fnfe:
+        #     _publish_message(
+        #             ch,
+        #             amqp_messages.MsgErrorReply(ok=False, error_message='File not found error')
+        #     )
+        #     logger.error('Cannot fetch test cases list:\n' + str(fnfe))
+        #     return
 
-            logger.error(ch,'Cannot fetch test cases list:\n' + str(fnfe))
-            return
-
-        # lets prepare content of response
-        tc_list = []
-        for tc in test_cases:
-            tc_list.append(test_cases[tc]['tc_basic'])
-
-        # The result to return
-        response['_type'] = req_type
-        response['ok'] = True
-        response['tc_list'] = tc_list
-
-        #send response
-        _amqp_reply(ch,props,response)
-
-    elif req_type == 'dissection.dissectcapture':
+    elif isinstance(service_request, amqp_messages.MsgDissectionDissectCapture):
         ch.basic_ack(delivery_tag=method.delivery_tag)
         logger.info("Starting dissection of PCAP ...")
 
-        pcap_file_base64 = req_body_dict['value']
-        filename = req_body_dict['filename']
-
-        proto_matched = None
-
-        try:
-            if 'protocol_selection' in req_body_dict.keys():
-                proto_filter = req_body_dict['protocol_selection']
-
-                # Check the protocol_selection value
-                if not type(proto_filter) == str:
-                    logger.error(ch, 'Expected protocol_selection post value to be a text (eq string)')
-                    return
-
-                # In function of the protocol asked
-                proto_matched = _get_protocol(proto_filter)
-                if proto_matched is None:
-                    logger.error(ch, 'Unknown protocol %s' % proto_filter)
-                    return
-
-        except Exception as e:
-            response['_type'] = req_type
-            response['ok'] = False
-            response['error_message'] = str(e)
-            response['error_code'] = 'TBD'
-            # send the reposnse with ok=false
-            _amqp_reply(ch, props, response)
-            logger.error(ch,str(e))
-            return
-
         logger.info("Decoding PCAP file using base64 ...")
+        pcap_file_base64 = service_request.value
+        filename = service_request.filename
 
         # save pcap as file
         nb = _save_capture(filename, pcap_file_base64)
 
         # if pcap file has less than 24 bytes then its an empty pcap file
         if (nb <= 24):
-            response['_type'] = req_type
-            response['ok'] = False
-            response['error_message'] = 'Empty PCAP file received'
-            response['error_code'] = 'TBD'
-            # send the reposnse with ok=false
-            _amqp_reply(ch, props, response)
+            _publish_message(
+                    ch,
+                    amqp_messages.MsgErrorReply(
+                            service_request,
+                            error_message='Empty PCAP file received'
+                    )
+            )
             logger.error("Empty PCAP received")
             return
 
         else:
             logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
+
+        try:
+            proto_filter = service_request.protocol_selection
+
+            # In function of the protocol asked
+            proto_matched = _get_protocol(proto_filter)
+
+            if proto_matched is None:
+                raise Exception('Unknown protocol %s' % proto_filter)
+
+        except Exception as e:
+            _publish_message(
+                    ch,
+                    amqp_messages.MsgErrorReply(
+                            service_request,
+                            error_message=str(e)
+                    )
+            )
+            logger.error(str(e))
+            return
+
         # Lets dissect
+        operation_token = _get_token()
+
         try:
             if proto_matched and len(proto_matched) == 1:
                 dissection = Dissector(TMPDIR + '/' + filename).dissect(eval(proto_matched[0]['name']))
             else:
                 dissection = Dissector(TMPDIR + '/' + filename).dissect()
 
-            logger.debug('Dissected PCAP: %s' %json.dumps(dissection))
+            logger.debug('PCAP dissected')
 
         except (TypeError, pure_pcapy.PcapError) as e:
+                _publish_message(
+                        ch,
+                        amqp_messages.MsgErrorReply(
+                                service_request,
+                                error_message = '"Error processing PCAP"'
+                        )
+                )
+                logger.error("Error processing PCAP")
+                return
 
-            response['_type'] = req_type
-            response['ok'] = False
-            response['error_message'] = str(e)
-            response['error_code'] = 'TBD'
-            # send the reposnse with ok=false
-            _amqp_reply(ch, props, response)
-            logger.error("Error processing PCAP")
-            logger.error(ch, str(e))
+        except Exception as e:
+            _publish_message(
+                    ch,
+                    amqp_messages.MsgErrorReply(
+                            service_request,
+                            error_message=str(e)
+                    )
+            )
+            logger.error(str(e))
             return
 
-        except:
-            response['_type'] = req_type
-            response['ok'] = False
-            response['error_message'] = str(e)
-            response['error_code'] = 'TBD'
-            # send the reposnse with ok=false
-            _amqp_reply(ch, props, response)
-            logger.error(ch, str(e))
-            return
+        # save dissection response
+        _dump_json_to_file(json.dumps(dissection), operation_token)
 
         # prepare response with dissection info:
-        response = OrderedDict()
-        response.update({'_type': req_type})
-        response.update({'ok' : True})
-        response.update({'token': _get_token()})
-        response.update({'frames': dissection})
-        _amqp_reply(ch,props,response)
+        response = amqp_messages.MsgDissectionDissectCaptureReply(
+            service_request,
+            token = operation_token,
+            frames = dissection
+        )
+        _publish_message(ch,response)
+        return
 
     else:
-        logger.warning(ch,'Coulnt process the service request: %s' %str(req_body_dict))
-
-    #finally:
-    logger.info("Sending test case analysis through the AMQP interface %s" % json.dumps(response))
-
-
+        logger.error('Coudlnt process the service request: %s' %service_request)
+        return
 
 
 ### AUXILIARY FUNCTIONS ###
@@ -616,8 +602,26 @@ def _auto_dissect_service():
                             logger.error("Error found trying to dissect %s" % str(e))
 
 
+def _publish_message(channel, message):
+    """ Published which uses message object metadata
+
+    :param channel:
+    :param message:
+    :return:
+    """
+
+    properties = pika.BasicProperties(**message.get_properties())
+
+    channel.basic_publish(
+            exchange=AMQP_EXCHANGE,
+            routing_key=message.routing_key,
+            properties=properties,
+            body=message.to_json(),
+    )
+
 def _amqp_reply(channel, props, response):
     # check first that sender didnt forget about reply to and corr id
+
     try:
         reply_to = props.reply_to
         correlation_id = props.correlation_id
@@ -686,6 +690,16 @@ def _get_protocol(
         return None
     else:
         return answer
+
+def _dump_json_to_file(json_object, filename):
+
+    json_file = os.path.join(
+            TMPDIR,
+            filename + '.json'
+    )
+
+    with open(json_file, 'w') as f:
+        f.write(json_object)
 
 def _save_capture(filename,pcap_file_base64):
     """
