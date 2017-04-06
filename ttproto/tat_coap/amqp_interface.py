@@ -251,7 +251,7 @@ def on_service_request(ch, method, props, body):
                                 error_message = 'Empty PCAP file received'
                         )
                 )
-                logger.error("Empty PCAP received")
+                logger.warning("Empty PCAP received")
                 return
 
             else:
@@ -339,7 +339,7 @@ def on_service_request(ch, method, props, body):
                             error_message='Empty PCAP file received'
                     )
             )
-            logger.error("Empty PCAP received")
+            logger.warning("Empty PCAP received")
             return
 
         else:
@@ -412,7 +412,7 @@ def on_service_request(ch, method, props, body):
         return
 
     else:
-        logger.error('Coudlnt process the service request: %s' %service_request)
+        logger.warning('Coudlnt process the service request: %s' %service_request)
         return
 
 
@@ -573,7 +573,7 @@ def _auto_dissect_service():
 
                     # if pcap file has less than 24 bytes then its an empty pcap file
                     if (nb <= 24):
-                        logger.error("Empty PCAP received")
+                        logger.warning("Empty PCAP received")
 
                     else:
                         logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
