@@ -211,10 +211,8 @@ def on_event_received(ch, method, props, body):
             process_auto_diss = Process(name='auto_triggered_dissector',target=_auto_dissect_service)
             process_auto_diss.start()
     else:
-        try:
-            logger.debug("Event received ignored: %s" %repr(event_received) )
-        except:
-            logger.warning("Malformed event received")
+        pass # silently drop it
+
 
 
 def on_service_request(ch, method, props, body):
@@ -622,29 +620,6 @@ def _publish_message(channel, message):
             routing_key=message.routing_key,
             properties=properties,
             body=message.to_json(),
-    )
-
-def _amqp_reply(channel, props, response):
-    # check first that sender didnt forget about reply to and corr id
-
-    try:
-        reply_to = props.reply_to
-        correlation_id = props.correlation_id
-        logger.info("reply_to: %s type: %s"%(str(reply_to),str(type(reply_to))))
-        logger.info("corr_id: %s type: %s" % (str(correlation_id), str(type(correlation_id))))
-    except KeyError:
-        logger.error(msg='There is an error on the request, either reply_to or correlation_id not provided')
-        return
-
-    logger.debug('Sending reply through the bus: r_key: %s , corr_id: %s'%(reply_to,correlation_id))
-    channel.basic_publish(
-        body=json.dumps(response, ensure_ascii=False),
-        routing_key=reply_to,
-        exchange=AMQP_EXCHANGE,
-        properties=pika.BasicProperties(
-            content_type='application/json',
-            correlation_id=correlation_id,
-        )
     )
 
 
