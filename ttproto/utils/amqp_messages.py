@@ -56,9 +56,9 @@ MsgErrorReply(_type = sniffing.start, _api_version = 0.1.2, ok = False, error_co
 >>> err.routing_key
 'control.sniffing.service.reply'
 
->>> m.message_id # doctest: +SKIP
-'360b0f67-4455-43e3-a00f-eca91f2e84da'
 >>> m.correlation_id # doctest: +SKIP
+'360b0f67-4455-43e3-a00f-eca91f2e84da'
+>>> err.correlation_id # doctest: +SKIP
 '360b0f67-4455-43e3-a00f-eca91f2e84da'
 
 """
@@ -68,7 +68,7 @@ import json
 import uuid
 import logging
 
-API_VERSION = '0.1.2'
+API_VERSION = '0.1.7'
 
 # TODO use metaclasses instead?
 # TODO Define also a reply method which provides amessage with routig key for the reply, correlation id, reply_to,etc
@@ -143,7 +143,6 @@ class Message:
             resp[field] = getattr(self, field)
         return resp
 
-
     def __str__(self):
         str = ' - '*20 + '\n'
         str += 'Message routing key: %s' %self.routing_key
@@ -161,21 +160,24 @@ class Message:
         :return:  Message object generated from the body
         :raises NonCompliantMessageFormatError: If the message cannot be build from the provided json
         """
-        try:
-            logging.debug('Converting json into a Message object..')
 
-            if type(body) is str:
-                message_dict = json.loads(body)
+        if type(body) is str:
+            message_dict = json.loads(body)
+        # Note: pika re-encodes json.dumps strings as utf-8 for some reason, the following line undoes this
+        elif type(body) is bytes:
+            message_dict = json.loads(body.decode('utf-8'))
+        else:
+            raise NonCompliantMessageFormatError('Not a Json')
 
-            # Note: pika re-encodes json.dumps strings as utf-8 for some reason, the following line undoes this
-            elif type(body) is bytes:
-                message_dict = json.loads(body.decode('utf-8'))
+        # check fist if it's a response
+        if 'ok' in message_dict:
+            # cannot build a complete reply message just from the json representation
+            raise NotImplementedError()
 
-            logging.debug('json: %s' % json.dumps(message_dict))
-            message_type = message_dict['_type']
-            if message_type in _message_types_dict:
-                return _message_types_dict[message_type](**message_dict)
-        except :
+        message_type = message_dict['_type']
+        if message_type in message_types_dict:
+            return message_types_dict[message_type](**message_dict)
+        else:
             raise NonCompliantMessageFormatError('Cannot load json message: %s'%str(body))
 
     def __repr__(self):
@@ -188,32 +190,43 @@ class Message:
 
 class MsgReply(Message):
     """
-    Auxiliary class which initialises replies messages
-    Routing keys, corr_id, _type, etc are instantiated by default from the request message
+    Auxiliary class which creates replies messages with fields based on the request.
+    Routing key, corr_id and _type are generated based on the request message
     """
     def __init__(self, request_message, **kwargs):
         assert request_message
 
         self.routing_key = request_message.routing_key + ".reply"
 
-        # let's use request's _type only if not pre-defined by the subclass
-        if '_type' not in self._msg_data_template:
-            self._msg_data_template['_type'] = request_message._type
+        # if not data template, then let's build one for a reply
+        # (possible when creating a MsgReply directly and not by using subclass)
+        if not hasattr(self, '_msg_data_template'):
+            self._msg_data_template= {
+                '_type' : request_message._type,
+                'ok' : True,
+            }
 
         super().__init__(**kwargs)
 
-        # override correlation id template and atibute
-        self._properties['correlation_id'] = request_message.message_id
-        self.correlation_id = request_message.message_id
+        # override correlation id template and attribute
+        self._properties['correlation_id'] = request_message.correlation_id
+        self.correlation_id = request_message.correlation_id
+
 
 class MsgErrorReply(MsgReply):
     """
     F-Interop conventions:
         - if event is a service request then the routing keys is control.someFunctionality.service
         also, its reply will be control.someFunctionality.service.reply
-        - reply.correlation_id = request.message_id
+        - reply.correlation_id = request.correlation_id
 
     """
+    def __init__(self, request_message, **kwargs):
+        assert request_message
+        # msg_data_template doesnt include _type cause this class is generic, we can only get this at init,
+        # so, let's copy the _type from request and let the MsgReply handle the rest of the fields
+        self._msg_data_template['_type'] = request_message._type
+        super().__init__(request_message, **kwargs)
 
     _msg_data_template = {
         'ok': False,
@@ -221,6 +234,20 @@ class MsgErrorReply(MsgReply):
         'error_code': 'Some error code TBD'
     }
 
+
+###### SESSION MESSAGES ######
+
+class MsgSessionTerminate(Message):
+    """
+    Testing Tool MUST-implement API endpoint
+    GUI, (or Orchestrator?) -> Testing Tool
+    Testing tool should stop all it's processes gracefully.
+    """
+    routing_key = 'control.session.terminate'
+
+    _msg_data_template = {
+        '_type': 'session.terminate',
+    }
 
 ###### TEST COORDINATION MESSAGES ######
 
@@ -301,7 +328,6 @@ class MsgCheckResponse(Message):
     """
 
     routing_key = 'control.testcoordination'
-
 
     _msg_data_template = {
         '_type': 'testcoordination.step.check.response',
@@ -395,6 +421,10 @@ class MsgTestSuiteGetStatus(Message):
         '_type': 'testcoordination.testsuite.getstatus',
     }
 
+class MsgTestSuiteGetStatusReply(MsgReply):
+    # TODO implement
+    pass
+
 class MsgTestSuiteGetTestCases(Message):
     """
     Testing Tool's MUST-implement API entrypoint
@@ -407,6 +437,10 @@ class MsgTestSuiteGetTestCases(Message):
     _msg_data_template = {
         '_type': 'testcoordination.testsuite.gettestcases',
     }
+
+class MsgTestSuiteGetTestCasesReply(Message):
+    # TODO implement
+    pass
 
 ###### SNIFFING SERVICES REQUEST MESSAGES ######
 
@@ -426,6 +460,20 @@ class MsgSniffingStart(Message):
         'filter_proto': 'udp port 5683'
     }
 
+class MsgSniffingStartReply(MsgReply):
+    """
+    Testing Tools'internal call.
+    Sniffer -> Coordinator
+    Testing Tool SHOULD implement (design recommendation)
+    """
+
+    routing_key = 'control.sniffing.service.reply'
+
+    _msg_data_template = {
+        '_type': 'sniffing.start.reply',
+        'ok': True
+    }
+
 class MsgSniffingStop(Message):
     """
     Testing Tools'internal call.
@@ -439,6 +487,20 @@ class MsgSniffingStop(Message):
         '_type': 'sniffing.stop',
     }
 
+class MsgSniffingStoptReply(MsgReply):
+    """
+    Testing Tools'internal call.
+    Sniffer -> Coordinator
+    Testing Tool SHOULD implement (design recommendation)
+    """
+
+    routing_key = 'control.sniffing.service.reply'
+
+    _msg_data_template = {
+        '_type': 'sniffing.stop.reply',
+        'ok': True
+    }
+
 class MsgSniffingGetCapture(Message):
     """
     Testing Tools'internal call.
@@ -450,10 +512,13 @@ class MsgSniffingGetCapture(Message):
 
     _msg_data_template = {
         '_type': 'sniffing.getcapture',
-        "get_last": False,
         "capture_id": "TD_COAP_CORE_01",
 
     }
+
+class MsgSniffingGetCaptureReply(MsgReply):
+    # TODO implement
+    pass
 
 class MsgSniffingGetCaptureLast(Message):
     """
@@ -467,6 +532,10 @@ class MsgSniffingGetCaptureLast(Message):
     _msg_data_template = {
         '_type': 'sniffing.getlastcapture',
     }
+
+class MsgSniffingGetCaptureLastReply(MsgReply):
+    # TODO implement
+    pass
 
 ###### ANALYSIS MESSAGES ######
 
@@ -506,6 +575,7 @@ class MsgInteropTestCaseAnalyzeReply(MsgReply):
     """
 
     _msg_data_template = {
+        '_type' : 'analysis.interop.testcase.analyze.reply',
         'ok' : True,
         'verdict': 'pass',
         'analysis_type': 'postmortem',
@@ -571,13 +641,12 @@ class MsgDissectionDissectCaptureReply(MsgReply):
     Testing Tool SHOULD implement (design recommendation)
     """
 
-    frames_example = \
-    """"frames": [
+    _frames_example = [
         {
             "_type": "frame",
             "id": 1,
             "timestamp": 1464858393.547275,
-            "error": null,
+            "error": None,
             "protocol_stack": [
                 {
                     "_type": "protocol",
@@ -604,63 +673,41 @@ class MsgDissectionDissectCaptureReply(MsgReply):
                     "DestinationAddress": "127.0.0.1",
                     "Options": "b''"
                   }
-        }
-    ]"""
-
+            ]
+        },
+    ]
 
     _msg_data_template = {
+        '_type' : 'dissection.dissectcapture.reply',
         'ok' : True,
         'token' : '0lzzb_Bx30u8Gu-xkt1DFE1GmB4',
-        'frames' : frames_example
+        'frames' : _frames_example
     }
 
 
+class MsgDissectionAutoDissect(Message):
+    """
+    Testing Tool's MUST-implement.
+    Testing Tool -> GUI
+    GUI MUST display this info during execution:
+     - interop session
+     - conformance session
+     - performance ?
+     - privacy?
 
-# class MsgErrorReply(Message):
-#     """
-#     F-Interop conventions:
-#         - if event is a service request then the routing keys is control.someFunctionality.service
-#         also, its reply will be control.someFunctionality.service.reply
-#         - reply.correlation_id = request.message_id
-#
-#     """
-#     def __init__(self, request_message, **kwargs):
-#         assert request_message
-#         global API_VERSION
-#
-#         # hard copy the message template
-#         self._msg_data = {k:v for k,v in self._msg_data_template.items()}
-#
-#         # init properties
-#         self._properties = dict(
-#                 content_type='application/json',
-#                 message_id=str(uuid.uuid4()),
-#         )
-#
-#         if request_message.routing_key.endswith('.service'):
-#             self.routing_key = request_message.routing_key + ".reply"
-#             self._properties['correlation_id'] = request_message.message_id
-#
-#         # by defualt let's use the same message type as request
-#         self._msg_data['_type'] = request_message._type
-#
-#         # rewrite default data fields of the message instance
-#         self._msg_data.update(kwargs)
-#
-#         # add API's version
-#         self._msg_data['_api_version'] = API_VERSION
-#
-#         # add values as objects attributes
-#         for key in self._msg_data:
-#             setattr(self, key, self._msg_data[key])
-#
-#     _msg_data_template = {
-#         'ok': False,
-#         'error_message' : 'Some error message TBD',
-#         'error_code' : 'Some error code TBD'
-#     }
+    """
+    routing_key = 'control.dissection.auto'
 
-_message_types_dict = {
+    _frames_example = MsgDissectionDissectCaptureReply._frames_example
+
+    _msg_data_template = {
+        '_type' : 'dissection.autotriggered',
+        'token' : '0lzzb_Bx30u8Gu-xkt1DFE1GmB4',
+        'frames' : _frames_example
+    }
+
+
+message_types_dict = {
     "testcoordination.testsuite.start": MsgTestSuiteStart,
     "testcoordination.testcase.start": MsgTestCaseStart,
     "testcoordination.testcase.stop": MsgTestCaseStop,
@@ -677,10 +724,14 @@ _message_types_dict = {
     "sniffing.start": MsgSniffingStart,
     "sniffing.stop": MsgSniffingStop,
     "sniffing.getcapture": MsgSniffingGetCapture,
+    "sniffing.getlastcapture": MsgSniffingGetCaptureLast,
     "analysis.interop.testcase.analyze": MsgInteropTestCaseAnalyze,
-    "analysis.interop.testcase.analyze.reply": MsgInteropTestCaseAnalyze,
+    "analysis.interop.testcase.analyze.reply": MsgInteropTestCaseAnalyzeReply,
     "dissection.dissectcapture": MsgDissectionDissectCapture,
+    "dissection.dissectcapture.reply": MsgDissectionDissectCaptureReply,
     "reply.error" : MsgErrorReply,
+    "session.terminate" : MsgSessionTerminate,
+    "control.dissection.auto" : MsgDissectionAutoDissect,
 }
 
 
