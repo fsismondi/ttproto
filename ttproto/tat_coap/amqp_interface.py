@@ -477,13 +477,9 @@ def _auto_dissect_service():
     connection = pika.BlockingConnection(pika.URLParameters(AMQP_URL))
     channel = connection.channel()
 
-    # reques/reply queues configs
-    # TODO delete
-    request_r_key= 'control.sniffing.service'
+    # reques/reply queues names
+    request_r_key = amqp_messages.MsgSniffingStop.routing_key # every sniffing related message has the same r.key
     response_r_key = request_r_key + '.reply'
-    request_message_type = 'sniffing.getcapture'
-
-
     reply_queue_name = 'auto_triggered_dissection@%s'%COMPONENT_ID
 
     result = channel.queue_declare(queue=reply_queue_name)
