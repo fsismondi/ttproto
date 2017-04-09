@@ -45,7 +45,7 @@ try:
 except ImportError:
     pass
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 AMQP_URL = 'amqp://guest:guest@localhost'
 
 try:
@@ -187,21 +187,36 @@ class RabbitMQHandler(logging.Handler):
     """
     def __init__(self, url, name, exchange="default"):
         logging.Handler.__init__(self)
-        self.connection = pika.BlockingConnection(pika.URLParameters(url))
+        self.url = url
+        self.connection = pika.BlockingConnection(pika.URLParameters(url+"?heartbeat=10"))
         self.channel = self.connection.channel()
         self.exchange = exchange
         self.name = name
 
     def emit(self, record):
         routing_key = ".".join(["log", record.levelname.lower(), self.name])
-        self.channel.basic_publish(
+
+        try:
+            self.channel.basic_publish(
                 exchange=self.exchange,
                 routing_key=routing_key,
                 body=self.format(record),
                 properties = pika.BasicProperties(
-                        content_type='application/json',
+                        content_type='application/json'
                 )
         )
+        except pika.exceptions.ConnectionClosed :
+            print("Log hanlder connection closed. Reconnecting..")
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.url + "?heartbeat=10"))
+            self.channel = self.connection.channel()
+            self.channel.basic_publish(
+                    exchange=self.exchange,
+                    routing_key=routing_key,
+                    body=self.format(record),
+                    properties=pika.BasicProperties(
+                            content_type='application/json'
+                    )
+            )
 
     def close(self):
         self.channel.close()
@@ -209,7 +224,7 @@ class RabbitMQHandler(logging.Handler):
 
 if __name__ == "__main__":
 
-    rabbitmq_handler = RabbitMQHandler('amqp://paul:iamthewalrus@f-interop.rennes.inria.fr/session03', "MyComponent")
+    rabbitmq_handler = RabbitMQHandler(AMQP_URL, "MyComponent")
     json_formatter = JsonFormatter()
     rabbitmq_handler.setFormatter(json_formatter)
 
