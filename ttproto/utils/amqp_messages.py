@@ -68,7 +68,7 @@ import json
 import uuid
 import logging
 
-API_VERSION = '0.1.7'
+API_VERSION = '0.1.8'
 
 # TODO use metaclasses instead?
 # TODO Define also a reply method which provides amessage with routig key for the reply, correlation id, reply_to,etc
@@ -172,7 +172,7 @@ class Message:
         # check fist if it's a response
         if 'ok' in message_dict:
             # cannot build a complete reply message just from the json representation
-            raise NotImplementedError()
+            return
 
         message_type = message_dict['_type']
         if message_type in message_types_dict:
