@@ -7,7 +7,11 @@ import select
 import signal
 import os
 import errno
+import sys
 import logging
+import argparse
+from .webserver import *
+from .amqp_interface import *
 from ttproto import *
 from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
 
@@ -17,8 +21,7 @@ COMPONENT_ID = 'tat'
 
 
 SERVER_CONFIG = ("0.0.0.0", 2080)
-# either amqp (amqp interface) or http (webserver)
-INTERFACE = 'amqp'
+
 
 # default handler
 logger = logging.getLogger(__name__)
@@ -26,7 +29,22 @@ sh = logging.StreamHandler()
 logger.addHandler(sh)
 
 
-if __name__ == "__main__":
+def main(argv):
+
+    #Add argument with argparse to choose the interface
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--interface", choices=["amqp", "http"], help="Choose the interface by default it\'s http")
+    args = parser.parse_args()
+    if args.interface == "amqp":
+        INTERFACE = 'amqp'
+        print("Interface is amqp")
+    elif args.interface == "http":
+        INTERFACE = 'http'
+        print("Interface is http")
+    else:
+        # either amqp (amqp interface) or http (webserver)
+        print("Interface is http")
+        INTERFACE = 'http'
 
     __shutdown = False
 
@@ -35,7 +53,7 @@ if __name__ == "__main__":
         __shutdown = True
 
     if INTERFACE == 'http':
-        from .webserver import *
+
 
         server = http.server.HTTPServer(SERVER_CONFIG, RequestHandler)
         logger.info('Server is ready: %s:%s' %SERVER_CONFIG)
@@ -50,7 +68,7 @@ if __name__ == "__main__":
                 break
 
     elif INTERFACE == 'amqp':
-        from .amqp_interface import *
+
 
         logger.info('TAT starting..')
 
@@ -65,3 +83,5 @@ if __name__ == "__main__":
         ## AMQP CONNECTION ##
         start_amqp_interface()
 
+if __name__ == "__main__":
+   main(sys.argv[1:])
