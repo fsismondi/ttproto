@@ -64,8 +64,6 @@ def main(argv):
             except Exception as e:
                 logger.error(str(e))
 
-            if len(sys.argv) > 1:
-                break
 
     elif INTERFACE == 'amqp':
 
