@@ -68,7 +68,7 @@ import json
 import uuid
 import logging
 
-API_VERSION = '0.1.10'
+API_VERSION = '0.1.11'
 
 
 # TODO use metaclasses instead?
@@ -635,7 +635,7 @@ class MsgTestSuiteReport(Message):
     routing_key = 'control.testcoordination'
 
     _msg_data_template = {
-        "_type": "testcoordination.testsuite.finished",
+        "_type": "testcoordination.testsuite.report",
         "TD_COAP_CORE_01_v01":
             {
                 "verdict": "pass",
