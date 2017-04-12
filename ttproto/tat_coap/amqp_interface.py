@@ -206,7 +206,7 @@ def on_event_received(ch, method, props, body):
             'user_id': props.user_id,
             'app_id': props.app_id,
         }
-        event_received = Message.from_json(body)
+        event_received = amqp_messages.Message.from_json(body)
         event_received.update_properties(**props_dict)
 
     except Exception as e:
@@ -239,7 +239,7 @@ def on_service_request(ch, method, props, body):
             'user_id': props.user_id,
             'app_id': props.app_id,
         }
-        service_request = Message.from_json(body)
+        service_request = amqp_messages.Message.from_json(body)
         service_request.update_properties(**props_dict)
 
     except Exception as e:
