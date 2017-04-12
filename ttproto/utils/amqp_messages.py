@@ -964,35 +964,36 @@ class MsgDissectionAutoDissect(Message):
 
 
 message_types_dict = {
-    "testcoordination.testsuite.start": MsgTestSuiteStart,
-    "testcoordination.testcase.ready": MsgTestCaseReady,
-    "testcoordination.testcase.start": MsgTestCaseStart,
-    "testcoordination.step.execute": MsgStepExecute,
-    "testcoordination.testcase.configuration": MsgTestCaseConfiguration,
-    "testcoordination.testcase.stop": MsgTestCaseStop,
-    "testcoordination.testcase.restart": MsgTestCaseRestart,
-    "testcoordination.step.stimuli.executed": MsgStimuliExecuted,
-    "testcoordination.step.check.response": MsgCheckResponse,
-    "testcoordination.step.verify.response": MsgVerifyResponse,
-    "testcoordination.testcase.skip": MsgTestCaseSkip,
-    "testcoordination.testcase.select": MsgTestCaseSelect,
-    "testcoordination.testcase.finish": MsgTestCaseFinish,
-    "testcoordination.testcase.verdict": MsgTestCaseVerdict,
-    "testcoordination.testsuite.abort": MsgTestSuiteAbort,
-    "testcoordination.testsuite.getstatus": MsgTestSuiteGetStatus,
-    "testcoordination.testsuite.gettestcases": MsgTestSuiteGetTestCases,
-    "testcoordination.testsuite.report" : MsgTestSuiteReport,
-    "sniffing.start": MsgSniffingStart,
-    "sniffing.stop": MsgSniffingStop,
-    "sniffing.getcapture": MsgSniffingGetCapture,
-    "sniffing.getlastcapture": MsgSniffingGetCaptureLast,
-    "analysis.interop.testcase.analyze": MsgInteropTestCaseAnalyze,
-    "analysis.interop.testcase.analyze.reply": MsgInteropTestCaseAnalyzeReply,
-    "dissection.dissectcapture": MsgDissectionDissectCapture,
-    "dissection.dissectcapture.reply": MsgDissectionDissectCaptureReply,
-    "reply.error": MsgErrorReply,
-    "session.terminate": MsgSessionTerminate,
-    "control.dissection.auto": MsgDissectionAutoDissect,
+    "testcoordination.testsuite.start": MsgTestSuiteStart, # GUI -> TestingTool
+    "testcoordination.testcase.ready": MsgTestCaseReady,  # TestingTool -> GUI
+    "testcoordination.testcase.start": MsgTestCaseStart, # GUI -> TestingTool
+    "testcoordination.step.execute": MsgStepExecute, # TestingTool -> GUI
+    "testcoordination.testcase.configuration": MsgTestCaseConfiguration, # TestingTool -> GUI
+    "testcoordination.testcase.stop": MsgTestCaseStop, # GUI -> TestingTool
+    "testcoordination.testcase.restart": MsgTestCaseRestart, # GUI -> TestingTool
+    "testcoordination.step.stimuli.executed": MsgStimuliExecuted, # GUI -> TestingTool
+    "testcoordination.step.check.response": MsgCheckResponse, # GUI -> TestingTool
+    "testcoordination.step.verify.response": MsgVerifyResponse, # GUI -> TestingTool
+    "testcoordination.testcase.skip": MsgTestCaseSkip, # GUI -> TestingTool
+    "testcoordination.testcase.select": MsgTestCaseSelect, # GUI -> TestingTool
+    "testcoordination.testcase.finish": MsgTestCaseFinish, # GUI -> TestingTool
+    "testcoordination.testcase.verdict": MsgTestCaseVerdict, # TestingTool -> GUI
+    "testcoordination.testsuite.abort": MsgTestSuiteAbort, # GUI -> TestingTool
+    "testcoordination.testsuite.getstatus": MsgTestSuiteGetStatus, # GUI -> TestingTool
+    "testcoordination.testsuite.getstatus.reply": MsgTestSuiteGetStatusReply,# TestingTool -> GUI (reply)
+    "testcoordination.testsuite.gettestcases": MsgTestSuiteGetTestCases,# GUI -> TestingTool
+    "testcoordination.testsuite.gettestcases.reply": MsgTestSuiteGetTestCasesReply,# TestingTool -> GUI (reply)
+    "testcoordination.testsuite.report" : MsgTestSuiteReport, # TestingTool -> GUI
+    "sniffing.start": MsgSniffingStart, # Testing Tool Internal
+    "sniffing.stop": MsgSniffingStop, # Testing Tool Internal
+    "sniffing.getcapture": MsgSniffingGetCapture,  # Testing Tool Internal
+    "sniffing.getlastcapture": MsgSniffingGetCaptureLast,  # Testing Tool Internal
+    "analysis.interop.testcase.analyze": MsgInteropTestCaseAnalyze,  # Testing Tool Internal
+    "analysis.interop.testcase.analyze.reply": MsgInteropTestCaseAnalyzeReply,  # Testing Tool Internal
+    "dissection.dissectcapture": MsgDissectionDissectCapture,  # Testing Tool Internal
+    "dissection.dissectcapture.reply": MsgDissectionDissectCaptureReply,  # Testing Tool Internal
+    "session.terminate": MsgSessionTerminate, # GUI (or Orchestrator?) -> TestingTool
+    "control.dissection.auto": MsgDissectionAutoDissect, # TestingTool -> GUI
 }
 
 if __name__ == '__main__':
