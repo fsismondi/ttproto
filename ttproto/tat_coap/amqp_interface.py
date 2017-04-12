@@ -196,7 +196,19 @@ def on_event_received(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
     try:
-        event_received = amqp_messages.Message.from_json(body)
+        props_dict = {
+            'content_type': props.content_type,
+            'delivery_mode': props.delivery_mode,
+            'correlation_id': props.correlation_id,
+            'reply_to': props.reply_to,
+            'message_id': props.message_id,
+            'timestamp': props.timestamp,
+            'user_id': props.user_id,
+            'app_id': props.app_id,
+        }
+        event_received = Message.from_json(body)
+        event_received.update_properties(**props_dict)
+
     except Exception as e:
         logger.error(str(e))
         return
@@ -217,10 +229,23 @@ def on_service_request(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
     try:
-        service_request = amqp_messages.Message.from_json(body)
+        props_dict = {
+            'content_type': props.content_type,
+            'delivery_mode': props.delivery_mode,
+            'correlation_id': props.correlation_id,
+            'reply_to': props.reply_to,
+            'message_id': props.message_id,
+            'timestamp': props.timestamp,
+            'user_id': props.user_id,
+            'app_id': props.app_id,
+        }
+        service_request = Message.from_json(body)
+        service_request.update_properties(**props_dict)
+
     except Exception as e:
         logger.error(str(e))
         return
+
 
     if isinstance(service_request, amqp_messages.MsgInteropTestCaseAnalyze):
         logger.debug("Starting analysis of PCAP")
