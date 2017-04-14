@@ -570,12 +570,11 @@ def _auto_dissect_service():
 
 def _amqp_request(channel, request_message: Message, component_id: str):
     # check first that sender didnt forget about reply to and corr id
-    assert (request_message.reply_to)
-    assert (request_message.correlation_id)
+    assert request_message.reply_to
+    assert request_message.correlation_id
 
     response = None
 
-    # channel = connection.channel()
     reply_queue_name = 'amqp_rpc_%s@%s' % (str(uuid.uuid4())[:8], component_id)
 
     result = channel.queue_declare(queue=reply_queue_name, auto_delete=True)
