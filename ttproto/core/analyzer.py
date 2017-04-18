@@ -997,5 +997,7 @@ if __name__ == "__main__":
         print(str(s))
     print('#####')
     print('##### Exceptions')
-    print(exceptions)
+    for e in excepts:
+        e1, e2, e3 = e
+        print(repr(traceback.format_exception(e1, e2, e3)))
     print('#####')
