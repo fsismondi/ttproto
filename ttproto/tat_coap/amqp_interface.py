@@ -569,6 +569,8 @@ def _auto_dissect_service():
 
 
 def _amqp_request(channel, request_message: Message, component_id: str):
+    # NOTE: channel must be a pika channel
+
     # check first that sender didnt forget about reply to and corr id
     assert request_message.reply_to
     assert request_message.correlation_id
@@ -581,7 +583,7 @@ def _amqp_request(channel, request_message: Message, component_id: str):
 
     callback_queue = result.method.queue
 
-    # by convention routing key of answer is routing_key + .reply
+    # bind and listen to reply_to topic
     channel.queue_bind(
             exchange=AMQP_EXCHANGE,
             queue=callback_queue,
@@ -620,9 +622,9 @@ def _amqp_request(channel, request_message: Message, component_id: str):
                 )
         )
 
-    # cleaning up
+    # clean up
     channel.queue_delete(reply_queue_name)
-    # connection.close()
+
     return response
 
 
