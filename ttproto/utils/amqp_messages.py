@@ -68,11 +68,10 @@ import json
 import uuid
 import logging
 
-API_VERSION = '0.1.11'
+API_VERSION = '0.1.12'
 
 
 # TODO use metaclasses instead?
-# TODO Define also a reply method which provides amessage with routig key for the reply, correlation id, reply_to,etc
 
 class NonCompliantMessageFormatError(Exception):
     def __init__(self, value):
@@ -448,6 +447,22 @@ class MsgTestCaseFinish(Message):
 
     _msg_data_template = {
         '_type': 'testcoordination.testcase.finish',
+    }
+
+class MsgTestCaseFinished(Message):
+    """
+    Testing Tool MUST-implement notification.
+    Testing Tool -> GUI
+
+    This message is followed by a verdict
+    """
+
+    routing_key = 'control.testcoordination'
+
+    _msg_data_template = {
+        '_type': 'testcoordination.testcase.finished',
+        'testcase_id' : 'TD_COAP_CORE_01',
+        'message' : 'Testcase finished'
     }
 
 
@@ -977,6 +992,7 @@ message_types_dict = {
     "testcoordination.testcase.skip": MsgTestCaseSkip, # GUI -> TestingTool
     "testcoordination.testcase.select": MsgTestCaseSelect, # GUI -> TestingTool
     "testcoordination.testcase.finish": MsgTestCaseFinish, # GUI -> TestingTool
+    "testcoordination.testcase.finished": MsgTestCaseFinished, # TestingTool -> GUI
     "testcoordination.testcase.verdict": MsgTestCaseVerdict, # TestingTool -> GUI
     "testcoordination.testsuite.abort": MsgTestSuiteAbort, # GUI -> TestingTool
     "testcoordination.testsuite.getstatus": MsgTestSuiteGetStatus, # GUI -> TestingTool
