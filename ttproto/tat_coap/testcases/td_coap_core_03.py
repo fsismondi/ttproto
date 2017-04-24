@@ -55,6 +55,7 @@ TD_COAP_CORE_03:
                 ), "fail")
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
+
         self.next()
 
         self.match ("server", CoAP (

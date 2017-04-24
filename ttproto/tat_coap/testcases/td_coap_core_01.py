@@ -50,6 +50,12 @@ TD_COAP_CORE_01:
         CMID = self.coap['mid']
         CTOK = self.coap['tok']
 
+        self.match(
+            'client',
+            CoAP(type='con', code='get'),
+            'fail'
+        )
+
         self.next()
 
         if self.match(

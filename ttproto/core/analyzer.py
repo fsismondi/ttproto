@@ -977,9 +977,10 @@ class Analyzer:
 if __name__ == "__main__":
     from os import getcwd, path
     analyzer = Analyzer('tat_coap')
-    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_PASS.pcap','TD_COAP_CORE_01'
-    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_PASS.pcap', 'TD_COAP_CORE_03'
-    params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
+    #params = getcwd() + '/tests/exemple_fait_core_2.pcap','TD_COAP_CORE_01'
+    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    params = './tmp/TD_COAP_CORE_10_fail.pcap', 'TD_COAP_CORE_10'
+    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
     tc_name, verdict, rev_frames, str_log , lst_log,excepts = analyzer.analyse(params[0], params[1])
     print('##### TC name')
     print(tc_name)
@@ -997,5 +998,7 @@ if __name__ == "__main__":
         print(str(s))
     print('#####')
     print('##### Exceptions')
-    print(exceptions)
+    for e in excepts:
+        e1, e2, e3 = e
+        print(repr(traceback.format_exception(e1,e2,e3)))
     print('#####')

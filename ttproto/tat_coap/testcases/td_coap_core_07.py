@@ -44,6 +44,7 @@ TD_COAP_CORE_07:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
+        # TODO client message w/ no content format and payload -> fail?
         return [
             CoAP(
                 type='non',
