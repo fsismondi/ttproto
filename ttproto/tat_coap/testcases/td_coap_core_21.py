@@ -134,6 +134,8 @@ TD_COAP_CORE_21:
                                        )))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
+
+        # TODO: CMID2 == CMID and CTOK2 == CTOK doesn't make fail !
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
@@ -167,6 +169,8 @@ TD_COAP_CORE_21:
                                        )))
         CMID3 = self.coap["mid"]
         CTOK3 = self.coap["tok"]
+
+        # TODO: CMID2 == CMID and CTOK2 == CTOK doesn't make fail !
         if CMID3 is Not(b''):
             if CMID3 == CMID or CMID3 == CMID2:
                 self.set_verdict("fail", "Message ID should be different")

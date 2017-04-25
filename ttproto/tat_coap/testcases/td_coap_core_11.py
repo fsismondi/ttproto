@@ -55,6 +55,7 @@ TD_COAP_CORE_11:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
+        # TODO client message w/ token length = 0 -> fail?
         return [
             CoAP(type='con', code='get', tok=Not(b''))
         ]

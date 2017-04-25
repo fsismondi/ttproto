@@ -93,6 +93,8 @@ TD_COAP_CORE_20:
                                        opt=self.uri("/multi-format", CoAPOptionAccept(41))))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
+
+        #TODO: CMID2 == CMID and CTOK2 == CTOK doesn't make fail !
         if CMID2 is Not(b''):
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")

@@ -67,7 +67,7 @@ TD_COAP_CORE_19:
         CTOK = self.coap["tok"]
 
         self.next_skip_ack()
-
+        #TODO: generate a fail if we have a '&' or '?' in the CoAPOptionLocationQuery ?
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.01,
                                        mid=CMID,
