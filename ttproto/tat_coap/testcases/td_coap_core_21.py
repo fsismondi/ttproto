@@ -1,5 +1,5 @@
 from ..common import *
-
+import logging
 
 class TD_COAP_CORE_21 (CoAPTestCase):
     """
@@ -100,6 +100,8 @@ TD_COAP_CORE_21:
             CoAP(type='con', code='get')   # Step 10
         ]
 
+
+
     def run(self):
         # Part A
         self.match("client", CoAP(type="con", code="get",
@@ -135,11 +137,10 @@ TD_COAP_CORE_21:
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
 
-        # TODO: CMID2 == CMID and CTOK2 == CTOK doesn't make fail !
-        if CMID2 is Not(b''):
+        if CMID2 != b"":
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK2 is Not(b''):
+        if CTOK2 != b"":
             if CTOK2 == CTOK:
                 self.set_verdict("fail", "Token should be different")
 
@@ -170,11 +171,10 @@ TD_COAP_CORE_21:
         CMID3 = self.coap["mid"]
         CTOK3 = self.coap["tok"]
 
-        # TODO: CMID2 == CMID and CTOK2 == CTOK doesn't make fail !
-        if CMID3 is Not(b''):
+        if CMID3 != b"":
             if CMID3 == CMID or CMID3 == CMID2:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK3 is Not(b''):
+        if CTOK3 != b"":
             if CTOK3 == CTOK or CTOK3 == CTOK2:
                 self.set_verdict("fail", "Token should be different")
 
