@@ -1000,5 +1000,6 @@ if __name__ == "__main__":
     print('##### Exceptions')
     for e in excepts:
         e1, e2, e3 = e
-        print(repr(traceback.format_exception(e1,e2,e3)))
+        print(repr(traceback.format_exception(e1, e2, e3)))
+
     print('#####')

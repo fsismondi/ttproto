@@ -198,9 +198,14 @@ class CoAPOption (
         fields = list (self.fields())
         values = self._fill_default_values()
 
-        # assemble the body of the option
-        values[2:], bins = zip(*(f.tag.build_message (v) for v,f in zip(values[2:], fields[2:])))
-        body_bin = concatenate (bins)
+        # do not build body for CoAPOptionEmpty (nothing to build)
+        if isinstance(self,CoAPOptionEmpty):
+            body_bin = b''
+        else:
+            # assemble the body of the option
+            values[2:], bins = zip(*(f.tag.build_message (v) for v,f in zip(values[2:], fields[2:])))
+            body_bin = concatenate (bins)
+
 
         if not isinstance (body_bin, bytes):
             raise Exception ("Option value length is not a multiple of 8 bits")
