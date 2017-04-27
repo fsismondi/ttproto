@@ -175,6 +175,9 @@ TD_COAP_CORE_22:
         # Part A
 
         # Step 5
+
+        # TODO: fail if no CoAPOptionIfMatch()?
+
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -272,6 +275,9 @@ TD_COAP_CORE_22:
         self.next_skip_ack(optional=True)
 
         # Step 17
+
+        # TODO: fail if no CoAPOptionIfMatch()?
+
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),

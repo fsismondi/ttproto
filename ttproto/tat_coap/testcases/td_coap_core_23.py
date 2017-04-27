@@ -82,6 +82,8 @@ TD_COAP_CORE_23:
     def run(self):
         # Part A
 
+    #TODO: fail if no CoAPOptionIfNoneMatch()?
+
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -105,6 +107,8 @@ TD_COAP_CORE_23:
         self.next_skip_ack(optional=True)
 
         # Part B
+
+        # TODO: fail if no CoAPOptionIfNoneMatch()?
 
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(

@@ -104,6 +104,7 @@ TD_COAP_CORE_21:
 
     def run(self):
         # Part A
+        #TODO: if there is a CoAPOptionETag generate a fail ?
         self.match("client", CoAP(type="con", code="get",
                                        opt=All(
                                            Opt(CoAPOptionUriPath("validate")),
@@ -128,7 +129,7 @@ TD_COAP_CORE_21:
         self.next_skip_ack(optional=True)
 
         # Part B
-
+        #TODO: if ETAG1 different of the first Etag generate a fail ?
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(
                                            CoAPOptionUriPath("validate"),
@@ -146,6 +147,7 @@ TD_COAP_CORE_21:
 
         self.next_skip_ack()
 
+        # TODO: if ETAG1 different of the fisrt Etag generate a fail ?
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.03,
                                        mid=CMID2,
@@ -162,7 +164,7 @@ TD_COAP_CORE_21:
             self.next_skip_ack()
             self.match("server", CoAP(code=2.04))
             self.next_skip_ack(optional=True)
-
+        # TODO: if ETAG1 different of the first Etag generate a fail ?
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(
                                            CoAPOptionUriPath("validate"),
@@ -179,7 +181,7 @@ TD_COAP_CORE_21:
                 self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
-
+        # TODO: if ETAG1 different of the first Etag generate a fail ?
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID3,

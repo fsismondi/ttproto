@@ -1318,6 +1318,26 @@ def td_coap_core_18_PASS_server_emulator():
     connexion.sendto(msg_bytes, (addr[0], addr[1]))
     connexion.close()
 
+def td_coap_core_18_FAIL_2_location_server_emulator():
+    # waiting for receive a message CoAP/UDP/IPv4
+    connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    connexion.bind((IP, UDP_PORT))
+    msg_recv, addr = connexion.recvfrom(1024)
+    #translate message
+    binary_msg = Message(msg_recv, CoAP)
+    coap_message = binary_msg.get_value()
+    print('***** SERVER What we receive : *****')
+    print(coap_message)
+    #build response
+    coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, pl='test payload server', opt= CoAPOptionList([CoAPOptionLocationPath ("location1"),CoAPOptionLocationPath ("location2"),CoAPOptionContentFormat(3)]))
+
+    print('***** SERVER What we send : *****')
+    print(coap_response)
+    #send response
+    msg, msg_bytes = coap_response.build_message()
+    connexion.sendto(msg_bytes, (addr[0], addr[1]))
+    connexion.close()
+
 def td_coap_core_18_FAIL_server_emulator():
     # waiting for receive a message CoAP/UDP/IPv4
     connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1328,11 +1348,8 @@ def td_coap_core_18_FAIL_server_emulator():
     coap_message = binary_msg.get_value()
     print('***** SERVER What we receive : *****')
     print(coap_message)
-    # print(addr[0])
-    # print(addr[1])
-    # print(coap_message['mid'])
     #build response
-    coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, pl='test payload server', opt= CoAPOptionList([CoAPOptionLocationPath ("location1"),CoAPOptionLocationPath ("location2"),CoAPOptionContentFormat(3)]))
+    coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, pl='test payload server', opt= CoAPOptionList([CoAPOptionLocationPath (".."),CoAPOptionLocationPath ("/location2"), CoAPOptionLocationPath ("/location3"), CoAPOptionContentFormat(3)]))
 
     print('***** SERVER What we send : *****')
     print(coap_response)
@@ -1378,9 +1395,6 @@ def td_coap_core_19_PASS_NO_PL_server_emulator():
     coap_message = binary_msg.get_value()
     print('***** SERVER What we receive : *****')
     print(coap_message)
-    # print(addr[0])
-    # print(addr[1])
-    # print(coap_message['mid'])
     #build response
     coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, opt= CoAPOptionList([CoAPOptionLocationQuery("first=1"),CoAPOptionLocationQuery("second=2")]))
 
@@ -1392,6 +1406,7 @@ def td_coap_core_19_PASS_NO_PL_server_emulator():
     connexion.close()
 
 def td_coap_core_19_FAIL_server_emulator():
+    #no coapoptionformt with payload
     # waiting for receive a message CoAP/UDP/IPv4
     connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     connexion.bind((IP, UDP_PORT))
@@ -1401,9 +1416,6 @@ def td_coap_core_19_FAIL_server_emulator():
     coap_message = binary_msg.get_value()
     print('***** SERVER What we receive : *****')
     print(coap_message)
-    # print(addr[0])
-    # print(addr[1])
-    # print(coap_message['mid'])
     #build response
     coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, pl='test payload server', opt= CoAPOptionList([CoAPOptionLocationQuery("first=1"),CoAPOptionLocationQuery("second=2")]))
 
@@ -1428,7 +1440,7 @@ def td_coap_core_19_FAIL_WRONG_OPT_server_emulator():
     # print(addr[1])
     # print(coap_message['mid'])
     #build response
-    coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, pl='test payload server', opt= CoAPOptionList([CoAPOptionLocationQuery("?=1"),CoAPOptionLocationQuery("&=2"),CoAPOptionContentFormat(3)]))
+    coap_response = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.01, pl='test payload server', opt= CoAPOptionList([CoAPOptionLocationQuery("?=."),CoAPOptionLocationQuery("&=.."),CoAPOptionContentFormat(3)]))
 
     print('***** SERVER What we send : *****')
     print(coap_response)
@@ -2054,7 +2066,45 @@ def td_coap_core_23_PASS_client_emulator():
     print('***** CLIENT What we receive 1 : *****')
     print(coap_message1)
 
-    coap_msg2 = CoAP(type='con', code='put', mid=9, tok=b'03',pl='test payload client2',
+    coap_msg2 = CoAP(type='con', code='put', mid=10, tok=b'03',pl='test payload client2',
+                          opt=CoAPOptionList(
+                              [CoAPOptionContentFormat(0), CoAPOptionUriPath(val='create1'), CoAPOptionIfNoneMatch()]))
+
+    print('***** CLIENT What we send 2 : *****')
+    print(coap_msg1)
+    msg, msg_bytes2 = coap_msg2.build_message()
+    # build and send CoAP/UDP/IPv4 message
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(msg_bytes2, (IP, UDP_PORT))
+    # receive message
+    reply2 = sock.recv(1024)
+    # translate message
+    binary_msg2 = Message(reply2, CoAP)
+    coap_message2 = binary_msg2.get_value()
+    print('***** CLIENT What we receive 2 : *****')
+    print(coap_message2)
+
+
+    sock.close()
+
+def td_coap_core_23_FAIL_client_emulator():
+    #DONT WORK
+    coap_msg1 = CoAP(type='con', code='put', mid=9, tok=b'02',pl='test payload client1', opt=CoAPOptionList([CoAPOptionIfNoneMatch(), CoAPOptionUriPath(val='create1'), CoAPOptionContentFormat(0)]))
+    print('***** CLIENT What we send 1 : *****')
+    print(coap_msg1)
+    msg, msg_bytes1 = coap_msg1.build_message()
+    # build and send CoAP/UDP/IPv4 message
+    sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    sock.sendto(msg_bytes1, (IP,UDP_PORT))
+    #receive message
+    reply1 = sock.recv(1024)
+    #translate message
+    binary_msg1 = Message(reply1, CoAP)
+    coap_message1 = binary_msg1.get_value()
+    print('***** CLIENT What we receive 1 : *****')
+    print(coap_message1)
+
+    coap_msg2 = CoAP(type='con', code='put', mid=9, tok=b'02',pl='test payload client2',
                           opt=CoAPOptionList(
                               [CoAPOptionContentFormat(0), CoAPOptionUriPath(val='create1'), CoAPOptionIfNoneMatch()]))
 
@@ -2230,11 +2280,11 @@ def main(argv):
     else:
         # either amqp (amqp interface) or http (webserver)
         print("***********Server and Client mode with thread***********")
-        _launch_sniffer('tmp/TD_COAP_CORE_23_pass.pcap')
+        _launch_sniffer('tmp/TD_COAP_CORE_23_fail.pcap')
         time.sleep(2)
         # td_coap_core_01_PASS_server_emulator()
         t1 = threading.Thread(target=td_coap_core_23_PASS_server_emulator)
-        t2 = threading.Thread(target=td_coap_core_23_PASS_client_emulator)
+        t2 = threading.Thread(target=td_coap_core_23_FAIL_client_emulator)
 
         print("starting threads")
         t1.start()
@@ -2428,6 +2478,10 @@ def main(argv):
         t2 = threading.Thread(target=td_coap_core_18_PASS_client_emulator)
         
         #inconclusive
+        t1 = threading.Thread(target=td_coap_core_18_FAIL_2_location_server_emulator)
+        t2 = threading.Thread(target=td_coap_core_18_PASS_client_emulator)
+        
+        #inconclusive
         t1 = threading.Thread(target=td_coap_core_18_FAIL_server_emulator)
         t2 = threading.Thread(target=td_coap_core_18_PASS_client_emulator)
         
@@ -2467,7 +2521,9 @@ def main(argv):
         t2 = threading.Thread(target=td_coap_core_22_FAIL_client_emulator)
         
         #test case 23
-        #DONT WORK
+        t1 = threading.Thread(target=td_coap_core_23_PASS_server_emulator)
+        t2 = threading.Thread(target=td_coap_core_23_PASS_client_emulator)
+        
         t1 = threading.Thread(target=td_coap_core_23_PASS_server_emulator)
         t2 = threading.Thread(target=td_coap_core_23_PASS_client_emulator)
         
