@@ -12,7 +12,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
                 sudo apt-get update
                 sudo apt-get upgrade -y
                 sudo apt-get install --fix-missing -y python3-dev python3-pip python3-setuptools
-                sudo -H pip install pytest --ignore-installed
+                sudo -H pip3 install pytest --ignore-installed
                 '''
 
             /* Show deployed code */
