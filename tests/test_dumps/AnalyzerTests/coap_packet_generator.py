@@ -1565,6 +1565,46 @@ def td_coap_core_20_PASS_server_emulator():
     sock.sendto(msg_bytes2, (addr[0], addr[1]))
     sock.close()
 
+def td_coap_core_20_FAIL_WRONG_FORMAT_server_emulator():
+    # waiting for receive a message CoAP/UDP/IPv4
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((IP, UDP_PORT))
+    msg_recv, addr = sock.recvfrom(1024)
+    # translate message
+    binary_msg = Message(msg_recv, CoAP)
+    coap_message = binary_msg.get_value()
+    print('***** SERVER What we receive : *****')
+    print(coap_message)
+
+    # build response1
+    coap_response1 = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.05,
+                         pl='test payload server',
+                         opt=CoAPOptionList([CoAPOptionAccept(0), CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send : *****')
+    print(coap_response1)
+    # send response
+    msg, msg_bytes1 = coap_response1.build_message()
+    sock.sendto(msg_bytes1, (addr[0], addr[1]))
+
+    # receive response
+    msg_ack_recv, addr = sock.recvfrom(1024)
+    # translate response
+    binary_msg_ack = Message(msg_ack_recv, CoAP)
+    coap_ack_recv = binary_msg_ack.get_value()
+    print('***** SERVER acknowledgment receive : *****')
+    print(coap_ack_recv)
+
+    # build response
+    coap_response2 = CoAP(type='con', mid=coap_ack_recv['mid'], tok=coap_ack_recv['tok'], code=2.05,
+                         pl='test payload server',
+                         opt=CoAPOptionList([CoAPOptionAccept(41), CoAPOptionContentFormat(4)]))
+    print('***** SERVER What we send : *****')
+    print(coap_response2)
+    # send response
+    msg, msg_bytes2 = coap_response2.build_message()
+    sock.sendto(msg_bytes2, (addr[0], addr[1]))
+    sock.close()
+
 def td_coap_core_21_PASS_client_emulator():
     coap_msg = CoAP(type='con', code='get', mid=9, tok=b'01', opt=CoAPOptionList([ CoAPOptionUriPath(val='validate')]))
     print('***** CLIENT What we send 1 : *****')
@@ -1776,6 +1816,78 @@ def td_coap_core_21_PASS_server_emulator():
     sock.sendto(msg_bytes4, (addr4[0], addr4[1]))
     sock.close()
 
+def td_coap_core_21_FAIL_server_emulator():
+    # waiting for receive a message CoAP/UDP/IPv4
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((IP, UDP_PORT))
+    msg_recv, addr1 = sock.recvfrom(1024)
+    # translate message
+    binary_msg = Message(msg_recv, CoAP)
+    coap_message = binary_msg.get_value()
+    print('***** SERVER What we receive 1 : *****')
+    print(coap_message)
+
+    # build response1
+    coap_response1 = CoAP(type='con', mid=coap_message['mid'], tok=coap_message['tok'], code=2.05,
+                         pl='test payload server',
+                         opt=CoAPOptionList([CoAPOptionETag(1), CoAPOptionUriPath(val='validate'), CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 1 : *****')
+    print(coap_response1)
+    # send response
+    msg, msg_bytes1 = coap_response1.build_message()
+    sock.sendto(msg_bytes1, (addr1[0], addr1[1]))
+
+    # receive response
+    msg_ack_recv, addr2 = sock.recvfrom(1024)
+    # translate response
+    binary_msg_ack = Message(msg_ack_recv, CoAP)
+    coap_ack_recv = binary_msg_ack.get_value()
+    print('***** SERVER What we receive 2 : *****')
+    print(coap_ack_recv)
+
+    # build response
+    coap_response2 = CoAP(type='con', mid=coap_ack_recv['mid'], tok=coap_ack_recv['tok'], code=2.03,
+                         opt=coap_ack_recv['opt'])
+    print('***** SERVER What we send 2 : *****')
+    print(coap_response2)
+    # send response
+    msg, msg_bytes2 = coap_response2.build_message()
+    sock.sendto(msg_bytes2, (addr2[0], addr2[1]))
+
+    # receive response
+    msg_ack_recv3, addr3 = sock.recvfrom(1024)
+    # translate response
+    binary_msg_ack3 = Message(msg_ack_recv3, CoAP)
+    coap_ack_recv3 = binary_msg_ack3.get_value()
+    print('***** SERVER What we receive 3 : *****')
+    print(coap_ack_recv3)
+
+    # build response
+    coap_response3 = CoAP(type='con', mid=coap_ack_recv3['mid'], tok=coap_ack_recv3['tok'], code=2.04,
+                          opt=coap_ack_recv3['opt'])
+    print('***** SERVER What we send 3 : *****')
+    print(coap_response3)
+    # send response
+    msg, msg_bytes3 = coap_response3.build_message()
+    sock.sendto(msg_bytes3, (addr3[0], addr3[1]))
+
+    # receive response
+    msg_ack_recv4, addr4 = sock.recvfrom(1024)
+    # translate response
+    binary_msg_ack4 = Message(msg_ack_recv4, CoAP)
+    coap_ack_recv4 = binary_msg_ack4.get_value()
+    print('***** SERVER What we receive 4 : *****')
+    print(coap_ack_recv4)
+
+    # build response
+    coap_response4 = CoAP(type='con', mid=coap_ack_recv4['mid'], tok=coap_ack_recv4['tok'], code=2.05, pl='test payload server',
+                          opt=CoAPOptionList([CoAPOptionETag(3), CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 4 : *****')
+    print(coap_response4)
+    # send response
+    msg, msg_bytes4 = coap_response4.build_message()
+    sock.sendto(msg_bytes4, (addr4[0], addr4[1]))
+    sock.close()
 
 def td_coap_core_22_PASS_client_emulator():
     coap_msg1 = CoAP(type='con', code='get', mid=9, tok=b'02', opt=CoAPOptionList([ CoAPOptionUriPath(val='validate')]))
@@ -2049,6 +2161,98 @@ def td_coap_core_22_PASS_server_emulator():
 
     connexion.close()
 
+def td_coap_core_22_FAIL_server_emulator():
+    # waiting for receive a message CoAP/UDP/IPv4
+    connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    connexion.bind((IP, UDP_PORT))
+    msg_recv1, addr1 = connexion.recvfrom(1024)
+    #translate message
+    binary_msg1 = Message(msg_recv1, CoAP)
+    coap_message1 = binary_msg1.get_value()
+    print('***** SERVER What we receive 1 : *****')
+    print(coap_message1)
+    #build response
+    coap_response1 = CoAP(type='con', mid=coap_message1['mid'], tok=coap_message1['tok'], code=2.05,
+                          pl='test payload server',
+                          opt=CoAPOptionList(
+                              [CoAPOptionETag(1), CoAPOptionUriPath(val='validate'), CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 1 : *****')
+    print(coap_response1)
+    #send response
+    msg, msg_bytes1 = coap_response1.build_message()
+    connexion.sendto(msg_bytes1, (addr1[0], addr1[1]))
+
+    #receive response
+    msg_recv2, addr2 = connexion.recvfrom(1024)
+    # translate message
+    binary_msg2 = Message(msg_recv2, CoAP)
+    coap_message2 = binary_msg2.get_value()
+    print('***** SERVER What we receive 2 : *****')
+    print(coap_message2)
+    # build response
+    coap_response2 = CoAP(type='con', mid=coap_message2['mid'], tok=coap_message2['tok'], code=2.04,
+                          pl='test payload server',
+                          opt=CoAPOptionList([CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 2 : *****')
+    print(coap_response2)
+    # send response
+    msg, msg_bytes2 = coap_response2.build_message()
+    connexion.sendto(msg_bytes2, (addr2[0], addr2[1]))
+
+    # receive response
+    msg_recv3, addr3 = connexion.recvfrom(1024)
+    # translate message
+    binary_msg3 = Message(msg_recv3, CoAP)
+    coap_message3 = binary_msg3.get_value()
+    print('***** SERVER What we receive 3 : *****')
+    print(coap_message3)
+    # build response
+    coap_response3 = CoAP(type='con', mid=coap_message3['mid'], tok=coap_message3['tok'], code=2.05,
+                          pl=coap_message2['pl'],
+                          opt=CoAPOptionList([CoAPOptionETag(2), CoAPOptionUriPath(val='validate'), CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 3 : *****')
+    print(coap_response3)
+    # send response
+    msg, msg_bytes3 = coap_response3.build_message()
+    connexion.sendto(msg_bytes3, (addr3[0], addr3[1]))
+
+    # receive response
+    msg_recv4, addr4 = connexion.recvfrom(1024)
+    # translate message
+    binary_msg4 = Message(msg_recv4, CoAP)
+    coap_message4 = binary_msg4.get_value()
+    print('***** SERVER What we receive 4 : *****')
+    print(coap_message4)
+    # build response
+    coap_response4 = CoAP(type='con', mid=coap_message4['mid'], tok=coap_message4['tok'], code=2.04,
+                          pl='test payload server3',
+                          opt=CoAPOptionList(
+                              [CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 4 : *****')
+    print(coap_response4)
+    # send response
+    msg, msg_bytes4 = coap_response4.build_message()
+    connexion.sendto(msg_bytes4, (addr4[0], addr4[1]))
+
+    # receive response
+    msg_recv5, addr5 = connexion.recvfrom(1024)
+    # translate message
+    binary_msg5 = Message(msg_recv5, CoAP)
+    coap_message5 = binary_msg5.get_value()
+    print('***** SERVER What we receive 5 : *****')
+    print(coap_message5)
+    # build response
+    coap_response5 = CoAP(type='con', mid=36, tok=b'36', code=4.12,
+                          pl='test payload server3',
+                          opt=CoAPOptionList([CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 5 : *****')
+    print(coap_response5)
+    # send response
+    msg, msg_bytes5 = coap_response5.build_message()
+    connexion.sendto(msg_bytes5, (addr5[0], addr5[1]))
+
+    connexion.close()
+
 def td_coap_core_23_PASS_client_emulator():
     #DONT WORK
     coap_msg1 = CoAP(type='con', code='put', mid=9, tok=b'02',pl='test payload client1', opt=CoAPOptionList([CoAPOptionIfNoneMatch(), CoAPOptionUriPath(val='create1'), CoAPOptionContentFormat(0)]))
@@ -2155,6 +2359,45 @@ def td_coap_core_23_PASS_server_emulator():
     print(coap_message2)
     # build response
     coap_response2 = CoAP(type='con', mid=coap_message2['mid'], tok=coap_message2['tok'], code=4.12,
+                          pl='')
+    print('***** SERVER What we send 2 : *****')
+    print(coap_response2)
+    # send response
+    msg, msg_bytes2 = coap_response2.build_message()
+    connexion.sendto(msg_bytes2, (addr2[0], addr2[1]))
+
+    connexion.close()
+
+def td_coap_core_23_FAIL_server_emulator():
+    # DONT WORK
+    # waiting for receive a message CoAP/UDP/IPv4
+    connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    connexion.bind((IP, UDP_PORT))
+    msg_recv1, addr1 = connexion.recvfrom(1024)
+    #translate message
+    binary_msg1 = Message(msg_recv1, CoAP)
+    coap_message1 = binary_msg1.get_value()
+    print('***** SERVER What we receive 1 : *****')
+    print(coap_message1)
+    #build response
+    coap_response1 = CoAP(type='con', mid=coap_message1['mid'], tok=coap_message1['tok'], code=2.01,
+                          pl='test payload server',
+                          opt=CoAPOptionList([CoAPOptionContentFormat(0)]))
+    print('***** SERVER What we send 1 : *****')
+    print(coap_response1)
+    #send response
+    msg, msg_bytes1 = coap_response1.build_message()
+    connexion.sendto(msg_bytes1, (addr1[0], addr1[1]))
+
+    #receive response
+    msg_recv2, addr2 = connexion.recvfrom(1024)
+    # translate message
+    binary_msg2 = Message(msg_recv2, CoAP)
+    coap_message2 = binary_msg2.get_value()
+    print('***** SERVER What we receive 2 : *****')
+    print(coap_message2)
+    # build response
+    coap_response2 = CoAP(type='con', mid=36, tok=b'36', code=4.1,
                           pl='')
     print('***** SERVER What we send 2 : *****')
     print(coap_response2)
@@ -2283,8 +2526,8 @@ def main(argv):
         _launch_sniffer('tmp/TD_COAP_CORE_23_fail.pcap')
         time.sleep(2)
         # td_coap_core_01_PASS_server_emulator()
-        t1 = threading.Thread(target=td_coap_core_23_PASS_server_emulator)
-        t2 = threading.Thread(target=td_coap_core_23_FAIL_client_emulator)
+        t1 = threading.Thread(target=td_coap_core_23_FAIL_server_emulator)
+        t2 = threading.Thread(target=td_coap_core_23_PASS_client_emulator)
 
         print("starting threads")
         t1.start()
@@ -2506,6 +2749,9 @@ def main(argv):
         t1 = threading.Thread(target=td_coap_core_20_PASS_server_emulator)
         t2 = threading.Thread(target=td_coap_core_20_FAIL_client_emulator)
         
+        t1 = threading.Thread(target=td_coap_core_20_FAIL_WRONG_FORMAT_server_emulator)
+        t2 = threading.Thread(target=td_coap_core_20_PASS_client_emulator)
+        
         #test case 21
         t1 = threading.Thread(target=td_coap_core_21_PASS_server_emulator)
         t2 = threading.Thread(target=td_coap_core_21_PASS_client_emulator)
@@ -2513,12 +2759,18 @@ def main(argv):
         t1 = threading.Thread(target=td_coap_core_21_PASS_server_emulator)
         t2 = threading.Thread(target=td_coap_core_21_FAIL_client_emulator)
         
+        t1 = threading.Thread(target=td_coap_core_21_FAIL_server_emulator)
+        t2 = threading.Thread(target=td_coap_core_21_PASS_client_emulator)
+        
         #test case 22
         t1 = threading.Thread(target=td_coap_core_22_PASS_server_emulator)
         t2 = threading.Thread(target=td_coap_core_22_PASS_client_emulator)
         
         t1 = threading.Thread(target=td_coap_core_22_PASS_server_emulator)
         t2 = threading.Thread(target=td_coap_core_22_FAIL_client_emulator)
+        
+        t1 = threading.Thread(target=td_coap_core_22_FAIL_server_emulator)
+        t2 = threading.Thread(target=td_coap_core_22_PASS_client_emulator)
         
         #test case 23
         t1 = threading.Thread(target=td_coap_core_23_PASS_server_emulator)

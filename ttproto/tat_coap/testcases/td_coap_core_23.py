@@ -82,8 +82,6 @@ TD_COAP_CORE_23:
     def run(self):
         # Part A
 
-    #TODO: fail if no CoAPOptionIfNoneMatch()?
-
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -108,8 +106,6 @@ TD_COAP_CORE_23:
 
         # Part B
 
-        # TODO: fail if no CoAPOptionIfNoneMatch()?
-
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -131,8 +127,7 @@ TD_COAP_CORE_23:
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=4.12,
                                               mid=CMID2,
-                                              tok=CTOK2,
-                                              pl=b"")):
+                                              tok=CTOK2), 'fail'):
             raise self.Stop()
 
         self.next_skip_ack(optional=True)

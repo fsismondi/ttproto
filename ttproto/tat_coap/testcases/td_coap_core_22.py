@@ -176,8 +176,6 @@ TD_COAP_CORE_22:
 
         # Step 5
 
-        # TODO: fail if no CoAPOptionIfMatch()?
-
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -276,8 +274,6 @@ TD_COAP_CORE_22:
 
         # Step 17
 
-        # TODO: fail if no CoAPOptionIfMatch()?
-
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -300,4 +296,4 @@ TD_COAP_CORE_22:
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=4.12,
                                        mid=CMID5,
-                                       tok=CTOK5, ))
+                                       tok=CTOK5), 'fail')

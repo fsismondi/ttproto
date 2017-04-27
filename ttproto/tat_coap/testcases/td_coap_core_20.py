@@ -72,7 +72,6 @@ TD_COAP_CORE_20:
 
     def run(self):
 
-        # TODO: fail if no CoAPOptionAccept ?
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format") if self.urifilter else Opt(CoAPOptionAccept())))
         self.match("client", CoAP(type="con", code="get",
@@ -91,8 +90,6 @@ TD_COAP_CORE_20:
 
         self.next_skip_ack(optional=True)
 
-        #TODO: fail if no CoAPOptionAccept ?
-
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format", CoAPOptionAccept(41))))
         CMID2 = self.coap["mid"]
@@ -107,12 +104,14 @@ TD_COAP_CORE_20:
 
         self.next_skip_ack()
 
-        # TODO: fail if no CoAPOptionAccept ?
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID2,
-                                       tok=CTOK2,
-                                       opt=Opt(CoAPOptionContentFormat(41)),
-                                       pl=Not(b"")))
+                                       tok=CTOK2))
+
+        if self.match("server", CoAP(pl=Not(b""))):
+            self.match("server", CoAP(
+                opt=Opt(CoAPOptionContentFormat(41)),
+            ), "fail")
 
         self.next_skip_ack(optional=True)
