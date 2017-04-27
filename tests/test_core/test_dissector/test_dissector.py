@@ -16,7 +16,7 @@ class DissectorTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
+    TEST_FILE_DIR = 'tests/test_dumps/dissection'
 
     # dissect CoAP pcap with other UDP messages:
     PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'

@@ -21,7 +21,7 @@ class DissectorTestCase(unittest.TestCase):
 
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests/6lowpan'
+    TEST_FILE_DIR = 'tests/test_dumps/dissection/6lowpan'
     TMP_DIR = 'tmp/'
 
     # Create a struct checker object
@@ -70,7 +70,7 @@ class DissectorTestCase(unittest.TestCase):
         #self.dissector = Dissector(self.filtered_pcap_filename)
 
         # CoAP
-        # TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
+        # TEST_FILE_DIR = 'tests/test_dumps/dissection'
         # PCAP_FILE = TEST_FILE_DIR + '/CoAP_plus_random_UDP_messages.pcap'
         # self.dissector = Dissector(PCAP_FILE)
 

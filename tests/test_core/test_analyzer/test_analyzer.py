@@ -15,7 +15,7 @@ class AnalyzerTestCase(unittest.TestCase):
 
     # Test env (only tat_coap for the moment)
     TEST_ENV = 'tat_coap'
-    TEST_DIR = './tests/test_dumps/AnalyzerTests/coap_core/'
+    TEST_DIR = './tests/test_dumps/analysis/coap_core/'
     UNKNOWN_TEST_ENV = 'unknown'
     TEST_CASE_ID = 'TD_COAP_CORE_01'
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = 'TD_COAP_CORE_24'

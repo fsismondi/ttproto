@@ -6,6 +6,7 @@ from ttproto.core.lib.all import *
 from tests.test_tools.struct_validator import StructureValidator
 from ttproto.core.packet import Value, PacketValue
 from ttproto.core.lib.inet.meta import InetPacketValue
+from ttproto.core.typecheck3000 import InputParameterError
 
 
 class FrameTestCase(unittest.TestCase):
@@ -16,7 +17,7 @@ class FrameTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
+    TEST_FILE_DIR = 'tests/test_dumps/dissection'
     PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
 
     # Create a struct checker object
