@@ -7,7 +7,7 @@ from ttproto.core.typecheck3000 import InputParameterError
 from ttproto.core.packet import PacketValue
 from ttproto.core.lib.inet.coap import CoAP
 from ttproto.core.lib.inet.meta import InetPacketValue
-from tests.test_tools.struct_checker import StructureChecker
+from tests.test_tools.struct_validator import StructureValidator
 from ttproto.utils.pcap_filter import openwsn_profile_filter
 
 class DissectorTestCase(unittest.TestCase):
@@ -25,7 +25,7 @@ class DissectorTestCase(unittest.TestCase):
     TMP_DIR = 'tmp/'
 
     # Create a struct checker object
-    STRUCT_CHECKER = StructureChecker()
+    struct_validator = StructureValidator()
 
     # #################### Init and deinit functions #########################
     def setUp(self):
@@ -207,7 +207,7 @@ class DissectorTestCase(unittest.TestCase):
 #
 #         i = 1
 #         for frame in dissect:
-#             self.STRUCT_CHECKER.check_frame(frame)
+#             self.struct_validator.check_frame(frame)
 #             self.assertEqual(frame['id'], i)
 #             i += 1
 #
@@ -224,7 +224,7 @@ class DissectorTestCase(unittest.TestCase):
 #
 #         i = 4  # CoAP frames are n°4 and 5
 #         for frame in dissect:
-#             self.STRUCT_CHECKER.check_frame(frame)
+#             self.struct_validator.check_frame(frame)
 #             self.assertEqual(frame['id'], i)
 #             i += 1
 #
@@ -238,7 +238,7 @@ class DissectorTestCase(unittest.TestCase):
 #             dissect = self.dissector.dissect(prots)
 #             self.assertTrue(type(dissect), list)
 #             for frame in dissect:
-#                 self.STRUCT_CHECKER.check_frame(frame)
+#                 self.struct_validator.check_frame(frame)
 #
 #     def test_dissect_with_filtering_on_none_type(self):
 #

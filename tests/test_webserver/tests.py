@@ -4,14 +4,11 @@ import http.server
 import os
 import threading
 import requests
-import sys
+import base64
+import hashlib
 
-from collections import OrderedDict
-
-from ttproto.tat_coap import webserver
-from ttproto.tat_coap.webserver import *
-from tests.test_tools.struct_validator import StructureValidator
-
+from ttproto.ts_coap import webserver
+from ttproto.ts_coap.webserver import *
 
 
 class WebserverTestCase(unittest.TestCase):
@@ -26,7 +23,10 @@ class WebserverTestCase(unittest.TestCase):
     SERVER_ADDRESS = '0.0.0.0'
     SERVER_PORT = 8008
     TAT_API_URL = 'http://127.0.0.1:' + str(SERVER_PORT)
-    FILES_DIR = 'tests/test_dumps'
+    FILES_DIR = 'tests/test_files'
+
+    # Accepted values for some fields
+    VERDICT_VALUES = [None, "inconclusive", "pass", "fail", "error"]
 
     # Some dummy values
     EXISTING_TEST_CASE = 'TD_COAP_CORE_01'
@@ -39,8 +39,48 @@ class WebserverTestCase(unittest.TestCase):
     CORRECT_TOKEN = None
     CORRECT_FRAME_ID = None
 
-    # Create a struct checker object
-    struct_validator = StructureValidator()
+    # Structure definition of packets
+    STRUCT_RESPONSE_OK = {
+        '_type': str,
+        'ok': bool,
+        'content': list
+    }
+    STRUCT_RESPONSE_KO = {
+        '_type': str,
+        'ok': bool,
+        'error': str
+    }
+    STRUCT_TC_BASIC = {
+        '_type': str,
+        'id': str,
+        'objective': str
+    }
+    STRUCT_TC_IMPLEMENTATION = {
+        '_type': str,
+        'implementation': str
+    }
+    STRUCT_IMPLEMENTED_PROTOCOL = {
+        '_type': str,
+        'name': str,
+        'description': str
+    }
+    STRUCT_TOKEN = {
+        '_type': str,
+        'value': str
+    }
+    STRUCT_FRAME = {
+        '_type': str,
+        'id': int,
+        'timestamp': float,
+        'error': (type(None), str),
+        'protocol_stack': list
+    }
+    STRUCT_VERDICT = {
+        '_type': str,
+        'verdict': str,
+        'description': str,
+        'review_frames': list
+    }
 
     # #################### Init and deinit functions #########################
     # def setUp(self):
@@ -108,43 +148,167 @@ class WebserverTestCase(unittest.TestCase):
         cls.server.server_close()
         webserver.log_file.close()
 
-        # Reopen the stdout that was redirected using the dup2 function into
-        # the webserver. The dup2 closes the 2nd fd before redirecting the
-        # first one so we have to reopen it.
-        #
-        # TODO: Use a good structured framework instead of basic http server
-        #       seems to be a good idea, if so remove this line.
-        sys.stdout = os.fdopen(1, 'w')
+    # #################### Utilities functions #########################
+
+    def check_correct_structure(self, el, structure):
+        # Check that it's a non empty dict
+        self.assertIsInstance(el, dict)
+        self.assertGreater(len(el), 0)
+
+        # Check its fields
+        self.assertEqual(el.keys(), structure.keys())
+
+        # Check the type of all its fields
+        for field in structure:
+            self.assertIsInstance(el[field], structure[field])
+
+    def check_correct_response_header(self, response):
+        # Check the object type
+        self.assertIsInstance(response, requests.models.Response)
+
+        # Check the response code
+        self.assertEqual(response.status_code, 200)
+
+        # Check the headers
+        self.assertEqual(
+            response.headers['content-type'],
+            'application/json;charset=utf-8'
+        )
+
+    def check_request_not_found_header(self, response):
+        # Check the object type
+        self.assertIsInstance(response, requests.models.Response)
+
+        # Check the response code
+        self.assertEqual(response.status_code, 404)
+
+    def check_correct_response(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_RESPONSE_OK)
+
+        # Check its values
+        self.assertEqual(el['_type'], 'response')
+        self.assertTrue(el['ok'])
+        self.assertGreater(len(el['content']), 0)
+
+    def check_error_response(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_RESPONSE_KO)
+
+        # Check its values
+        self.assertEqual(el['_type'], 'response')
+        self.assertFalse(el['ok'])
+
+    def check_tc_basic(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_TC_BASIC)
+
+        # Check its type
+        self.assertEqual(el['_type'], 'tc_basic')
+
+    def check_tc_implementation(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_TC_IMPLEMENTATION)
+
+        # Check its type
+        self.assertEqual(el['_type'], 'tc_implementation')
+
+    def check_implemented_protocol(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_IMPLEMENTED_PROTOCOL)
+
+        # Check its type
+        self.assertEqual(el['_type'], 'implemented_protocol')
+
+    def check_token(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_TOKEN)
+
+        # Check its type
+        self.assertEqual(el['_type'], 'token')
+
+        # Check that the value is a correct hash
+        # Add '=' only for checking
+        decoded = base64.urlsafe_b64decode(el['value'] + '=')
+        self.assertEqual(len(decoded), hashlib.sha1().digest_size)
+
+    def check_protocol(self, el):
+        # Check that it's a non empty dict
+        self.assertIsInstance(el, dict)
+        self.assertGreater(len(el), 0)
+
+        # Check its minimum fields
+        self.assertIn('_type', el)
+        self.assertIn('_protocol', el)
+        self.assertEqual(el['_type'], 'protocol')
+
+        # Check that it has more values than that
+        self.assertGreater(len(el), 2)
+
+    def check_frame(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_FRAME)
+
+        # Check its type
+        self.assertEqual(el['_type'], 'frame')
+
+        # Check that we have a protocol stack
+        self.assertGreater(len(el['protocol_stack']), 0)
+        for prot in el['protocol_stack']:
+            self.check_protocol(prot)
+
+    def check_is_int_real(self, el):
+        # Check its type
+        self.assertEqual(type(el), int)
+
+        # Check its value
+        self.assertGreater(el, 0)
+
+    def check_verdict(self, el):
+        # Check the structure
+        self.check_correct_structure(el, self.STRUCT_VERDICT)
+
+        # Check its type
+        self.assertEqual(el['_type'], 'verdict')
+
+        # Check that the verdict given is contained in the accepted values
+        self.assertIn(el['verdict'], self.VERDICT_VALUES)
+
+        # Check that we have some review frames
+        self.assertGreaterEqual(len(el['review_frames']), 0)
+        for frame in el['review_frames']:
+            self.check_is_int_real(frame)
 
     # #################### Tests functions #########################
 
     # ##### get_test_cases(testcase_id=None)
     def test_get_test_cases_all_selected(self):
         test_cases = get_test_cases()
+        self.assertIsInstance(test_cases, dict)
         self.assertGreater(len(test_cases), 0)
-        self.struct_validator.check_tc_from_webserver(test_cases)
+        self.assertIsInstance(test_cases, dict)
 
     def test_get_test_cases_all_selected_with_none_value(self):
         test_cases = get_test_cases(None)
+        self.assertIsInstance(test_cases, dict)
         self.assertGreater(len(test_cases), 0)
-        self.struct_validator.check_tc_from_webserver(test_cases)
+        self.assertIsInstance(test_cases, dict)
 
     def test_get_test_cases_only_one_existing_test_case(self):
         test_case = get_test_cases(self.EXISTING_TEST_CASE)
-        self.assertEqual(type(test_case), OrderedDict)
+        self.assertIsInstance(test_case, dict)
         self.assertEqual(len(test_case), 2)
 
-        # Check the fields of value
+        # Check that we received a correct element
         self.assertIn('tc_basic', test_case)
-        self.assertIn('tc_implementation', test_case)
+        self.check_tc_basic(test_case['tc_basic'])
 
-        # Check the two fields then
-        self.struct_validator.check_tc_basic(test_case['tc_basic'])
-        self.struct_validator.check_tc_implementation(test_case['tc_implementation'])
+        self.assertIn('tc_implementation', test_case)
+        self.check_tc_implementation(test_case['tc_implementation'])
 
     def test_get_test_cases_only_one_unknown_test_case(self):
-        with self.assertRaises(FileNotFoundError):
-            test_cases = get_test_cases(self.UNKNOWN_TEST_CASE)
+        test_case = get_test_cases(self.UNKNOWN_TEST_CASE)
+        self.assertIsNone(test_case)
 
     # -------------------------------------------------------------------------------
 
@@ -155,16 +319,16 @@ class WebserverTestCase(unittest.TestCase):
         resp = requests.get(self.TAT_API_URL + '/api/v1/analyzer_getTestCases')
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the content only contains tc_basic
         self.assertGreater(len(resp['content']), 0)
         for content in resp['content']:
-            self.struct_validator.check_tc_basic(content)
+            self.check_tc_basic(content)
 
     # -------------------------------------------------------------------------------
 
@@ -181,16 +345,16 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the content only contains a tc_implementation and a tc_basic
         self.assertEqual(len(resp['content']), 2)
-        self.struct_validator.check_tc_basic(resp['content'][0])
-        self.struct_validator.check_tc_implementation(resp['content'][1])
+        self.check_tc_basic(resp['content'][0])
+        self.check_tc_implementation(resp['content'][1])
 
     def test_analyzer_get_testcase_implementation_no_params(self):
 
@@ -200,11 +364,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -224,11 +388,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -251,11 +415,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -275,11 +439,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -300,18 +464,18 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # It passes but in practice there is no POST values into a GET request
 
         # Check the content only contains a tc_implementation and a tc_basic
         self.assertEqual(len(resp['content']), 2)
-        self.struct_validator.check_tc_basic(resp['content'][0])
-        self.struct_validator.check_tc_implementation(resp['content'][1])
+        self.check_tc_basic(resp['content'][0])
+        self.check_tc_implementation(resp['content'][1])
 
     def test_analyzer_get_testcase_implementation_unknown_test_case(self):
 
@@ -325,11 +489,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -346,16 +510,16 @@ class WebserverTestCase(unittest.TestCase):
         resp = requests.get(self.TAT_API_URL + '/api/v1/analyzer_getProtocols')
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the content only contains protocols
         self.assertGreater(len(resp['content']), 0)
         for content in resp['content']:
-            self.struct_validator.check_implemented_protocol(content)
+            self.check_implemented_protocol(content)
 
     # -------------------------------------------------------------------------------
 
@@ -382,17 +546,17 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
+        self.check_token(resp['content'][0])
         self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
-        self.struct_validator.check_frame(resp['content'][1])
+        self.check_frame(resp['content'][1])
         self.assertEqual(resp['content'][1]['id'], CORRECT_FRAME_ID)
 
     def test_analyzer_get_frames_no_params(self):
@@ -401,11 +565,11 @@ class WebserverTestCase(unittest.TestCase):
         resp = requests.get(self.TAT_API_URL + '/api/v1/analyzer_getFrames')
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -429,11 +593,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -457,11 +621,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -481,11 +645,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -512,20 +676,20 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertGreaterEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
+        self.check_token(resp['content'][0])
         self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
 
         # Check each following frames
         for i in range(1, len(resp['content'])):
-            self.struct_validator.check_frame(resp['content'][i])
+            self.check_frame(resp['content'][i])
 
     def test_analyzer_get_frames_token_and_frame_id(self):
 
@@ -548,11 +712,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -579,11 +743,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -611,11 +775,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -643,11 +807,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -678,11 +842,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -713,18 +877,18 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # It passes but in practice there is no POST values into a GET request
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
-        self.struct_validator.check_frame(resp['content'][1])
+        self.check_token(resp['content'][0])
+        self.check_frame(resp['content'][1])
 
     def test_analyzer_get_frames_wrong_token(self):
 
@@ -746,11 +910,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -778,11 +942,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -812,11 +976,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -853,17 +1017,17 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
+        self.check_token(resp['content'][0])
         self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
-        self.struct_validator.check_frame(resp['content'][1])
+        self.check_frame(resp['content'][1])
         self.assertEqual(resp['content'][1]['id'], CORRECT_FRAME_ID)
 
     def test_dissector_get_frames_no_params(self):
@@ -872,11 +1036,11 @@ class WebserverTestCase(unittest.TestCase):
         resp = requests.get(self.TAT_API_URL + '/api/v1/dissector_getFrames')
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -900,11 +1064,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -928,11 +1092,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -952,11 +1116,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -983,20 +1147,20 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertGreaterEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
+        self.check_token(resp['content'][0])
         self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
 
         # Check each following frames
         for i in range(1, len(resp['content'])):
-            self.struct_validator.check_frame(resp['content'][i])
+            self.check_frame(resp['content'][i])
 
     def test_dissector_get_frames_token_and_frame_id(self):
 
@@ -1019,11 +1183,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1050,11 +1214,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1082,11 +1246,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1114,11 +1278,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1149,11 +1313,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1184,18 +1348,18 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # It passes but in practice there is no POST values into a GET request
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
-        self.struct_validator.check_frame(resp['content'][1])
+        self.check_token(resp['content'][0])
+        self.check_frame(resp['content'][1])
 
     def test_dissector_get_frames_wrong_token(self):
 
@@ -1217,11 +1381,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1249,11 +1413,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1283,11 +1447,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1310,16 +1474,16 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the content only contains protocols
         self.assertGreater(len(resp['content']), 0)
         for content in resp['content']:
-            self.struct_validator.check_implemented_protocol(content)
+            self.check_implemented_protocol(content)
 
     # -------------------------------------------------------------------------------
 
@@ -1328,7 +1492,7 @@ class WebserverTestCase(unittest.TestCase):
 
         # Execute a request on an unknown path
         resp = requests.get(self.TAT_API_URL + '/api/v1/unknow_path')
-        self.struct_validator.check_request_not_found_header(resp)
+        self.check_request_not_found_header(resp)
 
     # -------------------------------------------------------------------------------
 
@@ -1353,31 +1517,21 @@ class WebserverTestCase(unittest.TestCase):
             files=files
         )
 
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write(str(resp.content))
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write('#######################"')
-        # sys.stderr.write('#######################"')
-
         # Close the file
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 3)
-        self.struct_validator.check_token(resp['content'][0])
-        self.struct_validator.check_tc_basic(resp['content'][1])
-        self.struct_validator.check_verdict(resp['content'][2])
+        self.check_token(resp['content'][0])
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
 
         # Check that the verdict is correct too
         self.assertEqual(resp['content'][2]['verdict'], 'pass')
@@ -1401,18 +1555,18 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 3)
-        self.struct_validator.check_token(resp['content'][0])
+        self.check_token(resp['content'][0])
         self.assertEqual(resp['content'][0]['value'], CORRECT_TOKEN)
-        self.struct_validator.check_tc_basic(resp['content'][1])
-        self.struct_validator.check_verdict(resp['content'][2])
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
 
         # Check that the verdict is correct too
         self.assertEqual(resp['content'][2]['verdict'], 'pass')
@@ -1426,11 +1580,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1450,11 +1604,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1483,11 +1637,11 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1507,11 +1661,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1543,11 +1697,11 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1582,11 +1736,11 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1610,7 +1764,7 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_request_not_found_header(resp)
+        self.check_request_not_found_header(resp)
 
     def test_analyzer_test_case_analyze_pcap_file_not_a_file(self):
 
@@ -1635,11 +1789,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1670,11 +1824,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1708,11 +1862,11 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1746,17 +1900,17 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp['content']), 3)
-        self.struct_validator.check_token(resp['content'][0])
-        self.struct_validator.check_tc_basic(resp['content'][1])
-        self.struct_validator.check_verdict(resp['content'][2])
+        self.check_token(resp['content'][0])
+        self.check_tc_basic(resp['content'][1])
+        self.check_verdict(resp['content'][2])
 
         # Check that the verdict is correct too
         self.assertEqual(resp['content'][2]['verdict'], 'pass')
@@ -1774,17 +1928,17 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp_token)
+        self.check_correct_response_header(resp_token)
 
         # Check data headers
         resp_token = resp_token.json()
-        self.struct_validator.check_correct_response(resp_token)
+        self.check_correct_response(resp_token)
 
         # Check the response contains a token and a frame
         self.assertEqual(len(resp_token['content']), 3)
-        self.struct_validator.check_token(resp_token['content'][0])
-        self.struct_validator.check_tc_basic(resp_token['content'][1])
-        self.struct_validator.check_verdict(resp_token['content'][2])
+        self.check_token(resp_token['content'][0])
+        self.check_tc_basic(resp_token['content'][1])
+        self.check_verdict(resp_token['content'][2])
 
         # Check that the verdict is correct too
         self.assertEqual(resp_token['content'][2]['verdict'], 'pass')
@@ -1819,15 +1973,15 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_correct_response(resp)
+        self.check_correct_response(resp)
 
         # Check the response contains a token
         self.assertGreaterEqual(len(resp['content']), 2)
-        self.struct_validator.check_token(resp['content'][0])
+        self.check_token(resp['content'][0])
 
         # Get the token then
         global CORRECT_TOKEN
@@ -1835,7 +1989,7 @@ class WebserverTestCase(unittest.TestCase):
 
         # And many frames
         for i in range(1, len(resp['content'])):
-            self.struct_validator.check_frame(resp['content'][i])
+            self.check_frame(resp['content'][i])
 
         # Get the last frame_id
         global CORRECT_FRAME_ID
@@ -1850,11 +2004,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1874,11 +2028,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1907,11 +2061,11 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -1942,7 +2096,7 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_request_not_found_header(resp)
+        self.check_request_not_found_header(resp)
 
     def test_dissector_dissect_file_pcap_file_not_a_file(self):
 
@@ -1966,11 +2120,11 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -2000,11 +2154,17 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            "Expected 'pcap_file' to be a non empty pcap file"
+        )
 
     def test_dissector_dissect_file_pcap_file_in_file_but_not_a_pcap_file(self):
 
@@ -2028,11 +2188,17 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            "Expected 'pcap_file' to be a non empty pcap file"
+        )
 
     def test_dissector_dissect_file_empty_pcap_file(self):
 
@@ -2056,11 +2222,17 @@ class WebserverTestCase(unittest.TestCase):
         )
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
+
+        # Check the content is an error message
+        self.assertEqual(
+            resp['error'],
+            "Expected 'pcap_file' to be a non empty pcap file"
+        )
 
     def test_dissector_dissect_file_unknown_protocol_selection(self):
 
@@ -2088,11 +2260,11 @@ class WebserverTestCase(unittest.TestCase):
         files['pcap_file'].close()
 
         # Check headers
-        self.struct_validator.check_correct_response_header(resp)
+        self.check_correct_response_header(resp)
 
         # Check data headers
         resp = resp.json()
-        self.struct_validator.check_error_response(resp)
+        self.check_error_response(resp)
 
         # Check the content is an error message
         self.assertEqual(
@@ -2107,7 +2279,7 @@ class WebserverTestCase(unittest.TestCase):
 
         # Execute a request on an unknown path
         resp = requests.post(self.TAT_API_URL + '/api/v1/unknow_path')
-        self.struct_validator.check_request_not_found_header(resp)
+        self.check_request_not_found_header(resp)
 
 
 # #################### Main run the tests #########################

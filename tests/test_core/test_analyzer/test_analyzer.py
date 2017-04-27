@@ -3,7 +3,7 @@ import unittest, logging
 from os import getcwd, path
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.typecheck3000 import InputParameterError
-from tests.test_tools.struct_checker import StructureChecker
+from tests.test_tools.struct_validator import StructureValidator
 
 
 class AnalyzerTestCase(unittest.TestCase):
@@ -22,7 +22,7 @@ class AnalyzerTestCase(unittest.TestCase):
     UNKNOWN_TEST_CASE_ID = 'TD_COAP_CORE_42'
 
     # Create a struct checker object
-    STRUCT_CHECKER = StructureChecker()
+    struct_validator = StructureValidator()
 
     # #################### Init and deinit functions #########################
     def setUp(self):
@@ -50,19 +50,19 @@ class AnalyzerTestCase(unittest.TestCase):
 
         # Get implemented test cases and check their values
         tcs = self.analyzer.get_implemented_testcases()
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.struct_validator.check_tc_from_analyzer(tcs)
 
     def test_get_implemented_testcases_with_none_value(self):
 
         # Get implemented test cases and check their values
         tcs = self.analyzer.get_implemented_testcases(None)
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.struct_validator.check_tc_from_analyzer(tcs)
 
     def test_get_implemented_testcases_single_test_case(self):
 
         # Get implemented test cases and check their values
         tcs = self.analyzer.get_implemented_testcases([self.TEST_CASE_ID])
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.struct_validator.check_tc_from_analyzer(tcs)
         self.assertEqual(len(tcs), 1)
         self.assertEqual(tcs[0][0], self.TEST_CASE_ID)
 
@@ -70,7 +70,7 @@ class AnalyzerTestCase(unittest.TestCase):
 
         # Get implemented test cases and check their values
         tcs = self.analyzer.get_implemented_testcases(verbose=True)
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.struct_validator.check_tc_from_analyzer(tcs)
 
         # Check that they have the extra informations (the source code)
         for tc in tcs:
@@ -82,7 +82,7 @@ class AnalyzerTestCase(unittest.TestCase):
         tcs = self.analyzer.get_implemented_testcases(
             [self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST]
         )
-        self.STRUCT_CHECKER.check_tc_from_analyzer(tcs)
+        self.struct_validator.check_tc_from_analyzer(tcs)
         self.assertEqual(len(tcs), 1)
         self.assertEqual(tcs[0][0], self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST)
 
