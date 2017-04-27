@@ -3,9 +3,10 @@ import unittest
 from collections import OrderedDict
 from ttproto.core.dissector import Capture, Dissector, Frame, ReaderError
 from ttproto.core.lib.all import *
-from tests.test_tools.struct_checker import StructureChecker
+from tests.test_tools.struct_validator import StructureValidator
 from ttproto.core.packet import Value, PacketValue
 from ttproto.core.lib.inet.meta import InetPacketValue
+from ttproto.core.typecheck3000 import InputParameterError
 
 
 class FrameTestCase(unittest.TestCase):
@@ -16,11 +17,11 @@ class FrameTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
+    TEST_FILE_DIR = 'tests/test_dumps/dissection'
     PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
 
     # Create a struct checker object
-    STRUCT_CHECKER = StructureChecker()
+    struct_validator = StructureValidator()
     FRAMES_PROTOCOL = {
         1: [
             UDP,
@@ -132,7 +133,7 @@ class FrameTestCase(unittest.TestCase):
             self.assertEqual(len(dictionnary), 5)
 
             # Check whole structure from struct checker
-            self.STRUCT_CHECKER.check_frame(dictionnary)
+            self.struct_validator.check_frame(dictionnary)
 
     # ##### __contains__
     def test___contains__(self):

@@ -11,7 +11,7 @@ class CaptureTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/DissectorTests'
+    TEST_FILE_DIR = 'tests/test_dumps/dissection'
     PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
     WRONG_TEST_FILE_DIR = 'tests/test_dumps/exceptions'
     EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
