@@ -71,6 +71,8 @@ TD_COAP_CORE_20:
         ]
 
     def run(self):
+
+    # Step 2
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format") if self.urifilter else Opt(CoAPOptionAccept())))
         self.match("client", CoAP(type="con", code="get",
@@ -79,7 +81,7 @@ TD_COAP_CORE_20:
         CTOK = self.coap["tok"]
 
         self.next_skip_ack()
-
+    # Step 3
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID,
@@ -88,25 +90,29 @@ TD_COAP_CORE_20:
                                        pl=Not(b"")))
 
         self.next_skip_ack(optional=True)
-
+    # Step 6
         self.match("client", CoAP(type="con", code="get",
                                        opt=self.uri("/multi-format", CoAPOptionAccept(41))))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
-        if CMID2 is Not(b''):
+
+        if CMID2 != b"":
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK2 is Not(b''):
+        if CTOK2 != b"":
             if CTOK2 == CTOK:
                 self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
-
+    # Step 7
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID2,
-                                       tok=CTOK2,
-                                       opt=Opt(CoAPOptionContentFormat(41)),
-                                       pl=Not(b"")))
+                                       tok=CTOK2))
+
+        if self.match("server", CoAP(pl=Not(b""))):
+            self.match("server", CoAP(
+                opt=Opt(CoAPOptionContentFormat(41)),
+            ), "fail")
 
         self.next_skip_ack(optional=True)

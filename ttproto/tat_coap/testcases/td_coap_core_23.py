@@ -81,7 +81,7 @@ TD_COAP_CORE_23:
 
     def run(self):
         # Part A
-
+        # Step 2
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -94,7 +94,7 @@ TD_COAP_CORE_23:
         CTOK = self.coap["tok"]
 
         self.next_skip_ack()
-
+        # Step 3
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=2.01, mid=CMID, tok=CTOK)):
             raise self.Stop()
@@ -105,7 +105,7 @@ TD_COAP_CORE_23:
         self.next_skip_ack(optional=True)
 
         # Part B
-
+        # Step 6
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -115,20 +115,19 @@ TD_COAP_CORE_23:
                                        pl=Not(b"")))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
-        if CMID2 is Not(b''):
+        if CMID2 != b"":
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK2 is Not(b''):
+        if CTOK2 != b"":
             if CTOK2 == CTOK:
                 self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
-
+        # Step 7
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=4.12,
                                               mid=CMID2,
-                                              tok=CTOK2,
-                                              pl=b"")):
+                                              tok=CTOK2), 'fail'):
             raise self.Stop()
 
         self.next_skip_ack(optional=True)

@@ -43,6 +43,7 @@ TD_COAP_CORE_05:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
+        # TODO client message w/ no content format -> fail?
         return [CoAP(type='non', code='get')]
 
     def run (self):

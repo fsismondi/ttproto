@@ -75,12 +75,13 @@ TD_COAP_CORE_13:
 
         self.next_skip_ack()
 
-        self.match ("server", CoAP (	code = 2.05,
-                            type = Any (CoAPType("con"), "ack"),
-                            mid=CMID,
-                            tok=CTOK,
-                            pl = Not (b""),
-                            opt = Opt (CoAPOptionContentFormat()),
-                ))
-
+        if self.match(
+            'server',
+            CoAP(code=2.05, type = Any (CoAPType("con"), "ack"), mid=CMID, tok=CTOK, pl=Not(b''))
+        ):
+            self.match(
+                'server',
+                CoAP(opt=Opt(CoAPOptionContentFormat())),
+                'fail'
+            )
 

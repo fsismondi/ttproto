@@ -62,7 +62,7 @@ TD_COAP_CORE_18:
                     )))
 
         self.next_skip_ack()
-
+        #TODO: generate a fail if we have a '/' or '.' or '..' in the CoAPOptionLocationPath ? see 5.10.7
         self.match ("server", CoAP (code=2.01,
                         opt=Opt(
                             CoAPOptionLocationPath ("location1"),

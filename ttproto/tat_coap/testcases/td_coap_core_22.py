@@ -142,7 +142,7 @@ TD_COAP_CORE_22:
             CoAP(type='con', code='put'),  # Step 4
             CoAP(type='con', code='get'),  # Step 8
             CoAP(type='con', code='put'),  # Step 12
-            CoAP(type='con', code='put')   # Step 16
+            CoAP(type='con', code='put')   # Step 13
         ]
 
     def run(self):
@@ -175,6 +175,7 @@ TD_COAP_CORE_22:
         # Part A
 
         # Step 5
+
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -184,10 +185,11 @@ TD_COAP_CORE_22:
                                        pl=All(Not(b""), Not(pl_3))))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
-        if CMID2 is Not(b''):
+
+        if CMID2 != b"":
             if CMID2 == CMID:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK2 is Not(b''):
+        if CTOK2 != b"":
             if CTOK2 == CTOK:
                 self.set_verdict("fail", "Token should be different")
         pl_5 = self.coap["pl"]
@@ -214,10 +216,11 @@ TD_COAP_CORE_22:
                                        opt=Opt(CoAPOptionUriPath("validate"))))
         CMID3 = self.coap["mid"]
         CTOK3 = self.coap["tok"]
-        if CMID3 is Not(b''):
+
+        if CMID3 != b"":
             if CMID3 == CMID or CMID3 == CMID2:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK3 is Not(b''):
+        if CTOK3 != b"":
             if CTOK3 == CTOK or CTOK3 == CTOK2:
                 self.set_verdict("fail", "Token should be different")
 
@@ -244,23 +247,24 @@ TD_COAP_CORE_22:
                                            CoAPOptionContentFormat(),
                                        ),
                                        pl=All(Not(b""), Not(pl_3), Not(pl_10))))
-        CMID4 = self.coap["mid"]
-        CTOK4 = self.coap["tok"]
-        if CMID4 is Not(b''):
-            if CMID4 == CMID or CMID4 == CMID2 or CMID4 == CMID3:
+        CMID_step13 = self.coap["mid"]
+        CTOK_step13 = self.coap["tok"]
+
+        if CMID_step13 != b"":
+            if CMID_step13 == CMID or CMID_step13 == CMID2 or CMID_step13 == CMID3:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK4 is Not(b''):
-            if CTOK4 == CTOK or CTOK4 == CTOK2 or CTOK4 == CTOK3:
+        if CTOK_step13 != b"":
+            if CTOK_step13 == CTOK or CTOK_step13 == CTOK2 or CTOK_step13 == CTOK3:
                 self.set_verdict("fail", "Token should be different")
         pl_13 = self.coap["pl"]
 
         self.next_skip_ack()
 
-        # Step 14
+        # Step 13 bis
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.04,
-                                       mid=CMID4,
-                                       tok=CTOK4, ))
+                                       mid=CMID_step13,
+                                       tok=CTOK_step13, ))
         if self.match("server", CoAP(pl=Not(b"")), None):
             self.match("server", CoAP(
                 opt=Opt(CoAPOptionContentFormat()),
@@ -268,7 +272,8 @@ TD_COAP_CORE_22:
 
         self.next_skip_ack(optional=True)
 
-        # Step 17
+        # Step 14
+
         self.match("client", CoAP(type="con", code="put",
                                        opt=Opt(
                                            CoAPOptionContentFormat(),
@@ -276,18 +281,19 @@ TD_COAP_CORE_22:
                                            CoAPOptionIfMatch(ETAG2),
                                        ),
                                        pl=All(Not(b""), Not(pl_13))))
-        CMID5 = self.coap["mid"]
-        CTOK5 = self.coap["tok"]
-        if CMID5 is Not(b''):
-            if CMID5 == CMID or CMID5 == CMID2 or CMID5 == CMID3 or CMID5 == CMID4:
+        CMID4 = self.coap["mid"]
+        CTOK4 = self.coap["tok"]
+
+        if CMID4 != b"":
+            if CMID4 == CMID or CMID4 == CMID2 or CMID4 == CMID3 or CMID4 == CMID_step13:
                 self.set_verdict("fail", "Message ID should be different")
-        if CTOK5 is Not(b''):
-            if CTOK5 == CTOK or CTOK5 == CTOK2 or CTOK5 == CTOK3 or CTOK5 == CTOK4:
+        if CTOK4 != b"":
+            if CTOK4 == CTOK or CTOK4 == CTOK2 or CTOK4 == CTOK3 or CTOK4 == CTOK_step13:
                 self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
-        # Step 18
+        # Step 15
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=4.12,
-                                       mid=CMID5,
-                                       tok=CTOK5, ))
+                                       mid=CMID4,
+                                       tok=CTOK4), 'fail')
