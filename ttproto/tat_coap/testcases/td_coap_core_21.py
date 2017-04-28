@@ -104,7 +104,7 @@ TD_COAP_CORE_21:
 
     def run(self):
         # Part A
-
+        # Step 2
         self.match("client", CoAP(type="con", code="get",
                                        opt=All(
                                            Opt(CoAPOptionUriPath("validate")),
@@ -114,7 +114,7 @@ TD_COAP_CORE_21:
         CTOK = self.coap["tok"]
 
         self.next_skip_ack()
-
+        # Step 3
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                               code=2.05,
                                               mid=CMID,
@@ -129,7 +129,7 @@ TD_COAP_CORE_21:
         self.next_skip_ack(optional=True)
 
         # Part B
-
+        # Step 6
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(
                                            CoAPOptionUriPath("validate"),
@@ -146,7 +146,7 @@ TD_COAP_CORE_21:
                 self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
-
+        # Step 7
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.03,
                                        mid=CMID2,
@@ -163,7 +163,7 @@ TD_COAP_CORE_21:
             self.next_skip_ack()
             self.match("server", CoAP(code=2.04))
             self.next_skip_ack(optional=True)
-
+        # Step 11
         self.match("client", CoAP(type="con", code="get",
                                        opt=Opt(
                                            CoAPOptionUriPath("validate"),
@@ -180,7 +180,7 @@ TD_COAP_CORE_21:
                 self.set_verdict("fail", "Token should be different")
 
         self.next_skip_ack()
-
+        # Step 12
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
                                        code=2.05,
                                        mid=CMID3,
