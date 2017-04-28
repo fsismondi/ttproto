@@ -278,7 +278,7 @@ class MsgTestingToolComponentReady(Message):
     _msg_data_template = {
         '_type': 'testingtool.component.ready',
         'component': 'SomeComponent',
-        "message": "SomeComponent ready to start test suite."
+        "message": "Component ready to start test suite."
     }
 
 class MsgTestingToolComponentShutdown(Message):
