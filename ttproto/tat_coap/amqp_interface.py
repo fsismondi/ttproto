@@ -564,6 +564,8 @@ def _auto_dissect_service():
                     m = amqp_messages.MsgDissectionAutoDissect(
                             token=operation_token,
                             frames=dissection,
+                            testcase_id=filename.strip('.pcap'), # dirty solution which saves a lot of lines of code
+                            testcase_ref='unknown'
                     )
                     _publish_message(channel, m)
 
