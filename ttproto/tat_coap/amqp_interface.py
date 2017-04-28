@@ -87,32 +87,18 @@ def signal_int_handler(signal, frame):
 
     # FINISHING... let's send a goodby message
 
-    msg = {
-        'message': '{component} is out! Bye bye..'.format(component='dissector'),
-        "_type": '{component}.shutdown'.format(component='dissection')
-    }
-
-    channel.basic_publish(
-            body=json.dumps(msg),
-            routing_key='control.session.info',
-            exchange=AMQP_EXCHANGE,
-            properties=pika.BasicProperties(
-                    content_type='application/json',
-            )
+    # dissection shutdown message
+    _publish_message(
+            channel,
+            amqp_messages.MsgTestingToolComponentShutdown(component='dissection')
     )
-    msg = {
-        'message': '{component} is out! Bye bye..'.format(component=COMPONENT_ID),
-        "_type": '{component}.shutdown'.format(component='analysis')
-    }
 
-    channel.basic_publish(
-            body=json.dumps(msg),
-            routing_key='control.session.info',
-            exchange=AMQP_EXCHANGE,
-            properties=pika.BasicProperties(
-                    content_type='application/json',
-            )
+    # analysis shutdown message
+    _publish_message(
+            channel,
+            amqp_messages.MsgTestingToolComponentShutdown(component='analysis')
     )
+
 
     logger.info('got SIGINT. Bye bye!')
 
@@ -147,36 +133,17 @@ def start_amqp_interface():
                        queue=events_queue_name,
                        routing_key='control.testcoordination')
 
-    #  let's send bootstrap message (tat)
-    msg = {
-        'message': '{component} is up!'.format(component=COMPONENT_ID),
-        "_type": '{component}.ready'.format(component='analysis')
-    }
+    #  let's send bootstrap message (analysis)
 
-    # Hello world message from tat
-    channel.basic_publish(
-            body=json.dumps(msg),
-            routing_key='control.session.bootstrap',
-            exchange=AMQP_EXCHANGE,
-            properties=pika.BasicProperties(
-                    content_type='application/json',
-            )
+    _publish_message(
+            channel,
+            amqp_messages.MsgTestingToolComponentReady(component='analysis')
     )
 
     #  let's send bootstrap message (dissector)
-    msg = {
-        'message': '{component} is up!'.format(component='dissection'),
-        "_type": '{component}.ready'.format(component='dissection')
-    }
-
-    # Hello world message from dissector (api implemented by this component too)
-    channel.basic_publish(
-            body=json.dumps(msg),
-            routing_key='control.session.bootstrap',
-            exchange=AMQP_EXCHANGE,
-            properties=pika.BasicProperties(
-                    content_type='application/json',
-            )
+    _publish_message(
+            channel,
+            amqp_messages.MsgTestingToolComponentReady(component='dissection')
     )
 
     channel.basic_qos(prefetch_count=1)
@@ -564,8 +531,8 @@ def _auto_dissect_service():
                     m = amqp_messages.MsgDissectionAutoDissect(
                             token=operation_token,
                             frames=dissection,
-                            testcase_id=filename.strip('.pcap'), # dirty solution which saves a lot of lines of code
-                            testcase_ref='unknown'
+                            testcase_id=filename.strip('.pcap'), # dirty solution but less coding :)
+                            testcase_ref='unknown' # not really needed
                     )
                     _publish_message(channel, m)
 
