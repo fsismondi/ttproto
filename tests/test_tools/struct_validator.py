@@ -7,7 +7,7 @@ from collections import OrderedDict
 from ttproto.core.control import Verdict
 
 
-class StructureChecker(unittest.TestCase):
+class StructureValidator(unittest.TestCase):
 
     # #################### Object structures #########################
     STRUCT_RESPONSE_OK = {

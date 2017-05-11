@@ -48,3 +48,7 @@ open web-browser at 127.0.0.1:2080 and upload your PCAP file to be analyzed!
 ## TS_6LoWPAN_ND - Conformance Testing Tool (WIP)
 Conformance testing tool for testing 6LoWPAN ND
 
+
+# Running tests
+
+python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py
