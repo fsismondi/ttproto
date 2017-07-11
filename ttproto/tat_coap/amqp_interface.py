@@ -47,11 +47,10 @@ from ttproto.core.dissector import Dissector
 from ttproto.core.typecheck import typecheck, optional, either
 from ttproto.utils import pure_pcapy
 from ttproto.core.lib.all import *
-from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
+from ttproto.utils.rmq_handler import AMQP_URL,AMQP_EXCHANGE, JsonFormatter, RabbitMQHandler
 from ttproto.utils import amqp_messages
 
 COMPONENT_ID = 'tat'
-AMQP_EXCHANGE = 'default'
 ALLOWED_EXTENSIONS = set(['pcap'])
 COMPONENT_DIR = 'ttproto/tat_coap'
 
