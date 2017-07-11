@@ -45,9 +45,9 @@ try:
 except ImportError:
     pass
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 AMQP_URL = 'amqp://guest:guest@localhost'
-AMQP_EXCHANGE = 'default'
+AMQP_EXCHANGE = 'amq.topic'
 
 # import AMQP variables from environment
 try:
