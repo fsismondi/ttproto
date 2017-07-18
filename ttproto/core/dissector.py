@@ -684,7 +684,7 @@ class Capture:
 if __name__ == "__main__":
     dis = Dissector(
      #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
-            'tmp/TD_COAP_CORE_01.pcap'
+            'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
      )
     print(dis.summary())
     print('#####')

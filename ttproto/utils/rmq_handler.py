@@ -23,12 +23,6 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-'''
-This library is provided to allow standard python logging
-to output log data as JSON formatted strings
-'''
-
 import logging
 import json
 import re
@@ -46,25 +40,22 @@ except ImportError:
     pass
 
 VERSION = '0.0.3'
+
+# defaults vars
 AMQP_URL = 'amqp://guest:guest@localhost'
 AMQP_EXCHANGE = 'amq.topic'
 
 # import AMQP variables from environment
 try:
     AMQP_URL = str(os.environ['AMQP_URL'])
-    print('Env vars for AMQP connection succesfully imported')
-    print('URL: %s' % AMQP_URL)
-
-except KeyError as e:
-    print(' Cannot retrieve environment variables for AMQP connection, using default %s' % AMQP_URL)
-
-try:
     AMQP_EXCHANGE = str(os.environ['AMQP_EXCHANGE'])
     print('Env vars for AMQP connection succesfully imported')
-    print('Exchange: %s' % AMQP_EXCHANGE)
+    print('URL: %s' % AMQP_URL)
+    print('AMQP_EXCHANGE: %s' % AMQP_EXCHANGE)
 
 except KeyError as e:
-    print(' Cannot retrieve environment variables for AMQP connection, using default %s' % AMQP_EXCHANGE)
+    print(' Cannot retrieve environment variables for AMQP connection, using default url: %s, exchange: %s' % (
+    AMQP_URL, AMQP_EXCHANGE))
 
 # skip natural LogRecord attributes
 # http://docs.python.org/library/logging.html#logrecord-attributes
@@ -197,10 +188,9 @@ class RabbitMQHandler(logging.Handler):
         handler = RabbitMQHandler('amqp://guest:guest@localhost')
     """
 
-    def __init__(self, url, name, exchange="default"):
+    def __init__(self, url, name, exchange=AMQP_EXCHANGE):
         logging.Handler.__init__(self)
-        self.url = url
-        self.connection = pika.BlockingConnection(pika.URLParameters(url + "?heartbeat=10"))
+        self.connection = pika.BlockingConnection(pika.URLParameters(url))
         self.channel = self.connection.channel()
         self.exchange = exchange
         self.name = name
@@ -229,6 +219,7 @@ class RabbitMQHandler(logging.Handler):
                     content_type='application/json'
                 )
             )
+        )
 
     def close(self):
         self.channel.close()
@@ -240,20 +231,20 @@ if __name__ == "__main__":
     json_formatter = JsonFormatter()
     rabbitmq_handler.setFormatter(json_formatter)
 
-    log = logging.getLogger(__name__)
-    log.addHandler(rabbitmq_handler)
-    log.setLevel(logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    logger.addHandler(rabbitmq_handler)
+    logger.setLevel(logging.DEBUG)
 
     sh = logging.StreamHandler()
-    log.addHandler(sh)
+    logger.addHandler(sh)
 
     while True:
-        log.critical("This is a critical message")
+        logger.critical("This is a critical message")
         time.sleep(1)
-        log.error("This is an error")
+        logger.error("This is an error")
         time.sleep(1)
-        log.warning("This is a warning")
+        logger.warning("This is a warning")
         time.sleep(1)
-        log.info("This is an info")
+        logger.info("This is an info")
         time.sleep(1)
         log.debug("This is a debug")

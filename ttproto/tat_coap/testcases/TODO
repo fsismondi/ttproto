@@ -2,35 +2,4444 @@
 #TODO: TD_COAP_CORE_15
 #TODO: TD_COAP_CORE_16
 
+class TD_COAP_LINK_01 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_01
+Objective:
+Access to well-known interface for resource discovery
+Configuration:
+CoAP_CFG_01
+References:
+[2]
 
-# list in all file  the list of tests
-TD_COAP_CORE_01
-TD_COAP_CORE_02
-TD_COAP_CORE_03
-TD_COAP_CORE_04
-TD_COAP_CORE_05
-TD_COAP_CORE_06
-TD_COAP_CORE_07
-TD_COAP_CORE_08
-TD_COAP_CORE_09
-TD_COAP_CORE_10
-TD_COAP_CORE_11
-TD_COAP_CORE_12
-TD_COAP_CORE_13
-TD_COAP_CORE_14
-TD_COAP_CORE_17
-TD_COAP_CORE_18
-TD_COAP_CORE_19
-TD_COAP_CORE_20
-TD_COAP_CORE_21
-TD_COAP_CORE_22
-TD_COAP_CORE_23
-TD_COAP_CORE_24
-TD_COAP_CORE_25
-TD_COAP_CORE_26
-TD_COAP_CORE_27
-TD_COAP_CORE_28
-TD_COAP_CORE_29
-TD_COAP_CORE_31
-TODO
-_
+Pre-test
+conditions:
+•	Client  and server supports CoRE Link Format
+•	Server supports /.well-known/core resource and the CoRE Link Format
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve Server’s list of resource
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource
+
+3
+Check
+Server sends response containing:
+Content-format  option indicating 40 (application/link-format)
+Code indicating 69 (2.05 content)
+Payload indicating all the links available on Server
+
+4
+Verify
+Client displays the list of resources available on Server
+"""
+	def run (self):
+		self.match_link_format()
+		self.setverdict ("pass" if self.link else "inconc", "testcase result is not relevant with an empty payload")
+		list (self.link_values())
+
+class TD_COAP_LINK_02 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_02
+Objective:
+Use filtered requests for limiting discovery results
+Configuration:
+CoAP_CFG_01
+References:
+[2] 4.1
+
+Pre-test
+conditions:
+•	Client supports CoRE Link Format
+•	Server supports CoRE Link Format
+•	Server offers different types of resources (Type1, Type2, ...; see Note)
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve Server’s list of resource of a
+specific type Type1
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating “rt=Type1”
+
+3
+Check
+Server sends response containing:
+Content- format option indicating 40 (application/link-format)
+Payload indicating only the links of type Type1 available on
+Server
+
+4
+Verify
+Client displays the list of resources of type Type1 available on
+Server
+Note: Type1, Type2, ... refer to real resource types available on Server and shall be extracted from Server’s
+/.well-known/core resource
+"""
+	def run (self):
+		self.match_link_format (filter = "rt", value = Not(Regex ("[*]")))
+
+		self.setverdict ("pass" if self.link else "inconc", "testcase result is not relevant with an empty payload")
+
+		for lv in self.link_values():
+			rt = lv.get ("rt", self).split()
+			self.setverdict (("pass" if self.link_filter in rt else "fail"), "rt must contain %r" % self.link_filter)
+
+class TD_COAP_LINK_03 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_03
+Objective:
+Handle empty prefix value strings
+Configuration:
+CoAP_CFG_01
+References:
+[2] 4.1 §2
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers different types of resources (Type1, Type2, ...; see Note)
+•	Server offers resources with no type (i.e. no rt attribute)
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve Server’s list of resources
+matching an rt empty value
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating rt=“*”
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating only the links having an rt attribute
+
+4
+Verify
+Client displays the list of resources with rt attribute available
+on Server
+Note: Type1, Type2, ... refer to real resource types available on Server and shall be extracted from Server’s
+/.well-known/core resource
+"""
+
+	def run (self):
+		self.match_link_format (filter = "rt", value = "*")
+
+		self.setverdict ("pass" if self.link else "inconc", "testcase result is not relevant with an empty payload")
+
+		for lv in self.link_values():
+			rt = lv.get ("rt", self)
+			self.setverdict (("pass" if rt is not None else "fail"), "rt must be present")
+
+class TD_COAP_LINK_04 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_04
+Objective:
+Filter discovery results in presence of multiple rt attributes
+Configuration:
+CoAP_CFG_01
+References:
+[2] 3.1, 4.1 §2
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers 4 groups of resources:
+1.	Resources with rt=“Type1 Type2”
+2.	Resources with rt=“Type2 Type3”
+3.	Resources with rt=“Type1 Type3”
+4.	Resources with rt=“”
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve Server’s list of resources of a
+specific type Type2
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating rt=“Type2”
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating only the links of groups 1 and 2
+
+4
+Verify
+Client displays the list of resources of type Type2 available on
+Server
+"""
+
+	def run (self):
+		self.match_link_format (filter = "rt", value = Not(Regex ("[*]")))
+
+		positions = set()
+
+		for lv in self.link_values():
+			rt = lv.get ("rt", self).split()
+			try:
+				p = rt.index (self.link_filter)
+			except ValueError:
+				p = None
+			positions.add (p)
+			self.setverdict (("pass" if p is not None else "fail"), "rt must contain %r" % self.link_filter)
+
+		if positions:
+			self.setverdict (("pass" if len(positions)>1 else "inconc"), "testcase result is not relevant if the requested rt is at the same position in every link")
+		else:
+			self.setverdict ("inconc", "testcase result is not relevant with an empty payload")
+
+class TD_COAP_LINK_05 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_05
+Objective:
+Filter discovery results using if attribute and prefix value strings
+Configuration:
+CoAP_CFG_01
+References:
+[2] 3.2, 4.1 §5
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers 4 groups of resources:
+1.	Resources with if=“If1”
+2.	Resources with if=“If2”
+3.	Resources with if=“foo”
+4.	Resources with no if attribute
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve Server’s list of resources
+matching the interface description pattern “If*”
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating if=“If*”
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating only the links of groups 1 and 2
+
+4
+Verify
+Client displays the retrieved list of resources
+"""
+
+	def run (self):
+		self.match_link_format (filter = "if", value = "If*")
+
+		variants = set()
+		for lv in self.link_values():
+			if_ = lv.get ("if", self)
+			variants.add (if_)
+			self.setverdict (("pass" if if_.startswith ("If") else "fail"), "if must match If*")
+
+		self.setverdict ("pass" if len(variants)>1 else "inconc", "testcase result is not relevant if all links have the same 'if'")
+
+
+class TD_COAP_LINK_06 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_06
+Objective:
+Filter discovery results using sz attribute and prefix value strings
+Configuration:
+CoAP_CFG_01
+References:
+[2] 3.3, 4.1 §5
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers resource with sz attribute
+•	Server offers resources with no sz attribute
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve Server’s list of resources having
+a sz attribute
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating sz=“*”
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating only the links having a sz attribute
+
+4
+Verify
+Client displays the retrieved list of resources
+	"""
+
+	def run (self):
+		self.match_link_format (filter = "sz", value = "*")
+
+		self.setverdict ("pass" if self.link else "inconc", "testcase result is not relevant with an empty payload")
+
+		for lv in self.link_values():
+			sz = lv.get ("sz", self)
+			self.setverdict (("pass" if sz is not None else "fail"), "sz must be present")
+
+class TD_COAP_LINK_07 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_07
+Objective:
+Filter discovery results using href attribute and complete value strings
+Configuration:
+CoAP_CFG_01
+References:
+[2] 4.1
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers resources /link1 /link2 and /link3
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve the link-value anchored at /link1
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating href=“/link1”
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating only the link for /link1
+
+4
+Verify
+Client displays the retrieved list of resources
+"""
+
+	def run (self):
+		self.match_link_format (filter = "href", value = Not(Regex ("[*]")))
+
+
+		for lv in self.link_values():
+			self.setverdict (("pass" if lv.uri == self.link_filter else "fail"), "href must be %r" % self.link_filter)
+
+		self.setverdict ("pass" if len (self.link) == 1 else "inconc", "server should return exactly one link-value")
+
+class TD_COAP_LINK_08 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_08
+Objective:
+Filter discovery results using href attribute and prefix value strings
+Configuration:
+CoAP_CFG_01
+References:
+[2] 4.1
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers resources /link1 /link2 and /link3
+•	Server offers resource /test
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve the link-value anchored at /link*
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource containing URI-Query indicating href=“/link*”
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating only the link matching /link*
+
+4
+Verify
+Client displays the retrieved list of resources
+"""
+
+	def run (self):
+		self.match_link_format (filter = "href", value = "/link*")
+
+		self.setverdict ("pass" if len (self.link) > 1 else "inconc", "testcase result is relevant with at least 2 link-values in the response")
+
+		for lv in self.link_values():
+			self.setverdict (("pass" if lv.uri.startswith("/link") else "fail"), "href must match /link*")
+
+class TD_COAP_LINK_09 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_LINK_09
+Objective:
+Arrange link descriptions hierarchically
+Configuration:
+CoAP_CFG_01
+References:
+[2] 5 §4
+
+Pre-test
+conditions:
+•	Client supports Core Link Format
+•	Server supports Core Link Format
+•	Server offers an entry located at /path with ct=40
+•	Server offers sub-resources /path/sub1, /path/sub2, … (see Note)
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve one of the sub-resources
+
+2
+Check
+Client sends a GET request to Server for /.well-known/core
+resource
+
+3
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating the link description for /path
+
+4
+Check
+Client sends a GET request for /path to Server
+
+5
+Check
+Server sends response containing:
+Content-format option indicating 40 (application/link-format)
+Payload indicating the link description for /path/sub1,
+/path/sub2, …
+
+6
+Check
+Client sends a GET request for /path/sub1
+
+7
+Check
+Server sends 2.05 (Content) response.
+Payload contains /path/sub1
+
+8
+Verify
+Client displays the retrieved sub-resource.
+Note: /path/sub1, /path/sub2, … refer to real resources available on Server and shall be extracted from
+Server’s /.well-known/core resource
+"""
+
+	def run (self):
+		# Step 2
+		self.match_link_format()
+
+		found = False
+		for lv in self.link_values():
+			if lv.uri == "/path":
+				found = True
+
+				ct = lv.get ("ct", self)
+				self.setverdict (("pass" if ct=="40" else "inconc"), "uri /path present with ct=40")
+		if not found:
+			self.setverdict ("inconc", "'/path' uri not present")
+			raise self.Stop()
+
+		self.chain()
+
+		# Step 4
+		self.match_link_format (path = (CoAPOptionUriPath ("path"),))
+
+		found = False
+		for lv in self.link_values():
+			if lv.uri == "/path/sub1":
+				found = True
+				self.setverdict ("pass", "/path/sub1 is present")
+		if not found:
+			self.setverdict ("inconc", "'/path' uri not present")
+			raise self.Stop()
+
+		self.chain()
+
+		# Step 6
+		self.match_coap ("client", CoAP (code="get",
+					opt=Opt (CoAPOptionUriPath ("path"),CoAPOptionUriPath("sub1"))))
+
+		self.next_skip_ack()
+
+		self.match_coap ("server", CoAP (code=2.05))
+
+		self.next_skip_ack (optional = True)
+
+
+class TD_COAP_BLOCK_01 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_BLOCK_01
+Objective:
+Handle GET blockwise transfer for large resource (early negotiation)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[BLOCK] 2.2-2.4
+
+Pre-test
+conditions:
+•	Client supports Block2 transfers
+•	Server supports Block2 transfers
+•	Server offers a large resource /large
+•	Client knows /large requires block transfer
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve resource /large
+
+2
+Check
+Client sends a GET request. The request optionally contains
+a Block2 option indicating:
+•	NUM = 0;
+•	M = 0;
+•	SZX = the desired block size.
+
+3
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = 0;
+•	M = 1;
+•	SZX is less or equal to the desired block size indicated
+by the GET request.
+Payload size is 2SZX+4 bytes.
+
+4*
+Check
+Client send GET requests for further blocks indicating:
+•	NUM = i where “i” is the block number of the current
+block;
+•	M = 0;
+•	SZX is the SZX at step 3.
+
+5*
+Check
+Server sends 2.05 (Content) response containing Block2
+option indicating:
+•	NUM = i where “i” is the block number used at step 4;
+•	M = 1;
+•	SZX is the SZX at step 3.
+Payload size MUST be 2SZX+4 bytes.
+
+6
+Check
+Client send GET request for the last block indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0;
+•	SZX is the SZX at step 3.
+
+7
+check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = n where “n” is the block number used at step 6;
+•	M = 0;
+•	SZX is the SZX at step 3.
+Payload size is lesser or equal to 2SZX+4 bytes.
+
+8
+Verify
+Client displays the received information
+(*)Note: Steps 4 and 5 are in a loop.
+"""
+	def run (self):
+		# initial request from the client
+		self.match_coap ("client", CoAP (code = "get",
+						 opt = self.uri ("/large", CoAPOptionBlock2 (num=0))))
+		self.match_coap ("client", CoAP (opt = Opt (CoAPOptionBlock2 (m=0))), "fail")
+		client_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+
+		self.next_skip_ack()
+
+		# response from the server w/ block size negociation
+		if not self.match_coap ("server", CoAP (code = 2.05,
+						 opt = Opt (CoAPOptionBlock2 ())
+				)):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (num=0, szx=Range (int, 0, client_szx)))
+				), "fail")
+
+		server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+		server_size = 2**(server_szx+4)
+
+		# expect more blocks
+		self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=1)),
+						 pl = Length (bytes, server_size)
+				))
+
+		for i in itertools.count (1):
+			self.next_skip_ack()
+
+			# request next block from client
+			if self.match_coap ("client", CoAP (code = "get",
+							 opt = Opt (CoAPOptionBlock2 (num=i, szx=server_szx)))):
+				self.match_coap ("client", CoAP (opt = Opt (CoAPOptionBlock2 (m=0))), "fail")
+
+			self.next_skip_ack()
+
+			# send next block from server
+			if not self.match_coap ("server", CoAP (code = 2.05,
+							 opt = Opt (CoAPOptionBlock2 (num=i, szx=server_szx))
+					)):
+				break
+
+			if not self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=1)),
+								pl = Length (bytes, server_size)
+						), None):
+				# no more blocks
+				self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=0)),
+								pl = Length (bytes, (1, server_size))
+						), "fail")
+
+				# end of testcase
+				self.next_skip_ack (optional = True)
+				break
+
+class TD_COAP_BLOCK_02 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_BLOCK_02
+Objective:
+Handle GET blockwise transfer for large resource (late negotiation)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[BLOCK] 2.2-2.4
+
+Pre-test
+conditions:
+•	Client supports Block2 transfers
+•	Server supports Block2 transfers
+•	Server offers a large resource /large
+•	Client does not know /large requires block transfer
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve resource /large
+
+2
+Check
+Client sends a GET request not containing Block2 option
+
+3
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = 0;
+•	M = 1;
+•	SZX = the proposed block size.
+Payload size is 2SZX+4 bytes.
+
+4
+Check
+Client switches to blockwise transfer mode and sends a GET
+request with a Block2 option indicating:
+•	NUM is the next block number (should be equal to
+2SZX_in_step_4 – SZX_in_step_3);
+•	M = 0;
+•	SZX is less or equals to SZX at step 3.
+
+5
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = k where “k” is the block number used at step 4;
+•	M = 1;
+•	SZX is the SZX at step 4.
+Payload size is 2SZX+4 bytes.
+
+6*
+Check
+Client sends GET request for further blocks indicating:
+•	NUM = i where “i” is the block number of the current
+block;
+•	M = 0;
+•	SZX is the SZX at step 4.
+
+7*
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = i where “i” is the block number used at step 6;
+•	M = 1;
+•	SZX is the SZX at step 4.
+Payload size is 2SZX+4 bytes.
+
+8
+Check
+Client send GET request for the last block indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0;
+SZX is the SZX at step 4.
+
+9
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = n where “n” is the block number used at step 8;
+•	M = 0;
+•	SZX is the SZX at step 4.
+Payload size is lesser or equal to 2SZX+4.
+
+10
+Verify
+Client displays the received information
+(*) Note: Steps 6 and 7 are in a loop.
+"""
+	def run (self):
+		# initial request from the client
+		self.match_coap ("client", CoAP (code = "get",
+						 opt = self.uri ("/large", NoOpt (CoAPOptionBlock2()))))
+
+		# check if the Block2 option is present in the next frames
+		for frame in self.conversation[1:3]:
+			if frame.coap in CoAP (opt = Opt (CoAPOptionBlock2())):
+				break
+		else:
+			self.verdict = None
+			raise self.Stop()
+
+		self.next_skip_ack()
+
+		# response from the server w/ block size negociation
+		self.match_coap ("server", CoAP (code = 2.05,
+						 opt = Opt (CoAPOptionBlock2 (num=0))
+				), "fail")
+		server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+		server_size = 2**(server_szx+4)
+
+		# expect more blocks
+		self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=1)),
+						 pl = Length (bytes, server_size)
+				))
+
+		self.next_skip_ack()
+
+		# second request from the client
+		self.match_coap ("client", CoAP (code = "get",
+						 opt = Opt (CoAPOptionBlock2 (szx=Range (int, 0, server_szx)))))
+
+		client_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+		client_size = 2**(client_szx+4)
+
+		client_num  = self.frame.coap["opt"][CoAPOptionBlock2]["num"]
+
+		max_next_num = 2 ** (server_szx - client_szx)
+		if client_num > max_next_num:
+			self.setverdict ("inconc", "discontinuity in client requests (next requested block should be between 1 and %d)" % max_next_num)
+
+		for i in itertools.count (client_num):
+
+			# request next block from client
+			if self.match_coap ("client", CoAP (code = "get",
+							 opt = Opt (CoAPOptionBlock2 (num=i, szx=client_szx)))):
+
+				self.match_coap ("client", CoAP (opt = Opt (CoAPOptionBlock2 (m=0))), "fail")
+
+			self.next_skip_ack()
+
+			# send next block from server
+			if not self.match_coap ("server", CoAP (code = 2.05,
+							 opt = Opt (CoAPOptionBlock2 (num=i, szx=client_szx))
+					)):
+				break
+
+			if not self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=1)),
+								pl = Length (bytes, client_size)
+						), None):
+				# no more blocks
+				self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=0)),
+								pl = Length (bytes, (1, client_size))
+						), "fail")
+
+				# end of testcase
+				self.next_skip_ack (optional = True)
+				break
+
+			self.next_skip_ack()
+
+
+class TD_COAP_BLOCK_03 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_BLOCK_03
+
+Objective:
+Handle PUT blockwise transfer for large resource
+Configuration:
+CoAP_CFG_BASIC
+References:
+[BLOCK] 2.2, 2.3, 2.5
+
+Pre-test
+conditions:
+•	Client supports Block1 transfers
+•	Server supports Block1 transfers
+•	Server offers a large updatable resource /large-update
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to update resource /large-update on
+Server
+
+2
+check
+Client sends a PUT request containing Block1 option
+indicating:
+•	NUM = 0;
+•	M = 1;
+•	SZX = the desired block size.
+Payload size is 2SZX+4 bytes.
+
+3
+Check
+Server sends 2.04 (Changed) or 2.31 (Continue) response with a Block1 option
+indicating:
+•	NUM = 0;
+•	M = 0 (stateless for 2.04) or 1 (atomic,for 2.31);
+•	SZX is less or equal to the SZX at step 2.
+
+4*
+Check
+Client sends further requests containing Block1 option
+indicating:
+•	NUM = i where “i” is the block number of the current
+block. If the server decreased the SZX parameter in
+step 3, then the client should adapt the block size
+accordingly and may resume the transfer from block
+id 2size_in_step_2-size_in_step_3 instead of block 1)
+•	M = 1;
+•	SZX is the SZX at step 3.
+Payload size is 2SZX+4 bytes.
+
+5*
+Check
+Server sends 2.04 (Changed) or 2.31 (Continue) response containing Block1
+option indicating:
+•	NUM = i where “i” is the block number used at step 4;
+•	M = 0 (stateless, for 2.04) or 1 (atomic, for 2.31);
+•	SZX is the SZX at step 3.
+
+6
+Check
+Client send PUT request containing the last block and
+indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0;
+•	SZX is the SZX at step 3.
+Payload size is lesser or equal to 2SZX+4.
+
+7
+Check
+Server sends 2.04 (Changed) response with a Block1 option
+indicating:
+•	NUM = n where “n” is the block number used at step 6;
+•	M = 0;
+•	SZX is the SZX at step 3.
+
+8
+Verify
+Server indicates presence of the complete updated resource
+/large-update
+(*) Note: Steps 4 and 5 are in a loop.
+"""
+	def run (self):
+		# initial request from the client
+		self.match_coap ("client", CoAP (code = "put",
+						 opt = self.uri ("/large-update", CoAPOptionBlock1 (num=0, m=1))))
+		client_szx  = self.frame.coap["opt"][CoAPOptionBlock1]["szx"]
+		client_size = 2**(client_szx+4)
+		self.match_coap ("client", CoAP (pl = Length (bytes, client_size)), "fail")
+
+		self.next_skip_ack()
+
+		# response from the server possibly w/ block size negociation
+		if not self.match_coap ("server", CoAP (code = Any (CoAPCode (2.04), 2.31),
+						 opt = Opt (CoAPOptionBlock1 (num=0, szx=Range(int, 0, client_szx)))
+				)):
+			return
+		server_szx  = self.frame.coap["opt"][CoAPOptionBlock1]["szx"]
+		server_size = 2**(server_szx+4)
+
+		self.next_skip_ack()
+
+		# next block should have num 1
+		counter = itertools.count (1)
+
+		if server_szx != client_szx:
+			# client & server do not agree on the block size
+
+			# server requested a smaller block size, num may be bigger
+			if (self.match_coap ("client", CoAP (opt = Opt (CoAPOptionBlock1()))), None):
+				num = self.frame.coap["opt"][CoAPOptionBlock1]
+				if num > 1:
+					counter = itertools.count (num)
+
+		for i in counter:
+
+			# send next block from client
+			self.match_coap ("client", CoAP (code = "put",
+							 opt = Opt (CoAPOptionBlock1 (num=i, szx=server_szx))
+					))
+
+
+			last = not self.match_coap ("client", CoAP (	opt = Opt (CoAPOptionBlock1 (m=1)),
+									pl = Length (bytes, server_size)
+					), None)
+			if last:
+				# last block
+				self.match_coap ("client", CoAP (	opt = Opt (CoAPOptionBlock1 (m=0)),
+									pl = Length (bytes, (1, server_size))
+						), "fail")
+
+			self.next_skip_ack()
+
+			# ack from the server
+			self.match_coap ("server", CoAP (code = Any (CoAPCode (2.04), 2.31),
+							 opt = Opt (CoAPOptionBlock1 (num=i, szx=server_szx))
+					))
+
+			if last:
+				self.next_skip_ack (optional = True)
+				break
+
+			self.next_skip_ack()
+
+class TD_COAP_BLOCK_04 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_BLOCK_04
+Objective:
+Handle POST blockwise transfer for large resource
+Configuration:
+CoAP_CFG_BASIC
+References:
+[BLOCK] 2.2, 2.3, 2.5
+
+Pre-test
+conditions:
+•	Client supports Block1 transfers
+•	Server supports Block1 transfers
+•	Server accepts creation of new resources on /large-create
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to create a new resource /large-create on
+Server
+
+2
+Check
+Client sends a POST request containing Block1 option
+indicating:
+•	NUM = 0;
+•	M = 1;
+•	SZX = the desired block size.
+Payload size is 2SZX+4 bytes.
+
+3
+Check
+Server sends 2.31 (Continue) response containing
+Block1 option indicating:
+•	NUM = 0;
+•	M = 1 (atomic);
+•	SZX is less or equal to the SZX at step 2.
+
+4*
+Check
+Client sends further requests containing
+Block1 option indicating:
+•	NUM = i where “i” is the block number of the current
+block. If the server decreased the SZX parameter in
+step 3, then the client should adapt the block size
+accordingly and may resume the transfer from block
+id 2size_in_step_2-size_in_step_3 instead of block 1)
+•	M = 1 (more);
+•	SZX is the SZX at step 3.
+Payload size is 2SZX+4 bytes.
+
+5*
+Check
+Server sends 2.01 (Created) response containing
+Block1 option indicating:
+•	NUM = i where “i” is the block number used at step 4;
+•	M = 1 (atomic);
+•	SZX is the SZX at step 3
+
+6
+Check
+Client send PUT request containing the last block and
+indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0 (final);
+•	SZX is the SZX at step 3.
+Payload size is lesser or equal to 2SZX+4.
+
+7
+Check
+Server sends 2.01 (Created) response containing Block1
+option indicating:
+•	NUM = n where “n” is the block number used at step 6;
+•	M = 0;
+•	SZX is the SZX at step 3.
+and Location-Path options, e.g. if the new location is "/large-create/PS":
+•	First option value must contain “large-create”
+•	Second option value is a (single) path segment chosen by the server (PS)
+•	none of the Location-Path options contain a ‘/’
+
+8
+Verify
+Client displays the response
+
+9
+Verify
+Server indicates presence of the complete new resource, e.g., /large-create/PS
+
+10
+Check
+Client sends GET request to new location (e.g., "/large-create/PS", i.e., using Uri-Path options simply copied from the Location-Path of step 7)
+
+11
+Check
+Server sends 2.05 (Content) response with representation of created resource, potentially making use of the Block2 protocol
+
+12
+Verify
+Client indicates the value of the newly created resource
+(*) Note: Steps 4 and 5 in a loop.
+"""
+	def run (self):
+		# initial request from the client
+		self.match_coap ("client", CoAP (code = "post",
+						 opt = self.uri ("/large-create", CoAPOptionBlock1 (num=0, m=1))))
+		client_szx  = self.frame.coap["opt"][CoAPOptionBlock1]["szx"]
+		client_size = 2**(client_szx+4)
+		self.match_coap ("client", CoAP (pl = Length (bytes, client_size)), "fail")
+
+		self.next_skip_ack()
+
+		# response from the server possibly w/ block size negociation
+		if not self.match_coap ("server", CoAP (code = 2.31,
+						 opt = Opt (CoAPOptionBlock1 (num=0,m=1, szx=Range(int, 0, client_szx)))
+				)):
+			return
+		server_szx  = self.frame.coap["opt"][CoAPOptionBlock1]["szx"]
+		server_size = 2**(server_szx+4)
+
+		self.next_skip_ack()
+
+		# next block should have num 1
+		counter = itertools.count (1)
+
+		if server_szx != client_szx:
+			# client & server do not agree on the block size
+
+			# server requested a smaller block size, num may be bigger
+			if (self.match_coap ("client", CoAP (opt = Opt (CoAPOptionBlock1()))), None):
+				num = self.frame.coap["opt"][CoAPOptionBlock1]
+				if num > 1:
+					counter = itertools.count (num)
+
+		for i in counter:
+
+			# send next block from client
+			self.match_coap ("client", CoAP (code = "post",
+							 opt = Opt (CoAPOptionBlock1 (num=i, szx=server_szx))
+					))
+
+
+			last = not self.match_coap ("client", CoAP (	opt = Opt (CoAPOptionBlock1 (m=1)),
+									pl = Length (bytes, server_size)
+					), None)
+			if last:
+				# last block
+				self.match_coap ("client", CoAP (	opt = Opt (CoAPOptionBlock1 (m=0)),
+									pl = Length (bytes, (1, server_size))
+						), "fail")
+
+			self.next_skip_ack()
+
+			# ack from the server
+			if not self.match_coap ("server", CoAP (code = Any (CoAPCode (2.01), 2.31),
+							 opt = Opt (CoAPOptionBlock1 (num=i, szx=server_szx))
+					)):
+				raise self.Stop()
+
+			if last:
+				if not self.match_coap("server",CoAP(opt=self.uri ("/large-create",
+						CoAPOptionBlock1 (m=0),
+						CoAPOptionLocationPath(),
+						CoAPOptionLocationPath()
+					)),"fail"):
+					raise self.Stop()
+				break
+			self.next_skip_ack (optional = True)
+		# LocationPath value
+		for o in self.frame.coap["opt"]:
+			if CoAPOptionLocationPath(dlt=0).match(o):
+				valPath=o["val"]
+		self.chain(optional = True)
+		if self.match_coap("client",CoAP(code="get",opt=self.uri ("/large-create/"+valPath,CoAPOptionUriPath(),CoAPOptionUriPath(valPath))),None):
+			self.next_skip_ack ()
+			self.match_coap("server",CoAP(code=2.05,opt=Opt(CoAPOptionBlock2())))
+		raise self.Stop()
+
+class TD_COAP_BLOCK_05 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_BLOCK_05
+Objective:
+Handle POST with two-way blockwise transfer
+Configuration:
+CoAP_CFG_BASIC
+References:
+[BLOCK] 2.2, 2.3, 2.5
+
+Pre-test
+conditions:
+Client supports Block1 and Block2 transfers
+Server supports Block1 and Block2 transfers
+Server accepts large post requests on /large-post
+
+1
+Stimulus
+Client is requested to send a large represenation to /large-post on Server
+
+2
+Check
+Client sends a POST request containing Block1 option indicating:
+•	NUM = 0;
+•	M = 1 (more);
+•	SZX (➔DES_SZX) is the desired block size.
+Payload size is 2**(SZX+4) bytes.
+
+3
+Check
+Server sends 2.31 (Continue) response containing Block1 option indicating:
+•	NUM = 0;
+•	M = 1 (atomic);
+•	SZX (➔ACT_SZX) is less or equal to DES_SZX.
+
+Start of loop
+
+4
+Check
+Client sends further POST requests containing Block1 option indicating:
+•	NUM = i where “i” is the block number of the current block. If the server decreased the SZX parameter in step 3, then the client needs to adapt the block size accordingly and resumes the transfer from block number 2**(DES_SZX - ACT_SZX) instead of block 1.
+•	M = 1 (more);
+•	SZX is ACT_SZX.
+Payload size is 2**(SZX+4) bytes.
+
+5
+Check
+Server sends 2.31 (Continue) response containing Block1 option indicating:
+•	NUM = i where “i” is the block number used at step 4;
+•	M = 1 (atomic);
+•	SZX is ACT_SZX
+
+
+end of loop; final request slice and first response slice:
+
+6
+Check
+Client sends POST request containing the last block and indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0 (final);
+•	SZX is ACT_SZX.
+Payload size is less than or equal to 2**(SZX+4) bytes.
+
+7
+Check
+Server sends 2.04 (Changed) response containing Block1 option indicating:
+•	NUM = n where “n” is the block number used at step 6;
+•	M = 0 (final);
+•	SZX is ACT_SZX.
+and a Block2 option indicating:
+•	NUM = 0
+•	M = 1 (more);
+•	SZX (➔rDES_SZX) is the desired block size.
+Payload size is 2**(SZX+4) bytes.
+
+8
+Check
+Client switches to blockwise retrieval of response and sends a POST request, with the same options except for Block1, without payload, with a Block2 option indicating:
+•	NUM is the next block number k = (2**(rDES_SZX – rACT_SZX));
+•	M = 0;
+•	SZX (➔rACT_SZX) is less than or equal to rDES_SZX.
+
+9
+Check
+Server sends 2.04 (Changed) response with a Block2 option indicating:
+•	NUM = k where “k” is the block number used at step 8;
+•	M = 1;
+•	SZX is rACT_SZX.
+Payload size is 2**(SZX+4) bytes.
+
+Start of retrieval loop
+
+10
+Check
+Client sends a similar POST request for retrieving a further block indicating:
+•	NUM = i where “i” is the block number of the current block;
+•	M = 0;
+•	SZX is rACT_SZX.
+
+11
+Check
+Server sends 2.04 (Changed) response with a Block2 option indicating:
+•	NUM = i where “i” is the block number used at step 10;
+•	M = 1;
+•	SZX is rACT_SZX.
+Payload size is 2**(SZX+4) bytes.
+
+end of retrieval loop; final slice:
+
+12
+Check
+Client sends another POST request (which will retrieve the last block) indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0;
+•	SZX is rACT_SZX.
+
+13
+Check
+Server sends 2.04 (Changed) response with a Block2 option indicating:
+•	NUM = n where “n” is the block number used at step 12;
+•	M = 0;
+•	SZX is rACT_SZX.
+Payload size is less than or equal to 2**(SZX+4) bytes.
+
+14
+Verify
+Client displays the response
+
+Notes:
+Steps 4 and 5 are in a loop.
+Steps 10 and 11 are in a loop.
+There is no initiative change in block-13.
+"""
+	def run (self):
+		#step 2
+		self.match_coap("client",CoAP(type="con",code="post",opt=self.uri ("/large-post", CoAPOptionBlock1 (num=0, m=1))))
+		client_szx  = self.frame.coap["opt"][CoAPOptionBlock1]["szx"]
+		client_size = 2**(client_szx+4)
+		self.match_coap ("client", CoAP (pl = Length (bytes, client_size)), "fail")
+
+		self.next()
+		#step 3
+		if self.match_coap("server",CoAP(type="ack",code=2.31,opt=Opt(CoAPOptionBlock1(num=0,m=1)))):
+			if not self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock1 (szx=Range(int, 0, client_szx))))):
+				raise self.Stop()
+			server_szx  = self.frame.coap["opt"][CoAPOptionBlock1]["szx"]
+			server_size = 2**(server_szx+4)
+			self.next()
+			j=1
+			while 1 :
+				#step 4
+				self.match_coap("client",CoAP(type="con",code="post",opt=Opt(CoAPOptionBlock1(num=j,szx=server_szx))),"fail")
+				self.next()
+				#step 5
+				self.match_coap("server",CoAP(type="ack",opt=Opt(CoAPOptionBlock1(num=j))),"fail")
+				#step 6
+				if not self.match_coap("server",CoAP(code=2.31,opt=Opt(CoAPOptionBlock1(m=1))),None):
+					break
+				self.next()
+				j+=1
+			#step 7
+			if self.match_coap("server",CoAP(code=2.04,opt=Opt(CoAPOptionBlock1(m=0),CoAPOptionBlock2(num=0,m=1)))) :
+				self.chain()
+				j=1
+				while 1 :
+					#step 8
+					self.match_coap("client",CoAP(type="con",code="post",opt=Opt(CoAPOptionBlock2(num=j,m=0))),"fail")
+					self.next()
+					#step 9
+					self.match_coap("server",CoAP(type="ack",code=2.04, opt=Opt(CoAPOptionBlock2(num=j))),"fail")
+					#step 10
+					if not self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2(m=1))),None):
+						break
+					self.next()
+					j+=1
+		raise self.Stop()
+
+class TD_COAP_BLOCK_06 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_BLOCK_06
+Objective:
+Handle GET blockwise transfer for large resource (early negotiation, 16 byte block size)
+
+Configuration:
+CoAP_CFG_BASIC
+References:
+[BLOCK] 2.2-2.4
+
+Pre-test
+conditions:
+•	Client supports Block2 transfers
+•	Server supports Block2 transfers
+•	Server offers a large resource /large
+•	Client does not know /large requires block transfer
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to retrieve resource /large
+
+2
+Check
+Client sends a GET request not containing Block2 option indicating:
+•	NUM = 0;
+•	M = 0;
+•	SZX (➔DES_SZX) is the desired block size.
+
+
+3
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = 0;
+•	M = 1;
+•	SZX = (➔ACT_SZX) is less than or equal to DES_SZX.
+Payload size is 2SZX+4 bytes.
+
+4
+Check
+Client send GET requests for further blocks indicating:
+•	NUM = i where “i” is the block number of the current block;
+•	M = 0;
+•	SZX is ACT_SZX
+
+5
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = i where “i” is the block number used at step 4;
+•	M = 1;
+•	SZX is the ACT_SZX
+Payload size is 2SZX+4 bytes.
+
+6
+Check
+Client send GET request for the last block indicating:
+•	NUM = n where “n” is the last block number;
+•	M = 0;
+•	SZX is the ACT_SZX
+
+7
+Check
+Server sends 2.05 (Content) response with a Block2 option
+indicating:
+•	NUM = n where “n” is the block number used at step 8;
+•	M = 0;
+•	SZX is the ACT_SZX
+Payload size is lesser or equal to 2SZX+4.
+
+8
+Verify
+Client displays the received information
+(*) Note: Steps 4 and 5 are in a loop.
+"""
+	def run (self):
+		# initial request from the client
+		self.match_coap ("client", CoAP (code = "get",
+						 opt = self.uri ("/large", Opt (CoAPOptionBlock2(num=0,m=0)))))
+		client_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+		client_num  = self.frame.coap["opt"][CoAPOptionBlock2]["num"]
+		self.next_skip_ack()
+
+		# response from the server w/ block size negociation
+		self.match_coap ("server", CoAP (code = 2.05,
+						 opt = Opt (CoAPOptionBlock2 (num=0,szx=Range (int, 0, client_szx)))
+				), "fail")
+		server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+		server_size = 2**(server_szx+4)
+
+		# expect more blocks
+		self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=1)),
+						 pl = Length (bytes, server_size)
+				))
+
+		self.next_skip_ack()
+
+		for i in itertools.count (client_num):
+
+			# request next block from client
+			if self.match_coap ("client", CoAP (code = "get",
+							 opt = Opt (CoAPOptionBlock2 (num=i+1, szx=server_szx)))):
+
+				self.match_coap ("client", CoAP (opt = Opt (CoAPOptionBlock2 (m=0))), "fail")
+
+			self.next_skip_ack()
+
+			# send next block from server
+			if not self.match_coap ("server", CoAP (code = 2.05,
+							 opt = Opt (CoAPOptionBlock2 (num=i+1, szx=server_szx))
+					)):
+				break
+
+			if not self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=1)),
+								pl = Length (bytes, server_size)
+						), None):
+				# no more blocks
+				self.match_coap ("server", CoAP (opt = Opt (CoAPOptionBlock2 (m=0)),
+								pl = Length (bytes, (1, server_size))
+						), "fail")
+
+				# end of testcase
+				self.next_skip_ack (optional = True)
+				break
+
+			self.next_skip_ack()
+
+class TD_COAP_OBS_01 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_01
+Objective:
+Handle resource observation with CON messages
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 1.2, 3, 4
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every 5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format =  same as one found in the step 3
+•	Token value = same as one found in the step 3
+•	Observe option indicating increasing values (sequence number arithmetic modulo 2**24), unless more than 256 seconds elapsed
+
+5
+Check
+Client sends an ACK
+
+6
+Verify
+Client displays the received information
+
+Notes:
+(1) Steps 4-6 are in a loop.
+	"""
+
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",
+						opt=self.uri ("/obs", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionObserve(),
+			CoAPOptionContentFormat(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		# match at least 2 notifications
+		for i in range (2):
+
+			self.next()
+
+			# Step 4
+			if not self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+		raise self.Stop()
+
+class TD_COAP_OBS_02 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_02
+Objective:
+Handle resource observation with NON messages
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 1.2, 3, 4
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs-non which changes periodically (e.g. every 5s) which produces non-confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a non-confirmable
+GET request with observe option for resource /obs-non
+
+2
+Check
+The request sent by client contains:
+•	Type = 1 (NON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends a notification containing:
+•	Type = 1 (NON)
+•	Code = 2.05 (Content)
+•	Content-format = the same for all notifications
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+4
+Verify
+Client displays the received information
+
+Notes:
+    Steps 3-4 are in a loop.
+    We don't run the test long enough to invoke the 24-hour rule in [OBSERVE] 4.5, but in step 4 the server could still occasionally send a confirmable message, which then needs to be acknowledged by the client
+    (The request in step 2 could as well be a confirmable request.)
+
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP ( code="get",
+						opt=self.uri ("/obs-non", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+
+		self.next()
+		if self.match_coap("server",CoAP(type="ack"),None):
+			if not self.match_coap ("server", CoAP ( code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+
+			content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+			index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+			self.next()
+		else:
+			content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+			index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		# match at least 2 other notifications
+		for i in range (2):
+			# Step 3
+			if not self.match_coap ("server", CoAP (type="non", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+
+			self.next()
+		self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+		raise self.Stop()
+
+#No longer meets the standard
+
+#class TD_COAP_OBS_03 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_03
+Objective:
+Stop resource observation
+Configuration:
+CoAP_CFG_01
+References:
+[3] 4.1 §3
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every
+5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+41
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+5
+Check
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+72
+Stimulus
+Client is requested to stop observing the resource /obs on the
+server
+
+8
+Check
+Client sends a request containing :
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value = a value generated by the client
+•	DOES NOT contain observe option
+
+9
+Check
+Server sends response not containing Observe option
+
+10
+Verify
+Client displays the received information
+
+11
+Check
+Server does not send further response
+
+12
+Verify
+Client does not display updated information
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-12 are asynchronous to the loop.
+"""
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",
+						opt=self.uri ("/obs", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionObserve(),
+			CoAPOptionContentFormat(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+
+		while self.match_coap ("server", CoAP (code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+
+			# Step 4
+			if not self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+
+		self.match_coap ("client", CoAP (type="con", code="get", opt=NoOpt (CoAPOptionObserve())))
+
+		self.setverdict (("pass" if uri == self.frame.coap.get_uri() else "inconc"), "expected uri %r" % uri)
+
+		self.next()
+
+		self.match_coap ("server", CoAP (type="ack", code=2.05, opt=NoOpt (CoAPOptionObserve())))
+"""
+
+class TD_COAP_OBS_04 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_04
+Objective:
+Client detection of deregistration (Max-Age)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 3.3.1 §4
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every 5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+5
+Verify
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+7
+Stimulus
+Server is rebooted or in another way caused to lose its observation state
+
+8
+Check
+Server does not send notifications
+
+9
+Verify
+Client does not display updated information
+
+10
+Verify
+After a while (see note) the client internally decides to send another GET request to the server with observe option for resource /obs, using Token t again to confirm the registration
+
+11
+Verify
+Client sends a GET request to the server for resource /obs:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = same as one found in the step 2
+•	Observe option = empty
+
+12
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number that is not necessarily increasing
+
+13
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 12
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+14
+Verify
+Client displays the received information
+
+15
+Check
+Client sends an ACK
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-9 are asynchronous to the loop 4-6.
+(3) Steps 13-15 are in a loop.
+(4) A new registration should be attempted after Max-Age + MAX_LATENCY as recommended by [3].
+MAX_LATENCY is defined by [1] and set to 100 seconds.
+"""
+	def run (self):
+		request = CoAP (type="con", code="get",	opt=self.uri ("/obs", CoAPOptionObserve (0)))
+		response= CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+
+		# Step 2
+		self.match_coap ("client", request)
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+		ts = None
+
+		# Step 4
+		while self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+			ts = self.frame.ts
+			maxage = self.get_max_age()
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+		if ts is None:
+			raise self.Stop()
+
+		# Step 11
+
+		if not self.match_coap ("client", request):
+			raise self.Stop()
+		if uri != self.frame.coap.get_uri():
+			self.verdict ("inconc", "uri mismatch: expected %s" % uri)
+			raise self.Stop()
+
+		# check max-age
+		interval = self.frame.ts - ts
+
+		min_interval = maxage + 100
+		self.setverdict (("pass" if interval >= min_interval else "inconc"),
+			"new client client registration was sent after %.1f seconds (should be after at least MaxAge+MAX_LATENCY (%d) seconds)" % (interval, min_interval))
+
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		self.next()
+
+		# Step 12
+
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+
+		self.match_coap ("server", CoAP (tok = token), "fail")
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# Step 13
+
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+		self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+		# increasing observe value
+		new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+		self.setverdict (("pass" if new_index > index else "fail"),
+			"value of observe option must be increasing")
+
+		raise self.Stop()
+
+class TD_COAP_OBS_05 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_05
+Objective:
+Server detection of deregistration (client OFF)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 4.5 §2
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every
+5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+5
+Check
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+72
+Stimulus
+Client is switched off
+
+8
+Check
+Server’s confirmable responses are not acknowledged
+Server’s retransmissions have an updated Observe option
+value
+
+9
+Check
+Server can keep retransmitting the responses until at least
+Max-Age seconds after the first un-acknowledged response.
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-12 are asynchronous to the loop.
+"""
+	def run (self):
+		request = CoAP (type="con", code="get",	opt=self.uri ("/obs", CoAPOptionObserve (0)))
+		response= CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+		notif   = CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+
+		# Step 2
+		self.match_coap ("client", request)
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		last_maxage = self.get_max_age()
+
+		self.next()
+
+		last_ts     = self.frame.ts
+
+		# Step 4
+		while True:
+			if not self.match_coap ("server", notif):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			# increasing observe value
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+			index = new_index
+
+			maxage = self.get_max_age()
+
+			self.next()
+
+			if not self.match_coap ("client", CoAP (type = "ack"), None):
+				break
+
+			last_maxage = maxage
+			last_ts     = self.frame.ts
+
+			self.next()
+
+		nb_nonack = 1
+		while True:
+			if not self.match_coap ("server", notif):
+				break
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+
+			nb_nonack += 1
+			last_retrans_ts = self.frame.ts
+
+			if not self.next (optional = True):
+				break
+
+		if nb_nonack == 1:
+			self.setverdict ("inconc", "server must retransmit non-acknowledged notifications")
+		else:
+			self.setverdict ("pass" if (last_retrans_ts - last_ts) >= last_maxage else "inconc", "server should keep retransmitting at least until Max-Age (%d) seconds" % last_maxage)
+
+class TD_COAP_OBS_06 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_06
+Objective:
+Server detection of deregistration (explicit RST)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 4.2 §2
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every 5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable
+GET request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+
+5
+Check
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+7
+Stimulus
+Client is rebooted
+
+8
+Check
+Server is still sending notifications for the request in step 2 as in step 4
+
+9
+Verify
+Client discards response and does not display information
+
+10
+Check
+Client sends RST to Server
+
+11
+Verify
+Server does not send further response
+
+12
+Verify
+Client does not display further received information
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-12 are asynchronous to the loop.
+"""
+	def run (self):
+		request = CoAP (type="con", code="get",	opt=self.uri ("/obs", CoAPOptionObserve (0)))
+		response= CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+		notif   = CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+
+		# Step 2
+		self.match_coap ("client", request)
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# Step 4
+		while True:
+			if not self.match_coap ("server", notif):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			# increasing observe value
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+			index = new_index
+
+			self.next()
+
+			# Step 6
+			if not self.match_coap ("client", CoAP (type = "ack"), None):
+				break
+
+			self.next()
+
+		# Step 10
+		self.match_coap ("client", CoAP (type = "rst", code=0))
+
+class TD_COAP_OBS_07 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_07
+Objective:
+Server cleans the observers list on DELETE
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 3.2 §4
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every
+5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+
+5
+Check
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+7
+Stimulus
+Delete the /obs resource of the server (either locally or by
+having another CoAP client perform a DELETE request)
+
+8
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 132 (4.04 NOT FOUND)
+•	Token value = same as one found in the step 2
+•	No Observe option any more
+
+9
+Verify
+Server does not send further responses
+
+10
+Verify
+Client does not display further received information
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-10 are asynchronous to the loop.
+	"""
+	def run (self):
+		request = CoAP (type="con", code="get",	opt=self.uri ("/obs", CoAPOptionObserve (0)))
+		response= CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+
+		# Step 2
+		self.match_coap ("client", request)
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+
+		# Step 4
+		while self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+		# Step 7
+		if self.match_coap ("client", CoAP (type="con", code="delete"),
+					None):
+
+			self.setverdict ("pass" if uri == self.frame.coap.get_uri() else "inconc",
+				"deleted resource should be the observed resource (%s)" % uri)
+
+			self.next()
+
+			self.match_coap ("server", CoAP (type="ack", code=2.02))
+
+		self.next()
+
+		# Step 8
+		if self.match_coap ("server", CoAP (type="con", code=4.04, opt = NoOpt (CoAPOptionObserve()))):
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+
+
+		self.next()
+
+		# Step 9
+
+		self.match_coap ("client", CoAP (type="ack", code=0))
+
+
+
+class TD_COAP_OBS_08 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_08
+Objective:
+Server cleans the observers list when observed resource content-format changes
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 4.2 §3
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every
+5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+
+5
+Check
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+7
+Stimulus
+Update the /obs resource of the server’s resource with a new
+payload having a different Content-Format (either locally or by
+having another CoAP client perform a DELETE request)
+
+8
+Check
+Server sends notification containing:
+•	Type = 0 (CON)
+•	Code = 4.06 (Not Acceptable)
+•	Token value = same as one found in the step 2
+•	No Observe option any more
+
+9
+Verify
+Server does not send further notifications
+
+10
+Verify
+Client does not display further received information
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-10 are asynchronous to the loop.
+	"""
+	def run (self):
+		request = CoAP (type="con", code="get",	opt=self.uri ("/obs", CoAPOptionObserve (0)))
+		response= CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+
+		# Step 2
+		self.match_coap ("client", request)
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+
+		# Step 4
+		while self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+		# Step 7
+		if self.match_coap ("client", CoAP (type="con", code="put", opt=Opt (
+						CoAPOptionContentFormat (Not (content_format)))),
+					None):
+
+			self.setverdict ("pass" if uri == self.frame.coap.get_uri() else "inconc",
+				"updated resource should be the observed resource (%s)" % uri)
+
+			self.next()
+
+			self.match_coap ("server", CoAP (type="ack", code=2.04))
+
+		self.next()
+
+		# Step 8
+		if self.match_coap ("server", CoAP (type="con", code=4.06, opt = NoOpt (CoAPOptionObserve()))):
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+
+		self.next()
+
+		# Step 9
+
+		self.match_coap ("client", CoAP (type="ack", code=0))
+
+class TD_COAP_OBS_09 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_09
+Objective:
+Update of the observed resource
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 4.2 §3
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every
+5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET
+request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+5
+Check
+Client displays the received information
+
+6
+Check
+Client sends an ACK
+
+7
+Stimulus
+Update the /obs resource of the server’s resource with a new payload having the same Content-Format (either locally or by having another CoAP client perform a PUT request)
+
+8
+Check
+Server notifications contains:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+•	Payload = the new value sent at step 7
+
+9
+Verify
+Client displays the new value of /obs sent in step 8
+
+10
+Check
+Client sends an ACK
+Notes:
+(1) Steps 4-6 are in a loop.
+(2) Step 7-9 are asynchronous to the loop 4-6.
+(3) Steps 8-10 are in a loop (the same loop at steps 4-6 but /obs is updated).
+	"""
+	def run (self):
+		request = CoAP (type="con", code="get",	opt=self.uri ("/obs", CoAPOptionObserve (0)))
+		response= CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve(), CoAPOptionContentFormat()))
+
+		# Step 2
+		self.match_coap ("client", request)
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", response):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+		pl = None
+
+		# Step 4
+		while self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+			pl = self.frame.coap["pl"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+		if pl is None:
+			raise self.Stop()
+
+		# Step 7
+		if self.match_coap ("client", CoAP (type="con", code="put", opt=Opt (
+						CoAPOptionContentFormat (content_format)),
+						pl = Not (pl),
+					), None):
+
+			new_pl = self.frame.coap["pl"]
+
+			self.setverdict ("pass" if uri == self.frame.coap.get_uri() else "inconc",
+				"updated resource should be the observed resource (%s)" % uri)
+
+			self.next()
+
+			self.match_coap ("server", CoAP (type="ack", code=2.04))
+		else:
+			new_pl = All (Not(b""), Not (pl))
+
+		self.next()
+
+		# Step 8
+		if self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (CoAPOptionObserve()),
+							pl=new_pl)):
+
+			self.match_coap ("server", CoAP (tok = token,opt=Opt (
+						CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+		self.next()
+
+		# Step 10
+
+		self.match_coap ("client", CoAP (type="ack", code=0))
+
+		raise self.Stop()
+
+class TD_COAP_OBS_10 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_10
+Objective:
+GET does not cancel resource observation
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 1.2, 3, 4
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every 5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+5
+Check
+Client sends an ACK
+
+6
+Verify
+Client displays the received information
+
+7
+Stimulus
+Client is requested to send to the server a confirmable GET request *without* observe option for resource /obs
+
+8
+Check
+Client sends a request containing :
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value ➔ t2, a value generated by the client ≠ t
+•	*No* Observe option
+
+9
+Check
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs, = f
+•	Token value = t2, same as one found in the step 8
+•	*No* Observe option
+
+
+10
+Check
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = f, same as one found in the step 3
+•	Token value = t, same as one found in the step 3
+•	Observe option indicating increasing values
+
+11
+Check
+Client sends an ACK
+
+12
+Verify
+Client displays the received information
+
+Notes:
+Steps 4-6 and 10-12 are in a loop.
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",
+						opt=self.uri ("/obs", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+		path = self.frame.coap["opt"][CoAPOptionUriPath]["val"]
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionObserve(),
+			CoAPOptionContentFormat(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+		while self.match_coap ("server", CoAP (code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+
+			# Step 4
+			if not self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 5
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+		# Step 8
+		if not self.match_coap ("client", CoAP (type="con", code="get", opt=All (Opt(CoAPOptionUriPath(path)),NoOpt (CoAPOptionObserve())))):
+			raise self.Stop()
+		self.match_coap ("client", CoAP (tok = Not (token)),"fail")
+		token2 = self.frame.coap["tok"]
+
+		self.next()
+		# Step 9
+		self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+				CoAPOptionContentFormat(content_format),
+			)),"fail")
+		self.match_coap ("server", CoAP (tok = token2,opt=NoOpt(CoAPOptionObserve())), "fail")
+		# Step 10
+		for i in range (2):
+			self.next()
+
+			if not self.match_coap ("server", CoAP (type="con",code=2.05, opt=Opt (CoAPOptionObserve (),CoAPOptionContentFormat()))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 11
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+
+
+		raise self.Stop()
+
+#TODO: need a parameter: client side or server side packet capture
+#TODO: TD_COAP_OBS_11
+
+class TD_COAP_OBS_12 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_12
+Objective:
+GET with Observe=1 does cancel resource observation
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 1.2, 3, 4
+ETF 89 WG decision on observation cancellation
+
+Pre-test
+conditions:
+•	Client supports Observe option
+•	Server supports Observe option
+•	Server offers an observable resource /obs which changes periodically (e.g. every 5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource /obs
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value  = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format = same as one found in the step 3
+•	Token value = same as one found in the step 2
+•	Observe option indicating increasing values
+
+5
+Check
+Client sends an ACK
+
+6
+Verify
+Client displays the received information
+
+7
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option = 1 for resource /obs
+
+8
+Check
+Client sends a request containing :
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value t
+•	Observe option = 1
+
+9
+Check
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs, = f
+•	Token value = t, same as one found in the step 8
+•	*No* Observe option
+
+
+10
+Verify
+Server does not send further notifications
+
+11
+Verify
+Client does not display further received information
+
+Notes:
+Steps 4-6 are in a loop.
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",
+						opt=self.uri ("/obs", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+		uri = self.frame.coap.get_uri()
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionObserve(),
+			CoAPOptionContentFormat(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		self.next()
+
+		# we need to observe at least one notification
+		# (to ensure that the server is observing the resource for the client)
+
+		verdict_if_none = "inconc"
+
+		while self.match_coap ("server", CoAP (code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+
+			# Step 4
+			if not self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+
+			self.next()
+
+			# Step 5
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+
+		# Step 8
+		self.match_coap ("client", CoAP (type="con", code="get", opt=Opt (CoAPOptionObserve(1))))
+		token = self.frame.coap["tok"]
+
+		self.next()
+		# Step 9
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionContentFormat(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token,opt=NoOpt(CoAPOptionObserve())), "fail")
+
+class TD_COAP_OBS_13 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_13
+Objective:
+Handle observation of large resources (with Block2)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 1.2, 3, 4
+[BLOCK] 2.6
+
+Pre-test
+conditions:
+•	Client supports Observe and Block2 options
+•	Server supports Observe and Block2 options
+•	Server offers an observable resource /obs-large which changes periodically (e.g. every 5s) which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource /obs-large
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+•	Block2 option with
+		NUM = 0;
+		M = 1;
+		SZX (➔DES_SZX) is the desired block size.
+•	Payload size is 2**(SZX+4) bytes.
+
+4
+Check
+Client obtains the rest of the resource representation (cf. TD_COAP_BLOCK_02)
+
+5
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format =  same as one found in the step 3
+•	Token value = same as one found in the step 3
+•	Observe option indicating increasing values (sequence number arithmetic modulo 2**24), unless more than 256 seconds elapsed
+•	Block2 option with
+		NUM = 0;
+		M = 1;
+		SZX (➔DES_SZX) is the desired block size.
+•	Payload size is 2**(SZX+4) bytes.
+
+6
+Check
+Client sends an ACK
+
+7
+Check
+Client obtains the rest of the resource representation (cf. TD_COAP_BLOCK_02)
+
+6
+Verify
+Client displays the received information
+
+Notes:
+(1) Steps 5-8 are in a loop.
+	"""
+
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",
+						opt=self.uri ("/obs-large", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionObserve(),
+			CoAPOptionContentFormat(),
+			CoAPOptionBlock2(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+		self.match_coap ("server", CoAP (opt = Opt ( CoAPOptionBlock2(num=0,m=1))), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+		server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+		server_size = 2**(server_szx+4)
+		self.match_coap ("server", CoAP (pl = Length (bytes, server_size)), "fail")
+
+		self.next()
+		# Step 4
+		j=1
+		while 1 :
+			#block
+			self.match_coap("client",CoAP(type="con",code="get",opt=Opt(CoAPOptionBlock2(num=j,m=0))),"fail")
+			self.next()
+			self.match_coap("server",CoAP(type="ack",code=2.05,opt=Opt(CoAPOptionBlock2(num=j))),"fail")
+			if self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2(m=0))),None):
+				self.next()
+				break
+			self.next()
+			j=j+1
+
+		verdict_if_none = "inconc"
+
+		# Step 5 notification
+		while self.match_coap ("server", CoAP (code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+			if not self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+				CoAPOptionBlock2(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+			self.match_coap ("server", CoAP (opt = Opt ( CoAPOptionBlock2(num=0,m=1))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+			server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+			server_size = 2**(server_szx+4)
+			self.match_coap ("server", CoAP (pl = Length (bytes, server_size)), "fail")
+
+			self.next()
+
+			# Step 6
+			self.match_coap ("client", CoAP (type="ack", code=0))
+
+			self.next()
+
+			# Step 7
+			j=1
+			while 1 :
+				#block
+				self.match_coap("client",CoAP(type="con",code="get",opt=Opt(CoAPOptionBlock2(num=j,m=0))),"fail")
+				self.next()
+				self.match_coap("server",CoAP(type="ack",code=2.05,opt=Opt(CoAPOptionBlock2(num=j))),"fail")
+				if self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2(m=0))),None):
+					self.next()
+					break
+				self.next()
+				j=j+1
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+		raise self.Stop()
+
+class TD_COAP_OBS_14 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_OBS_14
+Objective:
+Handle observation of variable size large resources (with Block2)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 1.2, 3, 4
+[BLOCK] 2.6
+
+Pre-test
+conditions:
+•	Client supports Observe and Block2 options
+•	Server supports Observe and Block2 options
+•	Server offers an observable resource /obs-pumping which changes periodically (e.g. every 5s), with varying sizes some of which require a Block2 option and others that do not, which produces confirmable notifications
+
+Test Sequence:
+Step
+Type
+Description
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource /obs-pumping
+
+2
+Check
+The request sent by client contains:
+•	Type = 0 (CON)
+•	Code = 1 (GET)
+•	Token value = a value generated by the client
+•	Observe option = empty
+
+3
+Check
+Server sends the response containing:
+•	Type = 2 (ACK)
+•	Code = 2.05 (Content)
+•	Content-format of the resource /obs
+•	Token value = same as one found in the step 2
+•	Observe option with a sequence number
+•	Potentially, a Block2 option with
+		NUM = 0;
+		M = 1;
+		SZX (➔DES_SZX) is the desired block size.
+•	If there was a Block2 option, Payload size is 2**(SZX+4) bytes.
+
+4
+Check
+If there was a Block2 option, the client obtains the rest of the resource representation (cf. TD_COAP_BLOCK_02)
+
+5
+Check
+Server sends a notification containing:
+•	Type = 0 (CON)
+•	Code = 2.05 (Content)
+•	Content-format =  same as one found in the step 3
+•	Token value = same as one found in the step 3
+•	Observe option indicating increasing values (sequence number arithmetic modulo 2**24), unless more than 256 seconds elapsed
+•	Potentially, a Block2 option with
+		NUM = 0;
+		M = 1;
+		SZX (➔DES_SZX) is the desired block size.
+•	Payload size is 2**(SZX+4) bytes.
+
+6
+Check
+Client sends an ACK
+
+7
+Check
+If there was a Block2 option, the client obtains the rest of the resource representation (cf. TD_COAP_BLOCK_02)
+
+6
+Verify
+Client displays the received information
+
+Notes:
+(1) Steps 5-8 are in a loop.
+(2) continue observing until both the Block2 and the single-payload case (no blockwise transfer) have been observed.
+(3) repeat test until the response to the initial request also has been observed both in Block2 and in single-payload form.
+	"""
+
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",
+						opt=self.uri ("/obs-pumping", CoAPOptionObserve (0))))
+
+		token = self.frame.coap["tok"]
+
+		self.next()
+
+		# Step 3
+		if not self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (
+			CoAPOptionObserve(),
+			CoAPOptionContentFormat(),
+		))):
+			raise self.Stop()
+		self.match_coap ("server", CoAP (tok = token), "fail")
+
+		content_format = self.frame.coap["opt"][CoAPOptionContentFormat]["val"]
+		index          = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+		if self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2())),None):
+			self.match_coap ("server", CoAP (opt = Opt ( CoAPOptionBlock2(num=0,m=1))), "fail")
+			server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+			server_size = 2**(server_szx+4)
+			self.match_coap ("server", CoAP (pl = Length (bytes, server_size)), "fail")
+
+			self.next()
+			# Step 4
+			j=1
+			while 1 :
+				#block
+				self.match_coap("client",CoAP(type="con",code="get",opt=Opt(CoAPOptionBlock2(num=j,m=0))),"fail")
+				self.next()
+				self.match_coap("server",CoAP(type="ack",code=2.05,opt=Opt(CoAPOptionBlock2(num=j))),"fail")
+				if self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2(m=0))),None):
+					self.next()
+					break
+				self.next()
+				j=j+1
+
+		verdict_if_none = "inconc"
+
+		# Step 5 notification
+		while self.match_coap ("server", CoAP (code=2.05, opt=Opt (CoAPOptionObserve ())),
+					verdict_if_none):
+			if not self.match_coap ("server", CoAP (type="con", code=2.05, opt=Opt (
+				CoAPOptionObserve(),
+				CoAPOptionContentFormat(),
+			))):
+				raise self.Stop()
+			self.match_coap ("server", CoAP (tok = token), "fail")
+			self.match_coap ("server", CoAP (opt = Opt (CoAPOptionContentFormat (content_format))), "fail")
+
+			new_index = self.frame.coap["opt"][CoAPOptionObserve]["val"]
+
+			self.setverdict (("pass" if new_index > index else "fail"),
+				"value of observe option must be increasing")
+			if self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2())),None):
+				self.match_coap ("server", CoAP (opt = Opt ( CoAPOptionBlock2(num=0))), "fail")
+				# one block
+				server_continue  = self.frame.coap["opt"][CoAPOptionBlock2]["m"]
+				server_szx  = self.frame.coap["opt"][CoAPOptionBlock2]["szx"]
+				server_size = 2**(server_szx+4)
+				if server_continue :
+					self.match_coap ("server", CoAP (pl = Length (bytes, server_size)), "fail")
+
+				self.next()
+
+				# Step 6
+				self.match_coap ("client", CoAP (type="ack", code=0))
+
+				self.next()
+
+				# Step 7
+				if server_continue :
+					j=1
+					while 1 :
+						#block
+						self.match_coap("client",CoAP(type="con",code="get",opt=Opt(CoAPOptionBlock2(num=j,m=0))),"fail")
+						self.next()
+						self.match_coap("server",CoAP(type="ack",code=2.05,opt=Opt(CoAPOptionBlock2(num=j))),"fail")
+						if self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2(m=0))),None):
+							self.next()
+							break
+						self.next()
+						j=j+1
+			else :
+				self.next()
+				# Step 6
+				self.match_coap ("client", CoAP (type="ack", code=0))
+				self.next()
+			# now we have successfully observed a observe response
+			verdict_if_none = None
+		raise self.Stop()
+############# IRISA #############
+#//////////// CORE
+
+class TD_COAP_IRISA_CORE_01 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_01
+Objective:
+Do not exceed the MAX_TRANSMIT_SPAN time during a retransmission
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 4.2, 4.8.2
+
+1
+Stimulus
+Client is requested to send a request
+
+2
+Action
+Save the date of the first frame
+
+3
+Wait
+Wait the next frame
+
+4
+Action
+If the client retransmits the request then the time must be less than MAX_TRANSMIT_SPAN
+
+5
+Action
+return to the step 3, if the conversation is not over
+
+"""
+	def run (self):
+		f_Start = self.frame.coap
+		t_Start = self.frame.ts
+		self.chain()
+		if self.match_coap("client",CoAP(ver=f_Start["ver"],type=f_Start["type"],tkl=f_Start["tkl"],code=f_Start["code"],tok=f_Start["tok"]),None):
+			while 1:
+				if self.frame.ts - t_Start > 45 :
+					self.setverdict("fail","the MAX_TRANSMIT_SPAN time is not respected")
+					break
+				if self.next(optional=True) is None :
+					self.chain()
+				if not self.match_coap("client",CoAP(ver=f_Start["ver"],type=f_Start["type"],tkl=f_Start["tkl"],code=f_Start["code"],tok=f_Start["tok"]),None):
+					self.setverdict("pass","the MAX_TRANSMIT_SPAN time is respected")
+					break
+		raise self.Stop()
+
+class TD_COAP_IRISA_CORE_02 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_02
+Objective:
+Accept option not repeatable
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.10
+
+1
+Stimulus
+Client is requested to send a GET request
+
+2
+Check
+The request sent by the client contains:
+	Code = 1 (GET) and a single option Accept
+
+"""
+	def run (self):
+		if not self.match_coap("client", CoAP(opt= NoOpt(CoAPOptionAccept())),None):
+			self.match_coap("client", CoAP(opt= Opt(CoAPOptionAccept())),"fail")
+		raise self.Stop()
+
+
+
+class TD_COAP_IRISA_CORE_03 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_03
+Objective:
+If the request entity too large (4.13 response code), the server response include an option for the size of the resource (size1)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.9.2.9, 5.10, 5.10.9
+
+Pre-test
+conditions:
+Server offers a resource
+
+Verdict:
+Pass or warning
+
+1
+Stimulus
+Client is requested to send a PUT request with large resource
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (PUT) and an arbitrary payload
+
+3
+Check
+The server sends the response :
+	Code = 141 (4.13 Request Entity Too Large)
+
+4
+Check
+The same response contains :
+	Option Type = Size1
+
+"""
+	def run (self):
+		self.match_coap("client", CoAP(code="put"),None)
+		self.next_skip_ack()
+		if self.match_coap("server", CoAP(code=141)):
+			self.match_coap("server",CoAP(opt=Opt(CoAPOptionSize1())))
+		raise self.Stop()
+
+class TD_COAP_IRISA_CORE_04 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_04
+Objective:
+Uri-Host option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Uri-Host option
+
+2
+Check
+The request sent by the client contains:
+	Code = 1 (GET) and Option Type = Uri-Host
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionUriHost()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the Uri-Host option")
+			else:
+				self.setverdict("pass","the server accepts the Uri-Host option")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_05 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_05
+Objective:
+Uri-Port option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Uri-Port option
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (GET) and Option Type = Uri-Port
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionUriPort()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the Uri-Port option")
+			else:
+				self.setverdict("pass","the server accepts the Uri-Port option")
+		raise self.Stop()
+
+class TD_COAP_IRISA_CORE_06 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_06
+Objective:
+Uri-Path option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Uri-Path option
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (GET) and Option Type = Uri-Path
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionUriPath()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the Uri-Path option")
+			else:
+				self.setverdict("pass","the server accepts the Uri-Path option")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_07 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_07
+Objective:
+Uri-Query option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Uri-Query option
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (GET) and Option Type = Uri-Query
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionUriQuery()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the Uri-Query option")
+			else:
+				self.setverdict("pass","the server accepts the Uri-Query option")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_08 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_08
+Objective:
+Accept option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Accept option
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (GET) and Option Type = Accept
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionAccept()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the Accept option")
+			else:
+				self.setverdict("pass","the server accepts the Accept option")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_09 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_09
+Objective:
+Proxy-Uri option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Proxy-Uri option
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (GET) and Option Type = Proxy-Uri
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionProxyUri()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the Proxy-Uri option is not accepted")
+			else:
+				self.setverdict("pass","the Proxy-Uri option is accepted")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_10 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_10
+Objective:
+Proxy-Scheme option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server offers a resource
+
+1
+Stimulus
+Client is requested to send a GET request with Proxy-Scheme option
+
+2
+Check
+The request sent by the client contains:
+	Code= 1 (GET) and Option Type = Proxy-Scheme
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionProxyScheme()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the Proxy-Scheme option is not accepted")
+			else:
+				self.setverdict("pass","the Proxy-Scheme option is accepted")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_11 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_11
+Objective:
+If-Match option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server accepts creation of new resource
+
+1
+Stimulus
+Client is requested to send a PUT request with If-Match option
+
+2
+Check
+The request sent by the client contains:
+	Code= 3 (PUT) and Option Type = If-Match
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="put",opt=Opt(CoAPOptionIfMatch()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the If-Match option")
+			else:
+				self.setverdict("pass","the server accepts the If-Match option")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_CORE_12 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_CORE_12
+Objective:
+If-None-Match option recognized by the server
+Configuration:
+CoAP_CFG_BASIC
+References:
+[COAP] 5.4.1, 5.9.2.3, 12.1.2
+
+Pre-test
+conditions:
+Server accepts creation of new resource
+
+1
+Stimulus
+Client is requested to send a PUT request with If-None-Match option
+
+2
+Check
+The request sent by the client contains:
+	Code= 3 (PUT) and Option Type = If-None-Match
+
+3
+Check
+The server does not return the response with:
+	Code = 130 (4.02 Bad Option)
+
+"""
+	def run (self):
+		if self.match_coap("client",CoAP(code="put",opt=Opt(CoAPOptionIfNoneMatch()))):
+			self.next_skip_ack()
+			if self.match_coap("server",CoAP(code=130),None):
+				self.setverdict("fail","the server not accepts the If-None-Match option")
+			else:
+				self.setverdict("pass","the server accepts the If-None-Match option")
+		raise self.Stop()
+
+#//////////// BLOCK
+
+class TD_COAP_IRISA_BLOCK_01 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_BLOCK_01
+Objective:
+It is recommended to use confirmable messages during block transmission (block2)
+Configuration:
+CoAP_CFG_BASIC
+
+Pre-test
+conditions:
+Client supports Block transfers
+Server supports Block transfers
+Server offers a large resource
+
+1
+Stimulus
+Client is requested to retrieve resource
+
+2
+Check
+The request sent by client contains:
+		  Type = 0 (CON)
+		  Code = 1 (GET)
+
+3
+Check
+Server sends the response containing:
+		  Type = 2 (ACK)
+		  Option Type = Block2
+
+4
+Check
+The request sent by client contains:
+		  Type = 0 (CON)
+		  Code = 1 (GET)
+		  Option Type = Block2
+
+5
+Check
+Server sends the response containing:
+		  Type = 2 (ACK)
+		  Option Type = Block2
+
+6
+Action
+Return to the step 4, if the conversation is not over
+
+"""
+	def run (self):
+		#step 2
+		self.match_coap("client",CoAP(type="con",code="get"),None)
+		self.next()
+		#step 3
+		if not self.match_coap("server",CoAP(opt=Opt(CoAPOptionBlock2())),None) :
+			raise self.Stop()
+		if self.match_coap("server",CoAP(opt=Opt(CoAPOptionObserve())),None):
+			raise self.Stop()
+		self.next()
+		while 1 :
+			#step 4
+			self.match_coap("client",CoAP(code="get",opt=Opt(CoAPOptionBlock2())))
+			if not self.match_coap("client",CoAP(type="con")):
+				self.setverdict("inconc","It is recommended to use confirmable messages during block transmission")
+				raise self.Stop()
+			self.next()
+			#step 5
+			self.match_coap("server",CoAP(type="ack",opt=Opt(CoAPOptionBlock2())),"fail")
+			#step 6
+			if  self.next(optional = True) is None:
+				break
+		raise self.Stop()
+
+class TD_COAP_IRISA_BLOCK_02 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_BLOCK_02
+Objective:
+It is recommended to use confirmable messages during block transmission (block1)
+Configuration:
+CoAP_CFG_BASIC
+
+Pre-test
+conditions:
+Client supports Block transfers
+Server supports Block transfers
+Server offers a large updatable resource
+
+1
+Stimulus
+Client is requested to update resource on Server
+
+2
+Check
+The request sent by client contains:
+	Type = 0 (CON)
+	Code = 3 (PUT)
+	Option Type = Block1
+
+3
+Check
+Server sends the response containing:
+	Type = 2 (ACK)
+	Option Type = Block1
+
+4
+Check
+The request sent by client contains:
+	Type = 0 (CON)
+	Code = 3 (PUT)
+	Option Type = Block1
+
+5
+Check
+Server sends the response containing:
+	Type = 2 (ACK)
+	Option Type = Block1
+
+6
+Action
+Return to the step 4, if the conversation is not over
+
+"""
+	def run (self):
+		#step 2
+		self.match_coap("client",CoAP(type="con",code="put",opt=Opt(CoAPOptionBlock1())))
+		self.next()
+		#step 3
+		if self.match_coap("server",CoAP(type="ack",opt=Opt(CoAPOptionBlock1()))):
+			self.next()
+			while 1 :
+				#step 4
+				self.match_coap("client",CoAP(code="put",opt=Opt(CoAPOptionBlock1())))
+				if not self.match_coap("client",CoAP(type="con")):
+					self.setverdict("inconc","It is recommended to use confirmable messages during block transmission")
+					raise self.Stop()
+				self.next()
+				#step 5
+				self.match_coap("server",CoAP(type="ack",opt=Opt(CoAPOptionBlock1())))
+				#step 6
+				if self.next(optional = True) is None:
+					break
+		raise self.Stop()
+
+#//////////// OBSERVE
+
+class TD_COAP_IRISA_OBS_01 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_OBS_01
+Objective:
+The server SHOULD NOT send more than one non-confirmable notification per round-trip time (RTT, default = 3 seconds)
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 4.5.1
+
+
+Pre-test
+conditions:
+Client supports Observe option
+Server supports Observe option
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource
+
+2
+Check
+The request sent by client contains:
+	Type = 0 (CON)
+	Code = 1 (GET)
+	Observe option = 0
+
+3
+Check
+Server sends the response containing:
+	Type = 2 (ACK)
+	Code = 2.05 (Content)
+	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+	Type = 1 (NON)
+	Code = 2.05 (Content)
+	Observe option indicating increasing values
+
+5
+Action
+Save the time of the frame
+
+6
+Check
+Server sends a notification containing:
+	Type = 1 (NON)
+	Code = 2.05 (Content)
+	Observe option indicating increasing values
+
+7
+Action
+Compare the date of the frame (step 5) and the date last frame,time must be less than 3 seconds
+
+8
+Action	return to the step 5, if the conversation is not over
+
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP ( code="get", opt=Opt (CoAPOptionObserve (0))))
+		self.next()
+		# Step 3
+		if self.match_coap ("server", CoAP (code=2.05, opt=Opt (CoAPOptionObserve()))):
+			if not self.match_coap("server",CoAP(opt=NoOpt(CoAPOptionBlock2()))):
+				raise self.Stop()
+			while 1 :
+				if self.next(optional=True) is None :
+					self.setverdict("inconc","Observe with no non-confirmable message")
+					raise self.Stop()
+				#step 4
+				if self.match_coap("server",CoAP(type="non",code=2.05,opt=Opt(CoAPOptionObserve())),None):
+					#step 5
+					time_Notification = self.frame.ts
+					break
+			while 1:
+				if self.next(optional=True) is None :
+					break
+				#step 6
+				if self.match_coap("server",CoAP(type="non",code=2.05,opt=Opt(CoAPOptionObserve())),None):
+					#step 7
+					if self.frame.ts - time_Notification < 3 :
+						self.setverdict("fail","The server send more than one non-confirmable notification per round-trip time (RTT, default = 3 seconds)")
+						raise self.Stop()
+					time_Notification = self.frame.ts
+			#step 8
+			self.setverdict("pass","The server not send more than one non-confirmable notification per round-trip time (RTT, default = 3 seconds)")
+		raise self.Stop()
+
+class TD_COAP_IRISA_OBS_02 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_OBS_02
+Objective:
+Sending a confirmable notification at least every 24 hours
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 4.5
+
+Pre-test
+conditions:
+Client supports Observe option
+Server supports Observe option
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource
+
+2
+Check
+The request sent by client contains:
+	Type = 0 (CON)
+	Code = 1 (GET)
+	Observe option = 0
+
+3
+Check
+Server sends the response containing:
+	Type = 2 (ACK)
+	Code = 2.05 (Content)
+	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+	Type = 0 (CON)
+	Code = 2.05 (Content)
+	Observe option indicating increasing values
+
+5
+Action
+Save the time of the frame
+
+6
+Wait
+Wait the next confirmable notification
+	Type = 0 (CON)
+	Code = 2.05 (Content)
+	Observe option indicating increasing values
+
+7
+Action
+Compare the date of the frame (step 5) and the date last frame, time must be less than 24 hours
+
+8
+Action
+return to the step 5, if the conversation is not over
+
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get", opt=Opt (CoAPOptionObserve (0))))
+		self.next()
+		# Step 3
+		if self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve()))):
+			if not self.match_coap("server",CoAP(opt=NoOpt(CoAPOptionBlock2()))):
+				raise self.Stop()
+			while 1 :
+				if self.next(optional=True) is None :
+					self.setverdict("inconc","Observe with no confirmable message")
+					raise self.Stop()
+				#step 4
+				if self.match_coap("server",CoAP(type="con",code=2.05,opt=Opt(CoAPOptionObserve())),None):
+					#step 5
+					time_Notification = self.frame.ts
+					break
+			while 1:
+				if self.next(optional=True) is None :
+					break
+				#step 6
+				if self.match_coap("server",CoAP(type="con",code=2.05,opt=Opt(CoAPOptionObserve())),None):
+					#step 7
+					# 24h -> 86400s
+					if self.frame.ts - time_Notification > 86400 :
+						self.setverdict("fail","In 24 hours, the server does not send notification confirmable")
+						raise self.Stop()
+					time_Notification = self.frame.ts
+			#step 8
+			self.setverdict("pass","The server sent a confirmable notification at least every 24 hours ")
+		raise self.Stop()
+
+
+class TD_COAP_IRISA_OBS_03 (CoAPTestcase):
+	"""Identifier:
+TD_COAP_IRISA_OBS_03
+Objective:
+The client waits for a randomized time after the latest notification expired before re-registering
+Configuration:
+CoAP_CFG_BASIC
+References:
+[OBSERVE] 3.3.1
+
+Pre-test
+conditions:
+Client supports Observe option
+Server supports Observe option
+
+Verdict:
+Pass or warning
+
+1
+Stimulus
+Client is requested to send to the server a confirmable GET request with observe option for resource
+
+2
+Check
+The request sent by client contains:
+	Type = 0 (CON)
+	Code = 1 (GET)
+	Observe option = 0
+
+3
+Check
+Server sends the response containing:
+	Type = 2 (ACK)
+	Code = 2.05 (Content)
+	Observe option with a sequence number
+
+4
+Check
+Server sends a notification containing:
+	Code = 2.05 (Content)
+	Observe option indicating increasing values
+
+5
+Action
+Save the time of the frame
+
+6
+Action
+return to the step 4, if the conversation is not over
+
+7
+Check
+The request sent by client contains:
+	Type = 0 (CON)
+	Code = 1 (GET)
+	Observe option = 0
+
+8
+Action
+Compare the date of the frame (step 5) and the date last frame, time must be above 5 seconds
+
+"""
+	def run (self):
+		# Step 2
+		self.match_coap ("client", CoAP (type="con", code="get",opt=Opt(CoAPOptionObserve (0))))
+		self.next()
+		# Step 3
+		if self.match_coap ("server", CoAP (type="ack", code=2.05, opt=Opt (CoAPOptionObserve())),None):
+			if not self.match_coap("server",CoAP(opt=NoOpt(CoAPOptionBlock2()))):
+				raise self.Stop()
+			self.next()
+			while 1 :
+				#step 4
+				if self.match_coap("server",CoAP(code=2.05,opt=Opt(CoAPOptionObserve())),None):
+					#step 5
+					time_Notification = self.frame.ts
+				#step 6
+				if self.match_coap ("client", CoAP (code="get",opt=Opt(CoAPOptionObserve(1))),None):
+					self.next_skip_ack()
+					break
+				self.next()
+				if self.match_coap ("client", CoAP (type="rst"),None) :
+					break
+			#step 7
+			self.chain()
+			if self.match_coap ("client", CoAP (type="con", code="get",opt=Opt(CoAPOptionObserve (0))),None):
+				#step 8
+				if self.frame.ts - time_Notification > 5 :
+					self.setverdict("pass","The time after re-registration is valid")
+				else:
+					self.setverdict("inconc","The time after re-registration is not valid")
+		raise self.Stop()
+
