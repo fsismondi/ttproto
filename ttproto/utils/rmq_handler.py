@@ -23,12 +23,6 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-'''
-This library is provided to allow standard python logging
-to output log data as JSON formatted strings
-'''
-
 import logging
 import json
 import re
@@ -39,22 +33,28 @@ import time
 import os
 from inspect import istraceback
 
-#Support order in python 2.7 and 3
+# Support order in python 2.7 and 3
 try:
     from collections import OrderedDict
 except ImportError:
     pass
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
+
+# defaults vars
 AMQP_URL = 'amqp://guest:guest@localhost'
+AMQP_EXCHANGE = 'amq.topic'
 
 try:
     AMQP_URL = str(os.environ['AMQP_URL'])
+    AMQP_EXCHANGE = str(os.environ['AMQP_EXCHANGE'])
     print('Env vars for AMQP connection succesfully imported')
-    print('URL: %s'%AMQP_URL)
+    print('URL: %s' % AMQP_URL)
+    print('AMQP_EXCHANGE: %s' % AMQP_EXCHANGE)
 
 except KeyError as e:
-    print(' Cannot retrieve environment variables for AMQP connection, using default %s'%AMQP_URL)
+    print(' Cannot retrieve environment variables for AMQP connection, using default url: %s, exchange: %s' % (
+    AMQP_URL, AMQP_EXCHANGE))
 
 # skip natural LogRecord attributes
 # http://docs.python.org/library/logging.html#logrecord-attributes
@@ -75,7 +75,7 @@ def merge_record_extra(record, target, reserved=RESERVED_ATTR_HASH):
     :param reserved: dict or list with reserved keys to skip
     """
     for key, value in record.__dict__.items():
-        #this allows to have numeric keys
+        # this allows to have numeric keys
         if (key not in reserved
             and not (hasattr(key, "startswith")
                      and key.startswith('_'))):
@@ -101,7 +101,7 @@ class JsonFormatter(logging.Formatter):
         self.json_default = kwargs.pop("json_default", None)
         self.json_encoder = kwargs.pop("json_encoder", None)
         self.prefix = kwargs.pop("prefix", "")
-        #super(JsonFormatter, self).__init__(*args, **kwargs)
+        # super(JsonFormatter, self).__init__(*args, **kwargs)
         logging.Formatter.__init__(self, *args, **kwargs)
         if not self.json_encoder and not self.json_default:
             def _default_json_handler(obj):
@@ -114,6 +114,7 @@ class JsonFormatter(logging.Formatter):
                 elif isinstance(obj, Exception):
                     return "Exception: %s" % str(obj)
                 return str(obj)
+
             self.json_default = _default_json_handler
         self._required_fields = self.parse()
         self._skip_fields = dict(zip(self._required_fields,
@@ -185,38 +186,24 @@ class RabbitMQHandler(logging.Handler):
      Example setup::
         handler = RabbitMQHandler('amqp://guest:guest@localhost')
     """
-    def __init__(self, url, name, exchange="default"):
+
+    def __init__(self, url, name, exchange=AMQP_EXCHANGE):
         logging.Handler.__init__(self)
-        self.url = url
-        self.connection = pika.BlockingConnection(pika.URLParameters(url+"?heartbeat=10"))
+        self.connection = pika.BlockingConnection(pika.URLParameters(url))
         self.channel = self.connection.channel()
         self.exchange = exchange
         self.name = name
 
     def emit(self, record):
         routing_key = ".".join(["log", record.levelname.lower(), self.name])
-
-        try:
-            self.channel.basic_publish(
-                exchange=self.exchange,
-                routing_key=routing_key,
-                body=self.format(record),
-                properties = pika.BasicProperties(
-                        content_type='application/json'
-                )
-        )
-        except pika.exceptions.ConnectionClosed :
-            print("Log hanlder connection closed. Reconnecting..")
-            self.connection = pika.BlockingConnection(pika.URLParameters(self.url + "?heartbeat=10"))
-            self.channel = self.connection.channel()
-            self.channel.basic_publish(
-                    exchange=self.exchange,
-                    routing_key=routing_key,
-                    body=self.format(record),
-                    properties=pika.BasicProperties(
-                            content_type='application/json'
-                    )
+        self.channel.basic_publish(
+            exchange=self.exchange,
+            routing_key=routing_key,
+            body=self.format(record),
+            properties=pika.BasicProperties(
+                content_type='application/json',
             )
+        )
 
     def close(self):
         self.channel.close()
@@ -228,20 +215,20 @@ if __name__ == "__main__":
     json_formatter = JsonFormatter()
     rabbitmq_handler.setFormatter(json_formatter)
 
-    log = logging.getLogger(__name__)
-    log.addHandler(rabbitmq_handler)
-    log.setLevel(logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    logger.addHandler(rabbitmq_handler)
+    logger.setLevel(logging.DEBUG)
 
     sh = logging.StreamHandler()
-    log.addHandler(sh)
+    logger.addHandler(sh)
 
     while True:
-        log.critical("This is a critical message")
+        logger.critical("This is a critical message")
         time.sleep(1)
-        log.error("This is an error")
+        logger.error("This is an error")
         time.sleep(1)
-        log.warning("This is a warning")
+        logger.warning("This is a warning")
         time.sleep(1)
-        log.info("This is an info")
+        logger.info("This is an info")
         time.sleep(1)
-        log.debug("This is a debug")
+        logger.debug("This is a debug")

@@ -51,7 +51,22 @@ from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
 from ttproto.utils import amqp_messages
 
 COMPONENT_ID = 'tat'
-AMQP_EXCHANGE = 'default'
+
+# AMQP ENV variables (either get them all from ENV or set them all as default)
+try:
+    AMQP_EXCHANGE = str(os.environ['AMQP_EXCHANGE'])
+except KeyError as e:
+    print('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
+    AMQP_EXCHANGE = "amq.topic"
+
+try:
+    AMQP_URL = str(os.environ['AMQP_URL'])
+except KeyError as e:
+    print('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
+    AMQP_URL = "amqp://local:{1}@{2}/{3}".format('guest', 'guest', 'localhost', '')
+
+print('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s'%(AMQP_URL,AMQP_EXCHANGE))
+
 ALLOWED_EXTENSIONS = set(['pcap'])
 COMPONENT_DIR = 'ttproto/tat_coap'
 
