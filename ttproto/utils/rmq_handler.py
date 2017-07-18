@@ -39,7 +39,7 @@ try:
 except ImportError:
     pass
 
-VERSION = '0.0.3'
+VERSION = '0.0.4'
 
 # defaults vars
 AMQP_URL = 'amqp://guest:guest@localhost'
@@ -209,7 +209,7 @@ class RabbitMQHandler(logging.Handler):
             )
         except pika.exceptions.ConnectionClosed:
             print("Log hanlder connection closed. Reconnecting..")
-            self.connection = pika.BlockingConnection(pika.URLParameters(self.url + "?heartbeat=10"))
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.url))
             self.channel = self.connection.channel()
             self.channel.basic_publish(
                 exchange=self.exchange,
@@ -219,7 +219,7 @@ class RabbitMQHandler(logging.Handler):
                     content_type='application/json'
                 )
             )
-        )
+
 
     def close(self):
         self.channel.close()
@@ -247,4 +247,4 @@ if __name__ == "__main__":
         time.sleep(1)
         logger.info("This is an info")
         time.sleep(1)
-        log.debug("This is a debug")
+        logger.debug("This is a debug")
