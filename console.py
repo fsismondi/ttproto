@@ -35,6 +35,8 @@ readline.parse_and_bind('tab: complete')
 
 from ttproto.core.lib.all	import *
 from ttproto.core.data	import *
+from ttproto.core.dissector import *
+from ttproto.core.analyzer import *
 import	atexit, os, sys
 
 __HISTORY_FILE = os.path.join (os.path.expanduser ("~"), ".ttproto_history")
