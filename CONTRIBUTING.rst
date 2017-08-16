@@ -1,14 +1,17 @@
 ============================
 Contributing to ttproto tool
 ============================
-The main objective of this document is to provide guidelines contributing to ttproto with new
+
+Thank you for considering contributing to ttproto!
+
+The main objective of this document is to provide guidelines for contributing to ttproto with new
 suites / analysis tools using ttproto APIs and libraries. This document contains two parts;
-(1) guidelines on how to provide a **conformance** test suite (TBD) and how to provide an
-**interoperability** testsuite / test analyzer tool.
+(1) guidelines on how to provide a **conformance** test suite (TBD) and (2) guidelines on how to provide
+an **interoperability** testsuite / test analyzer tool.
 A conformance test suite testing a protocol **foo** in the ttproto environment is named **TS_foo**,
-and an interoperability test suite testing a protocol **bar** is named **TAT_bar**.
-TAT stands for test analysis tool. Interoperability test suite / TAT in ttproto are
-tools which analyze  the exchanged frames in a interop test **post mortem**,
+and an interoperability test suite, testing a protocol **bar**, is named **TAT_bar**.
+TAT stands for test analysis tool. Interoperability TAT in ttproto are
+tools which analyze the exchanged frames in a interop test **post mortem**,
 meaning after the test has been executed.
 ttproto uses pcaps (not pcap-ng) as input for analysing the exchanged frames during
 an interop test. This makes ttproto an easier tool to integrate into other systems
@@ -17,7 +20,6 @@ given it's passive, non intrusive approach for running tests.
 
 .. contents:: Table of content
 
-
 .. note:: TODO list:
     - Put doc about how to dev a lib for a protocol
     - Document conformance test suite
@@ -25,8 +27,8 @@ given it's passive, non intrusive approach for running tests.
     - Document amqp and http interface of ttproto
 
 
-Interoperability test suite
-===========================
+Interoperability test suite / TAT
+=================================
 Here we will see how to implement an interoperability test suite using ttproto's
 tool. You can find two examples of this type of test suite into **tat_coap**
 and **tat_6lowpan** subdirectories of **ttproto**.
@@ -437,6 +439,13 @@ Now, you can provide the actual run of the test by writting the *run()* method.
 You can look at the `Functions provided`_ section for every usefull functions
 but the main ones that you need are **match()** for checking, **log()** if you
 want to log messages and **next()** for going from one frame to another.
+
+
+
+Conformance test suite
+======================
+
+**TBD**
 
 
 Styleguides
