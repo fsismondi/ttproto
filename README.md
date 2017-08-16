@@ -11,6 +11,11 @@ Its purpose is to facilitate rapid prototyping and experimentation (rather than 
 -------------------------------------
 Here some examples on how to the TTproto API used for pcap analysis:
 
+Using the ttproto console:
+```
+    python3 -i console.py
+```
+
 For running a dissection of a PCAP file:
 ```
     >>> dis = Dissector('tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap')
