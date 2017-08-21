@@ -39,12 +39,13 @@ try:
 except ImportError:
     pass
 
-VERSION = '0.0.3'
+VERSION = '0.0.4'
 
 # defaults vars
 AMQP_URL = 'amqp://guest:guest@localhost'
 AMQP_EXCHANGE = 'amq.topic'
 
+# import AMQP variables from environment
 try:
     AMQP_URL = str(os.environ['AMQP_URL'])
     AMQP_EXCHANGE = str(os.environ['AMQP_EXCHANGE'])
@@ -196,14 +197,29 @@ class RabbitMQHandler(logging.Handler):
 
     def emit(self, record):
         routing_key = ".".join(["log", record.levelname.lower(), self.name])
-        self.channel.basic_publish(
-            exchange=self.exchange,
-            routing_key=routing_key,
-            body=self.format(record),
-            properties=pika.BasicProperties(
-                content_type='application/json',
+
+        try:
+            self.channel.basic_publish(
+                exchange=self.exchange,
+                routing_key=routing_key,
+                body=self.format(record),
+                properties=pika.BasicProperties(
+                    content_type='application/json'
+                )
             )
-        )
+        except pika.exceptions.ConnectionClosed:
+            print("Log hanlder connection closed. Reconnecting..")
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.url))
+            self.channel = self.connection.channel()
+            self.channel.basic_publish(
+                exchange=self.exchange,
+                routing_key=routing_key,
+                body=self.format(record),
+                properties=pika.BasicProperties(
+                    content_type='application/json'
+                )
+            )
+
 
     def close(self):
         self.channel.close()
