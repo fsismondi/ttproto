@@ -65,7 +65,7 @@ except KeyError as e:
     print('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
     AMQP_URL = "amqp://local:{1}@{2}/{3}".format('guest', 'guest', 'localhost', '')
 
-print('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s'%(AMQP_URL,AMQP_EXCHANGE))
+print('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s' % (AMQP_URL, AMQP_EXCHANGE))
 
 ALLOWED_EXTENSIONS = set(['pcap'])
 COMPONENT_DIR = 'ttproto/tat_coap'
@@ -104,16 +104,15 @@ def signal_int_handler(signal, frame):
 
     # dissection shutdown message
     _publish_message(
-            channel,
-            amqp_messages.MsgTestingToolComponentShutdown(component='dissection')
+        channel,
+        amqp_messages.MsgTestingToolComponentShutdown(component='dissection')
     )
 
     # analysis shutdown message
     _publish_message(
-            channel,
-            amqp_messages.MsgTestingToolComponentShutdown(component='analysis')
+        channel,
+        amqp_messages.MsgTestingToolComponentShutdown(component='analysis')
     )
-
 
     logger.info('got SIGINT. Bye bye!')
 
@@ -151,14 +150,14 @@ def start_amqp_interface():
     #  let's send bootstrap message (analysis)
 
     _publish_message(
-            channel,
-            amqp_messages.MsgTestingToolComponentReady(component='analysis')
+        channel,
+        amqp_messages.MsgTestingToolComponentReady(component='analysis')
     )
 
     #  let's send bootstrap message (dissector)
     _publish_message(
-            channel,
-            amqp_messages.MsgTestingToolComponentReady(component='dissection')
+        channel,
+        amqp_messages.MsgTestingToolComponentReady(component='dissection')
     )
 
     channel.basic_qos(prefetch_count=1)
@@ -244,12 +243,12 @@ def on_service_request(ch, method, props, body):
             # if pcap file has less than 24 bytes then its an empty pcap file
             if (nb <= 24):
                 _publish_message(
-                        ch,
-                        amqp_messages.MsgErrorReply(
-                                service_request,
-                                ok=False,
-                                error_message='Empty PCAP file received'
-                        )
+                    ch,
+                    amqp_messages.MsgErrorReply(
+                        service_request,
+                        ok=False,
+                        error_message='Empty PCAP file received'
+                    )
                 )
                 logger.warning("Empty PCAP received")
                 return
@@ -271,15 +270,15 @@ def on_service_request(ch, method, props, body):
         # let's prepare the message
         try:
             response = amqp_messages.MsgInteropTestCaseAnalyzeReply(
-                    service_request,
-                    ok=True,
-                    verdict=analysis_results[1],
-                    description=analysis_results[3],
-                    review_frames=analysis_results[2],
-                    partial_verdicts=analysis_results[4],
-                    token=operation_token,
-                    testcase_id=testcase_id,
-                    testcase_ref=testcase_ref
+                service_request,
+                ok=True,
+                verdict=analysis_results[1],
+                description=analysis_results[3],
+                review_frames=analysis_results[2],
+                partial_verdicts=analysis_results[4],
+                token=operation_token,
+                testcase_id=testcase_id,
+                testcase_ref=testcase_ref
             )
             # send response
             _publish_message(ch, response)
@@ -288,11 +287,11 @@ def on_service_request(ch, method, props, body):
 
         except Exception as e:
             _publish_message(
-                    ch,
-                    amqp_messages.MsgErrorReply(
-                            service_request,
-                            error_message=str(e)
-                    )
+                ch,
+                amqp_messages.MsgErrorReply(
+                    service_request,
+                    error_message=str(e)
+                )
             )
             logger.error(str(e))
             return
@@ -333,11 +332,11 @@ def on_service_request(ch, method, props, body):
         # if pcap file has less than 24 bytes then its an empty pcap file
         if (nb <= 24):
             _publish_message(
-                    ch,
-                    amqp_messages.MsgErrorReply(
-                            service_request,
-                            error_message='Empty PCAP file received'
-                    )
+                ch,
+                amqp_messages.MsgErrorReply(
+                    service_request,
+                    error_message='Empty PCAP file received'
+                )
             )
             logger.warning("Empty PCAP received")
             return
@@ -350,30 +349,30 @@ def on_service_request(ch, method, props, body):
             dissection, operation_token = _dissect_capture(filename, proto_filter, None)
         except (TypeError, pure_pcapy.PcapError) as e:
             _publish_message(
-                    ch,
-                    amqp_messages.MsgErrorReply(
-                            service_request,
-                            error_message="Error processing PCAP. Error: %s" % str(e)
-                    )
+                ch,
+                amqp_messages.MsgErrorReply(
+                    service_request,
+                    error_message="Error processing PCAP. Error: %s" % str(e)
+                )
             )
             logger.error("Error processing PCAP")
             return
         except Exception as e:
             _publish_message(
-                    ch,
-                    amqp_messages.MsgErrorReply(
-                            service_request,
-                            error_message="Error found while dissecting pcap. Error: %s" % str(e)
-                    )
+                ch,
+                amqp_messages.MsgErrorReply(
+                    service_request,
+                    error_message="Error found while dissecting pcap. Error: %s" % str(e)
+                )
             )
             logger.error(str(e))
             return
 
         # prepare response with dissection info:
         response = amqp_messages.MsgDissectionDissectCaptureReply(
-                service_request,
-                token=operation_token,
-                frames=dissection
+            service_request,
+            token=operation_token,
+            frames=dissection
         )
         _publish_message(ch, response)
         return
@@ -443,8 +442,8 @@ def _get_test_cases(
     test_cases = OrderedDict()
     tc_query = [] if not testcase_id else [testcase_id]
     raw_tcs = Analyzer('tat_coap').get_implemented_testcases(
-            tc_query,
-            verbose
+        tc_query,
+        verbose
     )
 
     # Build the clean results list
@@ -491,21 +490,21 @@ def _auto_dissect_service():
 
         except TimeoutError as amqp_err:
             logger.error(
-                    'Sniffer didnt respond to Request: %s . Error: %s'
-                    % (
-                        request._type,
-                        str(amqp_err)
-                    )
+                'Sniffer didnt respond to Request: %s . Error: %s'
+                % (
+                    request._type,
+                    str(amqp_err)
+                )
             )
             return
 
         if response.ok is False:
             logger.error(
-                    'Sniffing component coundlt process the %s request correcly, response: %s'
-                    % (
-                        request._type,
-                        repr(request)
-                    )
+                'Sniffing component coundlt process the %s request correcly, response: %s'
+                % (
+                    request._type,
+                    repr(request)
+                )
             )
 
         else:
@@ -544,10 +543,10 @@ def _auto_dissect_service():
 
                     # lets create and push the message to the bus
                     m = amqp_messages.MsgDissectionAutoDissect(
-                            token=operation_token,
-                            frames=dissection,
-                            testcase_id=filename.strip('.pcap'), # dirty solution but less coding :)
-                            testcase_ref='unknown' # not really needed
+                        token=operation_token,
+                        frames=dissection,
+                        testcase_id=filename.strip('.pcap'),  # dirty solution but less coding :)
+                        testcase_ref='unknown'  # not really needed
                     )
                     _publish_message(channel, m)
 
@@ -569,16 +568,16 @@ def _amqp_request(channel, request_message: Message, component_id: str):
 
     # bind and listen to reply_to topic
     channel.queue_bind(
-            exchange=AMQP_EXCHANGE,
-            queue=callback_queue,
-            routing_key=request_message.reply_to
+        exchange=AMQP_EXCHANGE,
+        queue=callback_queue,
+        routing_key=request_message.reply_to
     )
 
     channel.basic_publish(
-            exchange=AMQP_EXCHANGE,
-            routing_key=request_message.routing_key,
-            properties=pika.BasicProperties(**request_message.get_properties()),
-            body=request_message.to_json(),
+        exchange=AMQP_EXCHANGE,
+        routing_key=request_message.routing_key,
+        properties=pika.BasicProperties(**request_message.get_properties()),
+        body=request_message.to_json(),
     )
 
     time.sleep(0.2)
@@ -600,10 +599,10 @@ def _amqp_request(channel, request_message: Message, component_id: str):
 
     else:
         raise TimeoutError(
-                "Response timeout! rkey: %s , request type: %s" % (
-                    request_message.routing_key,
-                    request_message._type
-                )
+            "Response timeout! rkey: %s , request type: %s" % (
+                request_message.routing_key,
+                request_message._type
+            )
         )
 
     # clean up
@@ -623,10 +622,10 @@ def _publish_message(channel, message):
     properties = pika.BasicProperties(**message.get_properties())
 
     channel.basic_publish(
-            exchange=AMQP_EXCHANGE,
-            routing_key=message.routing_key,
-            properties=properties,
-            body=message.to_json(),
+        exchange=AMQP_EXCHANGE,
+        routing_key=message.routing_key,
+        properties=properties,
+        body=message.to_json(),
     )
 
 
@@ -681,8 +680,8 @@ def _get_protocol(
 
 def _dump_json_to_file(json_object, filename):
     json_file = os.path.join(
-            TMPDIR,
-            filename + '.json'
+        TMPDIR,
+        filename + '.json'
     )
 
     with open(json_file, 'w') as f:
@@ -731,14 +730,14 @@ def _get_token(tok: optional(str) = None):
 
     # Generate a token
     token = hashlib.sha1(
-            str.encode((
-                "%s%04d%s" %
-                (
-                    HASH_PREFIX,
-                    time.time(),
-                    HASH_SUFFIX
-                )
-            ), encoding='utf-8')
+        str.encode((
+            "%s%04d%s" %
+            (
+                HASH_PREFIX,
+                time.time(),
+                HASH_SUFFIX
+            )
+        ), encoding='utf-8')
     )
     token = base64.urlsafe_b64encode(token.digest()).decode()
 
