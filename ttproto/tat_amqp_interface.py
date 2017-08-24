@@ -189,26 +189,35 @@ class AmqpInterface:
             return
 
         if isinstance(event_received, amqp_messages.MsgPacketSniffedRaw):
+
             logger.info("Data plane activity")
 
-            if 'serial' in event_received.interface_name:
+            try:
+
+                if 'serial' in event_received.interface_name:
+                    pcap_to_dissect = os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
+                                                   AmqpDataPacketDumper.DEFAULT_802154_DUMP_FILENAME
+                                                   )
+                elif 'tun' in event_received.interface_name:
+                    pcap_to_dissect = os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
+                                                   AmqpDataPacketDumper.DEFAULT_RAWIP_DUMP_FILENAME
+                                                   ),
+                else:
+                    logger.error('Not implemented protocol dissection for %s' % event_received.interface_name)
+                    return
+
                 dissection_results = _dissect_capture(
-                    filename=os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
-                                          AmqpDataPacketDumper.DEFAULT_802154_DUMP_FILENAME
-                                          ),
+                    filename=pcap_to_dissect,
                     proto_filter=None,
                     output_file=AUTO_DISSECT_OUTPUT_FILE,
                 )
-            elif 'tun' in event_received.interface_name:
-                dissection_results = _dissect_capture(
-                    filename=os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
-                                          AmqpDataPacketDumper.DEFAULT_RAWIP_DUMP_FILENAME
-                                          ),
-                    proto_filter=None,
-                    output_file=AUTO_DISSECT_OUTPUT_FILE,
-                )
-            else:
-                logger.error('Not implemented protocol dissection %s' % event_received.interface_name)
+
+            except (TypeError, pure_pcapy.PcapError) as e:
+                logger.error("Error processing PCAP")
+                return
+
+            except Exception as e:
+                logger.error(str(e))
                 return
 
             # prepare response with dissection info:
@@ -455,7 +464,7 @@ def _dissect_capture(filename, proto_filter=None, output_file=None):
     if os.path.isfile(filename) is False and os.path.isfile(os.path.join(TMPDIR, filename)):
         filename = os.path.join(TMPDIR, filename)
 
-    logger.info("Dissecting PCAP file %s" %filename)
+    logger.info("Dissecting PCAP file %s" % filename)
     proto_matched = None
 
     if proto_filter:
