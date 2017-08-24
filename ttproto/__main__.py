@@ -35,7 +35,6 @@ def main(argv):
                         default=False,
                         help="Launches the dissector component which listens to AMQP bus, "
                              "dissects all exchanged frames and pushes results back into the bus")
-
     parser.add_argument("-s", "--dumps",
                         action='store_true',
                         default=False,

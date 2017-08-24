@@ -1,9 +1,11 @@
+import os
 import six
 import pika
+import shutil
 import logging
-from multiprocessing import Process
 from datetime import datetime
-import os
+from multiprocessing import Process
+
 from ttproto.utils.amqp_messages import *
 from ttproto.utils.pure_pcapy import Dumper, Pkthdr, DLT_IEEE802_15_4, DLT_RAW
 
@@ -23,6 +25,8 @@ class AmqpDataPacketDumper:
     DEFAULT_DUMP_DIR = 'tmp'
     DEFAULT_802154_DUMP_FILENAME = "DLT_IEEE802_15_4.pcap"
     DEFAULT_RAWIP_DUMP_FILENAME = "DLT_RAW.pcap"
+    NETWORK_DUMPS = [DEFAULT_802154_DUMP_FILENAME, DEFAULT_RAWIP_DUMP_FILENAME]
+    QUANTITY_MESSAGES_PER_PCAP = 100
 
     def __init__(self, amqp_url, amqp_exchange, topics, dump_dir):
 
@@ -70,19 +74,39 @@ class AmqpDataPacketDumper:
         self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(self.on_request, queue=self.data_queue_name)
 
+        # pcap dumpers
+        self.pcap_15_4_dumper = None
+        self.pcap_raw_ip_dumper = None
+        self.dumpers_init()
+
+    def dumpers_init(self):
         self.pcap_15_4_dumper = Dumper(
             filename=os.path.join(self.dump_dir, self.DEFAULT_802154_DUMP_FILENAME),
             snaplen=200,
             network=DLT_IEEE802_15_4
         )
-        network_type = "DLT_RAW"
         self.pcap_raw_ip_dumper = Dumper(
             filename=os.path.join(self.dump_dir, self.DEFAULT_RAWIP_DUMP_FILENAME),
             snaplen=200,
             network=DLT_RAW
         )
 
+    def dumps_rotate(self):
+        logging.info('rotating file dumps')
+
+        for net_dump_filename in self.NETWORK_DUMPS:
+            full_path = os.path.join(self.dump_dir, net_dump_filename)
+            if os.path.isfile(full_path):
+                shutil.copyfile(
+                    full_path,
+                    os.path.join(self.dump_dir, datetime.now().isoformat() + '_' + net_dump_filename),
+                )
+            os.remove(full_path)
+
+        self.dumpers_init()
+
     def stop(self):
+        logging.info("Stopping packet dumper..")
         self.channel.queue_delete(self.data_queue_name)
         self.channel.stop_consuming()
         self.connection.close()
@@ -92,8 +116,7 @@ class AmqpDataPacketDumper:
         # obj hook so json.loads respects the order of the fields sent -just for visualization purposeses-
         req_body_dict = json.loads(body.decode('utf-8'), object_pairs_hook=OrderedDict)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-        logging.info("Message sniffed: %s, body: %s" % (json.dumps(req_body_dict), str(body)))
-        self.messages_dumped += 1
+        logging.debug("Message sniffed: %s, body: %s" % (json.dumps(req_body_dict), str(body)))
 
         try:
 
@@ -116,6 +139,14 @@ class AmqpDataPacketDumper:
                 self.stop()
 
             if isinstance(m, MsgPacketSniffedRaw):
+
+                self.messages_dumped += 1
+                try:
+                    if self.messages_dumped % self.QUANTITY_MESSAGES_PER_PCAP == 0:  # rotate files each X messages dumped
+                        self.dumps_rotate()
+                except Exception as e:
+                    logging.error(e)
+
                 try:
                     if 'serial' in m.interface_name:
                         raw_packet = bytes(m.data)
