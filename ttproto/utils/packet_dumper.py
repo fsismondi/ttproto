@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=None, dump_dir=None):
-
     def signal_int_handler(self, frame):
         logger.info('got SIGINT, stopping dumper..')
 
@@ -208,10 +207,9 @@ class AmqpDataPacketDumper:
                 self.messages_dumped += 1
 
                 shutil.copyfile(
-                    os.path.join(os.getcwd(), self.dump_dir, self.DEFAULT_802154_DUMP_FILENAME_WR),
-                    os.path.join(os.getcwd(), self.dump_dir, self.DEFAULT_802154_DUMP_FILENAME)
+                    os.path.join(self.dump_dir, self.DEFAULT_802154_DUMP_FILENAME_WR),
+                    os.path.join(self.dump_dir, self.DEFAULT_802154_DUMP_FILENAME)
                 )
-
 
             elif 'tun' in message.interface_name:
                 raw_packet = bytes(message.data)
@@ -229,8 +227,8 @@ class AmqpDataPacketDumper:
                 self.messages_dumped += 1
 
                 shutil.copyfile(
-                    os.path.join(os.getcwd(), self.dump_dir, self.DEFAULT_RAWIP_DUMP_FILENAME_WR),
-                    os.path.join(os.getcwd(), self.dump_dir, self.DEFAULT_RAWIP_DUMP_FILENAME)
+                    os.path.join(self.dump_dir, self.DEFAULT_RAWIP_DUMP_FILENAME_WR),
+                    os.path.join(self.dump_dir, self.DEFAULT_RAWIP_DUMP_FILENAME)
                 )
 
             else:
@@ -243,20 +241,15 @@ class AmqpDataPacketDumper:
         print('Messages dumped : ' + str(self.messages_dumped))
 
     def dumps_rotate(self):
-        logger.info('rotating file dumps')
 
         for net_dump_filename in self.NETWORK_DUMPS:
             full_path = os.path.join(self.dump_dir, net_dump_filename)
             if os.path.isfile(full_path):
-                # os.rename(
-                #     full_path,
-                #     os.path.join(self.dump_dir, datetime.now().strftime('%Y%m%d_%H%M%S_') + net_dump_filename),
-                # )
+                logger.info('rotating file dump: %s' % full_path)
                 shutil.copyfile(
                     full_path,
                     os.path.join(self.dump_dir, datetime.now().strftime('%Y%m%d_%H%M%S_') + net_dump_filename),
                 )
-                os.remove(full_path)
 
     def stop(self):
         logger.info("Stopping packet dumper..")
@@ -293,13 +286,13 @@ class AmqpDataPacketDumper:
 
                 self.dump_packet(m)
 
-                # try:
-                #     if self.messages_dumped != 0 and self.messages_dumped % self.QUANTITY_MESSAGES_PER_PCAP == 0:  # rotate files each X messages dumped
-                #         self.dumps_rotate()
-                #         self.dumpers_init()
-                #
-                # except Exception as e:
-                #     logger.error(e)
+                try:  # rotate files each X messages dumped
+                    if self.messages_dumped != 0 and self.messages_dumped % self.QUANTITY_MESSAGES_PER_PCAP == 0:
+                        self.dumps_rotate()
+                        self.dumpers_init()
+
+                except Exception as e:
+                    logger.error(e)
 
             else:
                 logger.info('drop amqp message: ' + repr(m))
