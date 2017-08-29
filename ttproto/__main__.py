@@ -5,7 +5,7 @@ Should be run as: python3 -m ttproto.tat_coap
 """
 import argparse, os
 from ttproto.tat_amqp_interface import *
-from ttproto.utils.rmq_handler import AMQP_URL, JsonFormatter, RabbitMQHandler
+from ttproto.utils.rmq_handler import JsonFormatter, RabbitMQHandler
 from ttproto.tat_coap.webserver import *
 
 # TTPROTO CONSTANTS
@@ -16,6 +16,12 @@ SERVER_CONFIG = ("0.0.0.0", 2080)
 logger = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 logger.addHandler(sh)
+
+PCAP_DUMPER_AMQP_TOPICS = ['data.serial.fromAgent.coap_client_agent',
+                           'data.serial.fromAgent.coap_server_agent',
+                           'data.tun.fromAgent.coap_server_agent',
+                           'data.tun.fromAgent.coap_client_agent',
+                           ]
 
 
 def main(argv):
@@ -74,44 +80,46 @@ def main(argv):
             except Exception as e:
                 logger.error(str(e))
 
-
     elif tat_interface == 'amqp':
 
         # AMQP ENV variables (either get them all from ENV or set them all as default)
         try:
-            AMQP_EXCHANGE = str(os.environ['AMQP_EXCHANGE'])
-        except KeyError as e:
-            print('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
-            AMQP_EXCHANGE = "amq.topic"
+            amqp_exchange = str(os.environ['AMQP_EXCHANGE'])
+        except KeyError:
+            logger.warning('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
+            amqp_exchange = "amq.topic"
 
         try:
-            AMQP_URL = str(os.environ['AMQP_URL'])
-        except KeyError as e:
-            print('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
-            AMQP_URL = "amqp://local:{1}@{2}/{3}".format('guest', 'guest', 'localhost', '')
+            amqp_url = str(os.environ['AMQP_URL'])
+        except KeyError:
+            logger.warning('Cannot retrieve environment variables for AMQP connection. Loading defaults..')
+            amqp_url = "amqp://local:{1}@{2}/{3}".format('guest', 'guest', 'localhost', '')
 
-        print('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s' % (AMQP_URL,
-                                                                                                      AMQP_EXCHANGE))
+        logger.info('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s' % (amqp_url,
+                                                                                                      amqp_exchange))
 
-        logger.info('TAT starting..')
-
-        # use F-Interop logger handler & formatter
-        rabbitmq_handler = RabbitMQHandler(AMQP_URL, COMPONENT_ID)
+        # AMQP log handler & formatter
+        rabbitmq_handler = RabbitMQHandler(amqp_url, COMPONENT_ID)
         json_formatter = JsonFormatter()
         rabbitmq_handler.setFormatter(json_formatter)
         logger.addHandler(rabbitmq_handler)
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.INFO)
 
         logger.info('Starting AMQP interface of TAT')
 
-        if dumps_option:
-            logger.info('Starting AMQP packet dumper..')
-            p = Process(target=amqp_data_packet_dumper, args=())
-            p.start()
+        # launch process: TAT
+        p_tat = Process(target=launch_tat_amqp_interface,
+                        args=(amqp_url, amqp_exchange, tat_protocol, dissector_option,))
+        p_tat.start()
 
-        amqp_interface = AmqpInterface(AMQP_URL, AMQP_EXCHANGE, tat_protocol, dissector_option)
-        amqp_interface.run()
+        # launch process: pcap dumper
+        if dumps_option or dissector_option:  # dissector component needs dumper
+            logger.info('Starting AMQP data plane to pcap dumper')
+            p_dumper = Process(target=amqp_data_packet_dumper,
+                               args=(amqp_url, amqp_exchange, PCAP_DUMPER_AMQP_TOPICS, TMPDIR,))
+            p_dumper.start()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     main(sys.argv[1:])
