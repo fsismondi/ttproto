@@ -3,10 +3,12 @@ Invokes webserver to be run at 127.0.0.1:2080 if INTERFACE is amqp,
 else runs amqp interface
 Should be run as: python3 -m ttproto.tat_coap
 """
-import argparse, os
+import argparse
 from ttproto.tat_amqp_interface import *
-from ttproto.utils.rmq_handler import JsonFormatter, RabbitMQHandler
+# TODO make protocol agnostic webserver
 from ttproto.tat_coap.webserver import *
+from ttproto.utils.packet_dumper import *
+from ttproto.utils.rmq_handler import JsonFormatter, RabbitMQHandler
 
 # TTPROTO CONSTANTS
 COMPONENT_ID = 'tat'
@@ -115,7 +117,7 @@ def main(argv):
         # launch process: pcap dumper
         if dumps_option or dissector_option:  # dissector component needs dumper
             logger.info('Starting AMQP data plane to pcap dumper')
-            p_dumper = Process(target=amqp_data_packet_dumper,
+            p_dumper = Process(target=launch_amqp_data_to_pcap_dumper(),
                                args=(amqp_url, amqp_exchange, PCAP_DUMPER_AMQP_TOPICS, TMPDIR,))
             p_dumper.start()
 
