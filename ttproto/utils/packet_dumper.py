@@ -108,7 +108,7 @@ class AmqpDataPacketDumper:
     DEFAULT_802154_DUMP_FILENAME_WR = "DLT_IEEE802_15_4_NO_FCS.pcap~"
     NETWORK_DUMPS_TEMP = [DEFAULT_RAWIP_DUMP_FILENAME_WR, DEFAULT_802154_DUMP_FILENAME_WR]
 
-    QUANTITY_MESSAGES_PER_PCAP = 5
+    QUANTITY_MESSAGES_PER_PCAP = 100
 
     def __init__(self, amqp_url, amqp_exchange, topics, dump_dir=None):
 
