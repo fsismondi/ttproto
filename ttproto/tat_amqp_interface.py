@@ -49,9 +49,10 @@ from ttproto.utils import pure_pcapy
 from ttproto.core.lib.all import *
 from ttproto.utils.rmq_handler import AMQP_URL, AMQP_EXCHANGE, JsonFormatter, RabbitMQHandler
 from ttproto.utils import amqp_messages
-from ttproto.utils.packet_dumper import amqp_data_packet_dumper, AmqpDataPacketDumper
+from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDataPacketDumper
 
-COMPONENT_ID = 'tat'
+COMPONENT_ID = NotImplementedError
+
 ALLOWED_EXTENSIONS = set(['pcap'])
 ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan']
 
@@ -71,103 +72,111 @@ logging.getLogger('pika').setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
+
 #####################
 
-# process for auto polling pcaps and dissecting
-process_auto_diss = None
 
+def launch_tat_amqp_interface(amqp_url, amqp_exchange, tat_protocol, dissection_auto):
+    def signal_int_handler(self, frame):
+        logger.info('got SIGINT, stopping dumper..')
 
-def signal_int_handler(signal, frame):
-    connection = pika.BlockingConnection(pika.URLParameters(AMQP_URL))
-    channel = connection.channel()
+        if amqp_interface:
+            amqp_interface.stop()
 
-    # FINISHING... let's send a goodby message
+    signal.signal(signal.SIGINT, signal_int_handler)
 
-    # dissection shutdown message
-    _publish_message(
-        channel,
-        amqp_messages.MsgTestingToolComponentShutdown(component='dissection')
-    )
-
-    # analysis shutdown message
-    _publish_message(
-        channel,
-        amqp_messages.MsgTestingToolComponentShutdown(component='analysis')
-    )
-
-    logger.info('got SIGINT. Bye bye!')
-
-    sys.exit(0)
-
-
-signal.signal(signal.SIGINT, signal_int_handler)
+    amqp_interface = AmqpInterface(amqp_url, amqp_exchange, tat_protocol, dissection_auto)
+    amqp_interface.run()
 
 
 class AmqpInterface:
     def __init__(self, amqp_url, amqp_exchange, tat_protocol, dissection_auto):
-        self.amqp_url = amqp_url
-        self.amqp_exchange = amqp_exchange
-        self.connection = pika.BlockingConnection(pika.URLParameters(self.amqp_url))
+        self.COMPONENT_ID = 'tat'
         self.tat_protocol = tat_protocol
         self.dissection_auto = dissection_auto
 
-    def run(self):
-        channel = self.connection.channel()
+        self.amqp_url = amqp_url
+        self.amqp_exchange = amqp_exchange
+        self.connection = pika.BlockingConnection(pika.URLParameters(self.amqp_url))
+        self.channel = self.connection.channel()
 
-        if self.dissection_auto:
-            # lets launch background process which dumps data packets into PCAP files
-            p = Process(target=amqp_data_packet_dumper, args=())
-            p.start()
+        # init AMQP BUS communication vars
 
-            data_queue_name = 'data_plane_messages@%s' % COMPONENT_ID
-            channel.queue_declare(queue=data_queue_name,
-                                  auto_delete=True,
-                                  arguments={'x-max-length': 100})
-
-            channel.basic_qos(prefetch_count=1)
-            channel.basic_consume(self.on_data_received, queue=data_queue_name)
-
-            # subscribe to data events just to check if there's activity in the data plane
-            channel.queue_bind(exchange=AMQP_EXCHANGE,
-                               queue=data_queue_name,
-                               routing_key='data.#')
-
-        services_queue_name = 'services_queue@%s' % COMPONENT_ID
-        channel.queue_declare(queue=services_queue_name,
-                              auto_delete=True,
-                              arguments={'x-max-length': 100})
+        self.services_queue_name = 'services_queue@%s' % self.COMPONENT_ID
+        self.channel.queue_declare(queue=self.services_queue_name,
+                                   auto_delete=True,
+                                   arguments={'x-max-length': 100})
 
         # subscribe to analysis services requests
-        channel.queue_bind(exchange=AMQP_EXCHANGE,
-                           queue=services_queue_name,
-                           routing_key='control.analysis.service')
+        self.channel.queue_bind(exchange=AMQP_EXCHANGE,
+                                queue=self.services_queue_name,
+                                routing_key='control.analysis.service')
 
         # subscribe to dissection services requests
-        channel.queue_bind(exchange=AMQP_EXCHANGE,
-                           queue=services_queue_name,
-                           routing_key='control.dissection.service')
+        self.channel.queue_bind(exchange=AMQP_EXCHANGE,
+                                queue=self.services_queue_name,
+                                routing_key='control.dissection.service')
 
+        self.channel.basic_qos(prefetch_count=1)
+        self.channel.basic_consume(self.on_service_request, queue=self.services_queue_name)
+
+        if self.dissection_auto:
+            self.data_queue_name = 'data_plane_messages@%s' % self.COMPONENT_ID
+            self.channel.queue_declare(queue=self.data_queue_name,
+                                       auto_delete=True,
+                                       arguments={'x-max-length': 100})
+
+            self.channel.basic_qos(prefetch_count=1)
+            self.channel.basic_consume(self.on_data_received, queue=self.data_queue_name)
+
+            # subscribe to data events just to check if there's activity in the data plane
+            self.channel.queue_bind(exchange=AMQP_EXCHANGE,
+                                    queue=self.data_queue_name,
+                                    routing_key='data.#')
+
+    def run(self):
         # let's send bootstrap message (analysis)
         _publish_message(
-            channel,
+            self.channel,
             amqp_messages.MsgTestingToolComponentReady(component='analysis')
         )
 
         #  let's send bootstrap message (dissector)
         _publish_message(
-            channel,
+            self.channel,
             amqp_messages.MsgTestingToolComponentReady(component='dissection')
         )
 
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(self.on_service_request, queue=services_queue_name)
-
         # start main job (the following is a blocking call)
+
         logger.info("Awaiting for analysis & dissection requests")
-        channel.start_consuming()
+        self.channel.start_consuming()
+
+    def stop(self):
+
+        # FINISHING... let's send a goodby message
+        if self.channel is None:
+            self.channel = self.connection.channel()
+
+        # dissection shutdown message
+        _publish_message(
+            self.channel,
+            amqp_messages.MsgTestingToolComponentShutdown(component='dissection')
+        )
+
+        # analysis shutdown message
+        _publish_message(
+            self.channel,
+            amqp_messages.MsgTestingToolComponentShutdown(component='analysis')
+        )
+
+        self.connection.close()
+
+        logger.info('Stopping.. Bye bye!')
+
+        sys.exit(0)
 
     def on_data_received(self, ch, method, props, body):
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
@@ -190,8 +199,6 @@ class AmqpInterface:
 
         if isinstance(event_received, amqp_messages.MsgPacketSniffedRaw):
 
-            logger.info("Data plane activity")
-
             try:
 
                 if 'serial' in event_received.interface_name:
@@ -205,6 +212,11 @@ class AmqpInterface:
                 else:
                     logger.error('Not implemented protocol dissection for %s' % event_received.interface_name)
                     return
+
+                logger.info("Data plane activity")
+                # this acts as a filter, we dont want a dissection per message on the bus, we need on for all data messages
+                time.sleep(1)
+                ch.queue_purge(queue=self.data_queue_name)
 
                 dissection_results = _dissect_capture(
                     filename=pcap_to_dissect,
@@ -228,7 +240,9 @@ class AmqpInterface:
                 testcase_ref='unknown'
             )
             _publish_message(ch, event_diss)
-            logger.info("Auto dissection sent: " + repr(event_diss))
+            # logger.info("Auto dissection sent: " + repr(event_diss))
+            logger.info("Auto dissection sent.. ")
+
             return
 
         else:
@@ -428,7 +442,7 @@ class AmqpInterface:
             return
 
 
-### AUXILIARY FUNCTIONS ###
+# # # AUXILIARY FUNCTIONS # # #
 
 
 def _analyze_capture(filename, protocol, testcase_id, output_file):
@@ -478,7 +492,7 @@ def _dissect_capture(filename, proto_filter=None, output_file=None):
     else:
         dissection = Dissector(filename).dissect()
 
-    logger.debug('PCAP dissected')
+    logger.info('PCAP dissected')
 
     if output_file and type(output_file) is str:
         # save dissection response
@@ -736,7 +750,6 @@ def _get_protocol(
             answer.append(prot)
         else:
             # not the selected one
-            print('skipped: %s' % prot_class.__name__)
             pass
 
     if answer is None or len(answer) == 0:
