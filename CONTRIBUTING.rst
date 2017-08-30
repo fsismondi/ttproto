@@ -38,8 +38,7 @@ Some other comments:
 .. [#] The MR title should describe the change you want to make
 .. [#] The MR description should give a motive for your change and the method you used to achieve it.
 .. [#] If you are proposing core/substantial changes to the tools please create an issue first to discuss it beforehand.
-.. [#] Mention the issue(s) your merge request solves, using the Solves #XXX or
-Closes #XXX syntax to auto-close the issue(s) once the merge request will be merged.
+.. [#] Mention the issue(s) your merge request solves, using the Solves #XXX or Closes #XXX syntax.
 .. [#] Please keep the change in a single MR as small as possible.
 .. [#] For examples of feedback on merge requests please look at already closed merge requests.
 .. [#] Merging will be done by main maintainer after reviewing the changes.
