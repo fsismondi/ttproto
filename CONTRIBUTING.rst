@@ -1,8 +1,54 @@
-============================
-Contributing to ttproto tool
-============================
+=======================
+Contributing to ttproto
+=======================
 
 Thank you for considering contributing to ttproto!
+
+
+.. contents:: Table of content
+
+.. note:: TODO list:
+    - Put doc about how to dev a lib for a protocol
+    - Document conformance test suite
+    - Put doc about Templates if needed (optional)
+    - Document amqp and http interface of ttproto
+
+
+Git workflow - Merge request guidelines
+=======================================
+
+
+If you can, please submit a merge request with the fix or improvements
+including tests. If you don't know how to fix the issue but can write a test
+that exposes the issue we will accept that as well. In general bug fixes that
+include a regression test are merged quickly while new features without proper
+tests are least likely to receive timely feedback. The workflow to make a merge
+request is as follows:
+
+
+.. [#] Fork the project into your personal space on gitlab
+.. [#] Create a feature branch, branch away from master (if it's a fix) or develop (if it's a new feature or doc)
+.. [#] Write tests, code and/or doc
+.. [#] If you have multiple commits please combine them into a few logically organized commits by squashing them
+.. [#] Push the commit(s) to your fork
+.. [#] Submit a merge request (MR) to the master branch / develop branch (depending if it's a fix or new feature)
+
+Some other comments:
+.. [#] The MR title should describe the change you want to make
+.. [#] The MR description should give a motive for your change and the method you used to achieve it.
+.. [#] If you are proposing core/substantial changes to the tools please create an issue first to discuss it beforehand.
+.. [#] Mention the issue(s) your merge request solves, using the Solves #XXX or
+Closes #XXX syntax to auto-close the issue(s) once the merge request will be merged.
+.. [#] Please keep the change in a single MR as small as possible.
+.. [#] For examples of feedback on merge requests please look at already closed merge requests.
+.. [#] Merging will be done by main maintainer after reviewing the changes.
+
+When having your code reviewed and when reviewing merge requests please take the
+code review guidelines into account.
+
+
+Contributing with a new Testing Tool
+====================================
 
 The main objective of this document is to provide guidelines for contributing to ttproto with new
 suites / analysis tools using ttproto APIs and libraries. This document contains two parts;
@@ -16,15 +62,6 @@ meaning after the test has been executed.
 ttproto uses pcaps (not pcap-ng) as input for analysing the exchanged frames during
 an interop test. This makes ttproto an easier tool to integrate into other systems
 given it's passive, non intrusive approach for running tests.
-
-
-.. contents:: Table of content
-
-.. note:: TODO list:
-    - Put doc about how to dev a lib for a protocol
-    - Document conformance test suite
-    - Put doc about Templates if needed (optional)
-    - Document amqp and http interface of ttproto
 
 
 Interoperability test suite / TAT

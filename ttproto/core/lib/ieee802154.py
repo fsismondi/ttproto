@@ -46,7 +46,7 @@ from    ttproto.core.lib.inet.sixlowpan import SixLowpan
 from    ttproto.core.lib.inet.sixlowpan_hc import SixLowpanIPHC
 
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('[802.15.4 - CoDec]')
 
 __all__ = [

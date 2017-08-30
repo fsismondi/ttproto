@@ -39,7 +39,7 @@ from ttproto.core.exceptions import Error
 from ttproto.core.named import skip_parent_var_name
 from ttproto.core import exceptions
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('[packet module]')
 
 
