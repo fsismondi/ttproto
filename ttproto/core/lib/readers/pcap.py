@@ -43,7 +43,7 @@ from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.readers.capture_reader import CaptureReader
 
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 _map_link_type = {

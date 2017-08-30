@@ -27,7 +27,7 @@ Usage:
 >>> from messages import * # doctest: +SKIP
 >>> m = MsgTestCaseSkip()
 >>> m
-MsgTestCaseSkip(_api_version = 0.1.35, _type = testcoordination.testcase.skip, testcase_id = TD_COAP_CORE_02_v01, )
+MsgTestCaseSkip(_api_version = 0.1.36, _type = testcoordination.testcase.skip, testcase_id = TD_COAP_CORE_02_v01, )
 >>> m.routing_key
 'control.testcoordination'
 >>> m.message_id # doctest: +SKIP
@@ -38,18 +38,18 @@ MsgTestCaseSkip(_api_version = 0.1.35, _type = testcoordination.testcase.skip, t
 # also we can modify some of the fields (rewrite the default ones)
 >>> m = MsgTestCaseSkip(testcase_id = 'TD_COAP_CORE_03_v01')
 >>> m
-MsgTestCaseSkip(_api_version = 0.1.35, _type = testcoordination.testcase.skip, testcase_id = TD_COAP_CORE_03_v01, )
+MsgTestCaseSkip(_api_version = 0.1.36, _type = testcoordination.testcase.skip, testcase_id = TD_COAP_CORE_03_v01, )
 >>> m.testcase_id
 'TD_COAP_CORE_03_v01'
 
 # and even export the message in json format (for example for sending the message though the amqp event bus)
 >>> m.to_json()
-'{"_api_version": "0.1.35", "_type": "testcoordination.testcase.skip", "testcase_id": "TD_COAP_CORE_03_v01"}'
+'{"_api_version": "0.1.36", "_type": "testcoordination.testcase.skip", "testcase_id": "TD_COAP_CORE_03_v01"}'
 
 # We can use the Message class to import json into Message objects:
 >>> m=MsgTestSuiteStart()
 >>> m.to_json()
-'{"_api_version": "0.1.35", "_type": "testcoordination.testsuite.start"}'
+'{"_api_version": "0.1.36", "_type": "testcoordination.testsuite.start"}'
 >>> json_message = m.to_json()
 >>> obj=Message.from_json(json_message)
 >>> type(obj)
@@ -62,7 +62,7 @@ MsgTestCaseSkip(_api_version = 0.1.35, _type = testcoordination.testcase.skip, t
 # the error reply (note that we pass the message of the request to build the reply):
 >>> err = MsgErrorReply(m)
 >>> err
-MsgErrorReply(_api_version = 0.1.35, _type = sniffing.start, error_code = Some error code TBD, error_message = Some
+MsgErrorReply(_api_version = 0.1.36, _type = sniffing.start, error_code = Some error code TBD, error_message = Some
 error message TBD, ok = False, )
 >>> m.reply_to
 'control.sniffing.service.reply'
@@ -81,7 +81,7 @@ import time
 import json
 import uuid
 
-API_VERSION = '0.1.35'
+API_VERSION = '0.1.36'
 
 
 # TODO use metaclasses instead?
@@ -308,6 +308,27 @@ class MsgAgentTunStarted(Message):
     }
 
 
+class MsgPacketInjectRaw(Message):
+    """
+    Description: Message to be captured by the agent an push into the correct embedded interface (e.g. tun, serial, etc..)
+
+    Type: Event
+
+    Pub/Sub: Testing Tool -> Agent
+
+    Description: TBD
+    """
+    routing_key = None  # depends on the agent_id and the agent interface being used, re-write after creation
+
+    _msg_data_template = {
+        "_type": "packet.inject.raw",
+        "timestamp": "1488586183.45",
+        "interface_name": "tun0",
+        "data": [96, 0, 0, 0, 0, 36, 0, 1, 254, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 255, 2, 0, 0, 0, 0, 0, 0,
+                 0, 0, 0, 0, 0, 0, 0, 22, 58, 0, 5, 2, 0, 0, 1, 0, 143, 0, 112, 7, 0, 0, 0, 1, 4, 0, 0, 0, 255, 2, 0, 0,
+                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]}
+
+
 class MsgPacketSniffedRaw(Message):
     """
     Description: Message captured by the agent in one of its embedded interfaces (e.g. tun, serial, etc..)
@@ -385,6 +406,8 @@ class MsgTestingToolComponentReady(Message):
         "description": "Component READY to start test suite."
     }
 
+
+# TODO delete "Interop" to generalize
 
 class MsgInteropSessionConfiguration(Message):
     """
@@ -608,6 +631,8 @@ class MsgTestCaseStart(Message):
         "testcase_id": "TBD",
     }
 
+
+# TODO MsgTestCaseNotes, see https://portal.etsi.org/cti/downloads/TestSpecifications/6LoWPAN_Plugtests_TestDescriptions_1.0.pdf
 
 class MsgTestCaseConfiguration(Message):
     """
@@ -1342,6 +1367,7 @@ class MsgInteropTestCaseAnalyze(Message):
 
     _msg_data_template = {
         "_type": "analysis.interop.testcase.analyze",
+        "protocol": "coap",
         "testcase_id": "TD_COAP_CORE_01",
         "testcase_ref": "http://doc.f-interop.eu/tests/TD_COAP_CORE_01_v01",
         "file_enc": "pcap_base64",
@@ -1770,6 +1796,7 @@ message_types_dict = {
     "tun.start": MsgAgentTunStart,  # TestingTool -> Agent
     "tun.started": MsgAgentTunStarted,  # Agent -> TestingTool
     "packet.sniffed.raw": MsgPacketSniffedRaw,  # Agent -> TestingTool
+    "packet.inject.raw": MsgPacketInjectRaw,  # TestingTool -> Agent
     "session.interop.configuration": MsgInteropSessionConfiguration,  # Orchestrator -> TestingTool
     "testingtool.configured": MsgTestingToolConfigured,  # TestingTool -> Orchestrator, GUI
     "testingtool.component.ready": MsgTestingToolComponentReady,  # Testing Tool internal
