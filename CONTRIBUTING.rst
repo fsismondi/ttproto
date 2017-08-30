@@ -34,6 +34,7 @@ request is as follows:
 .. [#] Submit a merge request (MR) to the master branch / develop branch (depending if it's a fix or new feature)
 
 Some other comments:
+
 .. [#] The MR title should describe the change you want to make
 .. [#] The MR description should give a motive for your change and the method you used to achieve it.
 .. [#] If you are proposing core/substantial changes to the tools please create an issue first to discuss it beforehand.
