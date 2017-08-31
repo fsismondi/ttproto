@@ -5,12 +5,13 @@ import shutil
 import signal
 import logging
 from datetime import datetime
-import multiprocessing
 from ttproto.utils.amqp_messages import *
 from ttproto.utils.pure_pcapy import Dumper, Pkthdr, DLT_RAW, DLT_IEEE802_15_4_NOFCS
 
 logger = logging.getLogger(__name__)
+logging.getLogger('pika').setLevel(logging.INFO)
 
+VERSION = '0.0.1'
 
 def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=None, dump_dir=None):
     def signal_int_handler(self, frame):
@@ -46,13 +47,6 @@ def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=No
             # load default values
             amqp_url = "amqp://{0}:{1}@{2}/{3}".format("guest", "guest", "localhost", "/")
 
-    # connection = pika.BlockingConnection(pika.URLParameters(amqp_url))
-    #
-    # # in case its not declared
-    # connection.channel().exchange_declare(exchange=amqp_exchange,
-    #                                       type='topic',
-    #                                       durable=True,
-    #                                       )
 
     if topics:
         pcap_amqp_topic_subscriptions = topics
@@ -316,6 +310,7 @@ class AmqpDataPacketDumper:
 
 
 if __name__ == '__main__':
+    import multiprocessing
 
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
