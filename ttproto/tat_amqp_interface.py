@@ -225,7 +225,7 @@ class AmqpInterface:
                 )
 
             except (TypeError, pure_pcapy.PcapError) as e:
-                logger.error("Error processing PCAP")
+                logger.error("Error processing PCAP: %s" % e)
                 return
 
             except Exception as e:
@@ -415,7 +415,7 @@ class AmqpInterface:
                         error_message="Error processing PCAP. Error: %s" % str(e)
                     )
                 )
-                logger.error("Error processing PCAP")
+                logger.error("Error processing PCAP: %s" % e)
                 return
             except Exception as e:
                 _publish_message(
