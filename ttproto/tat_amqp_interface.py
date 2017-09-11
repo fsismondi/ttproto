@@ -84,7 +84,6 @@ def launch_tat_amqp_interface(amqp_url, amqp_exchange, tat_protocol, dissection_
             amqp_interface.stop()
 
     signal.signal(signal.SIGINT, signal_int_handler)
-
     amqp_interface = AmqpInterface(amqp_url, amqp_exchange, tat_protocol, dissection_auto)
     amqp_interface.run()
 
@@ -205,10 +204,11 @@ class AmqpInterface:
                     pcap_to_dissect = os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
                                                    AmqpDataPacketDumper.DEFAULT_802154_DUMP_FILENAME
                                                    )
+
                 elif 'tun' in event_received.interface_name:
                     pcap_to_dissect = os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
                                                    AmqpDataPacketDumper.DEFAULT_RAWIP_DUMP_FILENAME
-                                                   ),
+                                                   )
                 else:
                     logger.error('Not implemented protocol dissection for %s' % event_received.interface_name)
                     return
@@ -240,8 +240,7 @@ class AmqpInterface:
                 testcase_ref='unknown'
             )
             _publish_message(ch, event_diss)
-            # logger.info("Auto dissection sent: " + repr(event_diss))
-            logger.info("Auto dissection sent.. ")
+            logger.info("Auto dissection message sent.. ")
 
             return
 
@@ -479,6 +478,7 @@ def _dissect_capture(filename, proto_filter=None, output_file=None):
         filename = os.path.join(TMPDIR, filename)
 
     logger.info("Dissecting PCAP file %s" % filename)
+
     proto_matched = None
 
     if proto_filter:
@@ -493,7 +493,6 @@ def _dissect_capture(filename, proto_filter=None, output_file=None):
         dissection = Dissector(filename).dissect()
 
     logger.info('PCAP dissected')
-
     if output_file and type(output_file) is str:
         # save dissection response
         _dump_json_to_file(json.dumps(dissection), os.path.join(DATADIR, output_file))

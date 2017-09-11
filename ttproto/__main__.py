@@ -111,14 +111,14 @@ def main(argv):
 
         # launch process: TAT
         p_tat = Process(target=launch_tat_amqp_interface,
-                        args=(amqp_url, amqp_exchange, tat_protocol, dissector_option,))
+                        args=(amqp_url, amqp_exchange, tat_protocol, dissector_option))
         p_tat.start()
 
         # launch process: pcap dumper
         if dumps_option or dissector_option:  # dissector component needs dumper
             logger.info('Starting AMQP data plane to pcap dumper')
             p_dumper = Process(target=launch_amqp_data_to_pcap_dumper(),
-                               args=(amqp_url, amqp_exchange, PCAP_DUMPER_AMQP_TOPICS, TMPDIR,))
+                               args=(amqp_url, amqp_exchange, PCAP_DUMPER_AMQP_TOPICS, TMPDIR))
             p_dumper.start()
 
 
