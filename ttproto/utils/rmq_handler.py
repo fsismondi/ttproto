@@ -39,7 +39,7 @@ try:
 except ImportError:
     pass
 
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 
 # defaults vars
 AMQP_URL = 'amqp://guest:guest@localhost'
@@ -172,7 +172,7 @@ class JsonFormatter(logging.Formatter):
         try:
             log_record = OrderedDict()
             log_record['_type'] = 'log'
-            log_record['component'] = record.module
+            log_record['component'] = record.name
         except NameError:
             log_record = {}
 
@@ -216,7 +216,7 @@ class RabbitMQHandler(logging.Handler):
 
         except pika.exceptions.ConnectionClosed:
 
-            print("Log hanlder connection closed. Reconnecting..")
+            print("Log handler connection closed. Reconnecting..")
 
             self.connection = pika.BlockingConnection(pika.URLParameters(self.url))
             self.channel = self.connection.channel()
@@ -234,17 +234,19 @@ class RabbitMQHandler(logging.Handler):
         finally:
             self.release()
 
-
     def close(self):
 
         self.acquire()
 
         try:
-            if self.channel:
-                self.channel.close()
+            self.channel.close()
+        except AttributeError:
+            pass
 
-            if self.connection:
-                self.connection.close()
+        try:
+            self.connection.close()
+        except AttributeError:
+            pass
 
         finally:
             self.release()
