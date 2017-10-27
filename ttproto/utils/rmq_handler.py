@@ -55,7 +55,7 @@ try:
 
 except KeyError as e:
     print(' Cannot retrieve environment variables for AMQP connection, using default url: %s, exchange: %s' % (
-    AMQP_URL, AMQP_EXCHANGE))
+        AMQP_URL, AMQP_EXCHANGE))
 
 # skip natural LogRecord attributes
 # http://docs.python.org/library/logging.html#logrecord-attributes
@@ -240,12 +240,12 @@ class RabbitMQHandler(logging.Handler):
 
         try:
             self.channel.close()
-        except AttributeError:
+        except (AttributeError, pika.exceptions.ConnectionClosed):
             pass
 
         try:
             self.connection.close()
-        except AttributeError:
+        except (AttributeError, pika.exceptions.ConnectionClosed):
             pass
 
         finally:
