@@ -952,7 +952,7 @@ class Data(named.NamedObject):
            this data
          - it fulfils type-specific chechs implemented in self._match()
 
-        The mismatch_list can be used to get detailed informations in
+        The mismatch_list can be used to get detailed information in
         case of mismatch. If used, it must be initialised to an empty
         list which will be populated with a set of Mismatch objects.
 
