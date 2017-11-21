@@ -82,7 +82,7 @@ For running a dissection of a PCAP file:
     ]
 '''
 
-For running an analysis of a PCAP (interop testcase post-mortem analysis):
+For running an analysis of a PCAP, interop testcase post-mortem analysis, for (e.g) TD_COAP_CORE_01:
 
 '''
     >>> analyzer = Analyzer('tat_coap')
@@ -114,6 +114,8 @@ For running an analysis of a PCAP (interop testcase post-mortem analysis):
         []
     ]
 '''
+
+for more info on how to write a testcase for CoAP or any other protocol see CONTRIBUTING.rst document..
 
 # The git repository contains the following testing tools:
 ----------------------------------------------------------
