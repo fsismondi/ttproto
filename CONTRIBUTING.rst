@@ -125,12 +125,6 @@ Firstly, lets provide an example of what a test case implementation looks like:
                 CMID = self.coap['mid']
                 CTOK = self.coap['tok']
 
-                self.match(
-                    'client',
-                    CoAP(type='con', code='get'),
-                    'fail'
-                )
-
                 self.next()
 
                 if self.match(
@@ -162,6 +156,184 @@ e.g. CoAP(opt=Opt(CoAPOptionContentFormat()).
 This is one of the strong points of ttproto, the simplicity to generate templates.
 We will came later on into this discussion.
 
+
+Matching operation examples
+===========================
+
+Now let's show a couple of examples to undestand match operation behaviour:
+
+in tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap you can find an example of exchanges
+expected while performing a GET transaction in CON mode, which corresponds to TD_COAP_CORE_01.
+
+basically::
+
+    "<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test>",
+    "<Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content >"
+
+now I'll describe the expexted behaviours of the match operation by using the following snippet
+and ttproto/tat_coap/TD_COAP_CORE_01.py test case.
+
+.. code-block:: python
+
+    from os import getcwd, path
+
+    analyzer = Analyzer('tat_coap')
+    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
+    print('##### TC name')
+    print(tc_name)
+    print('#####')
+    print('##### Verdict given')
+    print(verdict)
+    print('#####')
+    print('##### Review frames')
+    print(rev_frames)
+    print('#####')
+    print('##### Text')
+    print(str_log)
+    print('##### Partial verdicts')
+    for s in lst_log:
+        print(str(s))
+    print('#####')
+    print('##### Exceptions')
+    for e in excepts:
+        e1, e2, e3 = e
+        print(repr(traceback.format_exception(e1, e2, e3)))
+    print('#####')
+
+
+Let's use as example the testcase TD_COAP_CORE_01,
+
+where we check that client's message matches the following template:
+
+    CoAP(type='con', code='get', opt=self.uri('/test')
+
+and under the circumstance where the server response is ok (2.05 code), that it correlates to the request(CTOK),
+and that it returns a non empty payload: CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b''))
+then if server message  doesnt provide a CoAPOptionContentFormat the test will fail:
+
+    self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')
+
+note that if any of the two first operations dont match the expected, then the test will return an 'inconclusive'
+verdict.
+
+.. code-block:: python
+
+    def run(self):
+        self.match('client', CoAP(type='con', code='get', opt=self.uri('/test')))
+        CMID = self.coap['mid']
+        CTOK = self.coap['tok']
+
+        self.next()
+
+        if self.match('server', CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b'')), None):
+            self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')
+
+
+
+
+returns::
+
+    ##### TC name
+    TD_COAP_CORE_01
+    #####
+    ##### Verdict given
+    pass
+    #####
+    ##### Review frames
+    []
+    #####
+    ##### Text
+    <Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test>
+      [ pass ] <Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)
+    <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content >
+      [ pass ] <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content > Match: CoAP(opt=Opt(CoAPOptionContentFormat()))
+
+    ##### Partial verdicts
+    ('pass', '<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)')
+    ('pass', '<Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content > Match: CoAP(opt=Opt(CoAPOptionContentFormat()))')
+    #####
+    ##### Exceptions
+    #####
+
+the output here says that the testcase has **passed**, and the essential information is described in the partial verdicts::
+
+    ('pass', '<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)')
+    ('pass', '<Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content > Match: CoAP(opt=Opt(CoAPOptionContentFormat()))')
+
+we can add some extra requirements on the 3rd match operation asking that response must include a CoAP Option Block:
+
+.. code-block:: python
+
+    if self.match('server', CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b'')), None):
+        self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat(), CoAPOptionBlock())), 'fail')
+
+
+which returns a **fail** when run on the previously described PCAP file as the server's response doesnt include
+this CoAP option::
+
+    ##### TC name
+    TD_COAP_CORE_01
+    #####
+    ##### Verdict given
+    fail
+    #####
+    ##### Review frames
+    [2]
+    #####
+    ##### Text
+    <Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test>
+      [ pass ] <Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)
+    <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content >
+      [ fail ]  Mismatch: CoAP(opt=Opt(CoAPOptionBlock(), CoAPOptionContentFormat()))
+                 CoAP.opt: CoAPOptMismatch
+                     got:
+                     expected: CoAPOptionBlock()
+
+    ##### Partial verdicts
+    ('pass', '<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)')
+    ('fail', ' Mismatch: CoAP(opt=Opt(CoAPOptionBlock(), CoAPOptionContentFormat()))')
+    #####
+    ##### Exceptions
+    #####
+
+
+We can also override the default **fail** messages using:
+
+.. code-block:: python
+
+        if self.match('server', CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b'')), None):
+            self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat(), CoAPOptionBlock())), 'fail', "Missing CoAP options")
+
+returns::
+
+    ##### TC name
+    TD_COAP_CORE_01
+    #####
+    ##### Verdict given
+    fail
+    #####
+    ##### Review frames
+    [2]
+    #####
+    ##### Text
+    <Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test>
+      [ pass ] <Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)
+    <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK 43521] 2.05 Content >
+      [ fail ] Missing CoAP options
+                 CoAP.opt: CoAPOptMismatch
+                     got:
+                     expected: CoAPOptionBlock()
+
+    ##### Partial verdicts
+    ('pass', '<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON 43521] GET /test> Match: CoAP(type=0, code=1)')
+    ('fail', 'Missing CoAP options')
+    #####
+    ##### Exceptions
+    #####
+
+Testcase Class and subclasses
+=============================
 
 Now, let's describe the different libraries that are provided and the
 elements that the contributor has to provide,for writing his/her TAT, or
@@ -383,8 +555,8 @@ match()
     - Takes 4 parameters that are the following:
         - The name of the **sending node** as a *string*
         - The **template** to which we will compare the current frame as *Value*
-        - The **verdict** to put if it doesn't match as an *optional string*
-        - The **message** to put into this verdict as an *optional string*
+        - The **verdict** to assign in case of operation mismatch as an *optional string*
+        - The **message** to assign in case of operation mismatch as an *optional string*
     - Returns *True* if it matches, *False* if not
 
 next()
