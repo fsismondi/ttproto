@@ -52,7 +52,6 @@ from ttproto.core.typecheck import *
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
 
-
 __all__ = [
     'Verdict',
     'Node',
@@ -60,7 +59,6 @@ __all__ = [
     'TestCase',
     'Analyzer'
 ]
-
 
 TESTCASES_SUBDIR = 'testcases'
 TTPROTO_DIR = 'ttproto'
@@ -139,8 +137,8 @@ class Verdict:
      - 'error': A runtime error occured during the test
 
     At initialisation time, the verdict is set to None. Then it can be updated
-    one or multiple times, either explicitely calling set_verdict() or
-    implicitely if an unhandled exception is caught by the control module
+    one or multiple times, either explicitly calling set_verdict() or
+    implicitly if an unhandled exception is caught by the control module
     (error verdict) or if the user interrupts the test manually (aborted
     verdict).
 
@@ -161,7 +159,7 @@ class Verdict:
         """
         self.__value = 0
         self.__message = ''
-        self.__traceback =[]
+        self.__traceback = []
         if initial_value is not None:
             self.update(initial_value)
 
@@ -177,7 +175,7 @@ class Verdict:
         """
         assert new_verdict in self.__values
 
-        self.__traceback.append((new_verdict,message))
+        self.__traceback.append((new_verdict, message))
         new_value = self.__values.index(new_verdict)
         if new_value > self.__value:
             self.__value = new_value
@@ -354,8 +352,7 @@ class TestCase(object):
     @typecheck
     def __init__(self, capture: Capture):
         """
-        Initialize a test case, the only thing that it needs for
-        interoperability testing is a list of frame
+        Initialize a test case, only input needed is a list of frames
 
         :param conv_list: The list of conversations to analyze
         :type conv_list: [Conversation]
@@ -380,11 +377,7 @@ class TestCase(object):
         self._exceptions = []
 
     @typecheck
-    def __not_matching(
-        self,
-        verdict: optional(is_verdict),
-        message: str
-    ) -> bool:
+    def __not_matching(self, verdict: optional(is_verdict), message: str) -> bool:
 
         # Put the verdict
         if verdict:
@@ -392,30 +385,31 @@ class TestCase(object):
 
         # Add this frame's id to the failed frames
         self._failed_frames.append(self._frame['id'])
-        #self.log('failed frames: %d' % self._frame['id'])
+        # self.log('failed frames: %d' % self._frame['id'])
         self.log(message)
         # Always return False
         return False
 
     @typecheck
     def match(
-        self,
-        node_name: optional(str),
-        template: Value,
-        verdict: optional(is_verdict) = 'inconclusive',
-        msg: str = ''
+            self,
+            node_name: optional(str),
+            template: Value,
+            on_mismatch_verdict: optional(is_verdict) = 'inconclusive',
+            on_mismatch_msg: str = ''
     ) -> bool:
         """
-        Abstract function to match the current frame value with a template
+        Abstract function to match the current frame value with the template passed as argument
 
-        :param node_name: The node source of the packet
-        :param template: The template to match the frame value
-        :param verdict: The verdict to put if it matches
-        :param msg: The message to associated with the verdict
+        :param node_name: The node source of the frame
+        :param template: The template to match agains the frame value
+        :param on_mismatch_verdict: Verdict applied when there's a mismatch, normally used with inconclusive, fail
+        or None
+        :param on_mismatch_msg: Message applied when there's a mismatch
         :type node_name: str
         :type template: Value
-        :type verdict: str
-        :type msg: str
+        :type on_mismatch_verdict: str
+        :type on_mismatch_msg: str
 
         :return: True if the current frame value matched the given template
                  False if not
@@ -425,10 +419,9 @@ class TestCase(object):
         # If no more frames for this conversation
         if not self._iter:
             return self.__not_matching(
-                verdict,
-                'Expected %s from the %s but premature end of conversation'
-                %
-                (template, node_name)
+                on_mismatch_verdict,
+                'Expected %s from the %s but premature end of conversation' % (
+                    template, node_name)
             )
 
         # Check the node
@@ -438,10 +431,9 @@ class TestCase(object):
 
             except KeyError:
                 return self.__not_matching(
-                    verdict,
+                    on_mismatch_verdict,
                     'No node %s was not found. Check list of nodes defined for the test case'
-                    %
-                    (node_name)
+                    % (node_name)
                 )
 
             # check the sender (node) is as expected
@@ -449,53 +441,40 @@ class TestCase(object):
                 if not node_template.match(self._frame[node_template.__class__]):
                     # The node isn't matching
                     return self.__not_matching(
-                        verdict,
+                        on_mismatch_verdict,
                         'Sender doesnt match. Expected %s pattern for the %s'
-                        %
-                        (node_template, node_name)
+                        % (node_template, node_name)
                     )
             except ProtocolNotFound:
                 return self.__not_matching(
-                    verdict,
+                    on_mismatch_verdict,
                     'Expected %s into protocol %s but it was not found'
-                    %
-                    (node_template, node_template.__class__.__name__)
+                    % (node_template, node_template.__class__.__name__)
                 )
 
         # Here check the template passed
         protocol = self.get_protocol()
         diff_list = DifferenceList(self._frame[protocol])
 
-        # If it matches
-        if template.match(self._frame[protocol], diff_list):
-            if verdict is not None:
-                self.set_verdict('pass', str(self._frame) + ' Match: %s' % template)
+        if template.match(self._frame[protocol], diff_list):  # it matches
+            if on_mismatch_verdict is not None:
+                partial_verdict_message = ' Match: %s' % template
+                self.set_verdict('pass', str(self._frame) + partial_verdict_message)
 
-        # If it didn't match
-        else:
-            if verdict is not None:
+        else:  # mismatch
+            if on_mismatch_verdict is not None:
                 def callback(path, mismatch, describe):
-                    self.log(
-                        "             %s: %s\n"
-                        %
-                        (
-                            ".".join(path),
-                            type(mismatch).__name__
-                        )
-                    )
-                    self.log(
-                        "                 got:        %s\n"
-                        %
-                        mismatch.describe_value(describe)
-                    )
-                    self.log(
-                        "                 expected: %s\n"
-                        %
-                        mismatch.describe_expected(describe)
-                    )
+                    self.log("             %s: %s\n" % (".".join(path), type(mismatch).__name__))
+                    self.log("                 got:        %s\n" % mismatch.describe_value(describe))
+                    self.log("                 expected: %s\n" % mismatch.describe_expected(describe))
+
+                if on_mismatch_msg != '':
+                    partial_verdict_message = on_mismatch_msg
+                else:
+                    partial_verdict_message = ' Mismatch: %s' % template
 
                 # Put the verdict
-                self.set_verdict(verdict, 'Mismatch: %s' % template)
+                self.set_verdict(on_mismatch_verdict, partial_verdict_message)
                 diff_list.describe(callback)
 
             # Add this frame's id to the failed frames
@@ -562,14 +541,13 @@ class TestCase(object):
         # verdict msg can now log more that one line of messages
         self._verdict.update(verdict, msg_fix)
 
-
     @typecheck
     def run_test_case(self) -> (
-        str,
-        list_of(int),
-        str,
-        list_of((str, str)),
-        list_of((type, Exception, is_traceback))
+            str,
+            list_of(int),
+            str,
+            list_of((str, str)),
+            list_of((type, Exception, is_traceback))
     ):
         """
         Run the test case
@@ -586,10 +564,10 @@ class TestCase(object):
         # Pre-process / filter conversations corresponding to the TC
         self._conversations, self._ignored = self.preprocess(self._capture)
 
-        #print("----conversations----")
-        #print(self._conversations)
-        #print("----ignored----")
-        #print(self._ignored)
+        # print("----conversations----")
+        # print(self._conversations)
+        # print("----ignored----")
+        # print(self._ignored)
 
         # Run the test case for every conversations
         for conv in self._conversations:
@@ -609,8 +587,8 @@ class TestCase(object):
                 # Ignore this testcase result if the first frame gives an
                 # inconclusive verdict
                 if all((
-                    self._verdict.get_value() == 'inconclusive',
-                    self._frame == conv[0]
+                            self._verdict.get_value() == 'inconclusive',
+                            self._frame == conv[0]
                 )):
                     self.set_verdict('none', 'no match')
 
@@ -628,7 +606,6 @@ class TestCase(object):
                 # Put the verdict and log the exception
                 self.set_verdict('error', 'unhandled exception')
                 self.log(exc_info[1])
-
 
         # Return the results
         return (
@@ -649,7 +626,6 @@ class TestCase(object):
         :rtype: str
         """
         if cls.__doc__:
-
             # Get the Yaml reader
             yaml_reader = YamlReader(cls.__doc__, raw_text=True)
 
@@ -679,8 +655,8 @@ class TestCase(object):
 
     @typecheck
     def preprocess(
-        self,
-        capture: Capture
+            self,
+            capture: Capture
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Pre-process and filter the frames of the capture into test case related
@@ -782,7 +758,6 @@ class Analyzer:
 
         # For every file found
         for filepath in result:
-
             # Get the name of the file
             filename = path.basename(filepath)
 
@@ -807,8 +782,8 @@ class Analyzer:
 
     @typecheck
     def import_test_cases(
-        self,
-        testcases: optional(list_of(str)) = None
+            self,
+            testcases: optional(list_of(str)) = None
     ) -> list:
         """
         Imports test cases classes from TESTCASES_DIR
@@ -851,9 +826,9 @@ class Analyzer:
 
     @typecheck
     def get_implemented_testcases(
-        self,
-        testcases: optional(list_of(str)) = None,
-        verbose: bool = False
+            self,
+            testcases: optional(list_of(str)) = None,
+            verbose: bool = False
     ) -> list_of((str, str, str, str)):
         """
         Get more informations about the test cases
@@ -899,10 +874,10 @@ class Analyzer:
 
     @typecheck
     def analyse(
-        self,
-        filename: str,
-        tc_id: str
-    ) -> (str, str, list_of(int), str, list_of((str,str)), list_of((type, Exception, is_traceback))):
+            self,
+            filename: str,
+            tc_id: str
+    ) -> (str, str, list_of(int), str, list_of((str, str)), list_of((type, Exception, is_traceback))):
         """
         Analyse a dump file associated to a test case
 
@@ -942,7 +917,6 @@ class Analyzer:
 
         # Disable name resolution for performance improvment
         with Data.disable_name_resolution():
-
             # Get the capture from the file
             capture = Capture(filename)
 
@@ -976,12 +950,14 @@ class Analyzer:
 
 if __name__ == "__main__":
     from os import getcwd, path
+
     analyzer = Analyzer('tat_coap')
-    #params = getcwd() + '/tests/exemple_fait_core_2.pcap','TD_COAP_CORE_01'
-    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
-    params = './tmp/TD_COAP_CORE_23_fail.pcap', 'TD_COAP_CORE_23'
-    #params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
-    tc_name, verdict, rev_frames, str_log , lst_log,excepts = analyzer.analyse(params[0], params[1])
+
+    # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    # params = './tmp/TD_COAP_CORE_23_fail.pcap', 'TD_COAP_CORE_23'
+    # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
+    tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
     print('##### TC name')
     print(tc_name)
     print('#####')
