@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_03 (CoAPTestCase):
+class TD_COAP_CORE_03(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_03:
@@ -47,25 +47,20 @@ TD_COAP_CORE_03:
             CoAP(type='con', code='put')
         ]
 
-    def run (self):
-        self.match ("client", CoAP (type="con", code="put",
-                        opt=self.uri ("/test")))
-        self.match ("client", CoAP (
-                        opt = Opt (CoAPOptionContentFormat()),
-                ), "fail")
+    def run(self):
+        self.match("client",
+                   CoAP(type="con", code="put", opt=self.uri("/test")))
+
+        self.match("client",
+                   CoAP(opt=Opt(CoAPOptionContentFormat()), ),
+                   "fail")
+
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
 
         self.next()
 
-        self.match ("server", CoAP (
-                        code = Any (65, 68),
-                        mid = CMID,
-                        tok = CTOK,
-                ))
-        if self.match ("server", CoAP(pl = Not(b"")),None):
-            self.match ("server", CoAP (
-                        opt = Opt (CoAPOptionContentFormat()),
-                ), "fail")
+        self.match("server", CoAP(code=Any(65, 68), mid=CMID, tok=CTOK, ))
 
-
+        if self.match("server", CoAP(pl=Not(b"")), None):
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")
