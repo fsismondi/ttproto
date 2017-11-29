@@ -83,6 +83,12 @@ __all__ = [
     'CoAPOptionUriPort',
     'CoAPOptionUriQuery',
     'CoAPOptionOneM2MFrom',
+    'CoAPOptionOneM2MRequestIdentifier', 
+    'CoAPOptionOneM2MName',
+    'CoAPOptionOneM2MNotificationURI',
+    'CoAPOptionOneM2MResponseStatusCode',
+    'CoAPOptionOneM2MGroupRequestIdentifier',
+    'CoAPOptionOneM2MTY',
     'CoAPCode',
     'CoAPType',
 
@@ -642,6 +648,14 @@ _content_format_description = {
     50:	"application/json",
 }
 
+_ResponseStutusCode_format_description = {
+    65:	"2001",
+    66: "2002",
+    67:	"2003",
+    68:	"2004",
+    69:	"2000",
+}
+
 def _max_age_description (v):
 
     if v == 0:
@@ -709,6 +723,12 @@ for i, n, t, l, d in (
 
         # OneM2M binding
         (256, "OneM2MFrom" , "String" , (0, 255) , None),
+        (257, "OneM2MRequestIdentifier" , "String" , (0, 255) , None),
+	(258, "OneM2MName" , "String" , (0, 255) , None),
+        (263, "OneM2MNotificationURI" , "String" , (0, 255) , None),
+        (265, "OneM2MResponseStatusCode" , "UInt" , (0, 2) , _ResponseStutusCode_format_description),
+        (266, "OneM2MGroupRequestIdentifier" , "String" , (0, 255) , None),
+        (267, "OneM2MTY" , "String" , (0, 255) , None),
     ):
     exec(
 """
