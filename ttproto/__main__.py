@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 logger.addHandler(sh)
 
+# TODO either update topics on demand from amqp interface, on find a generic regex for all topics 
 PCAP_DUMPER_AMQP_TOPICS = ['data.serial.fromAgent.coap_client_agent',
                            'data.serial.fromAgent.coap_server_agent',
                            'data.tun.fromAgent.coap_server_agent',
@@ -34,7 +35,7 @@ def main(argv):
                         default="amqp",
                         help="Choose the interface.")
     parser.add_argument("-p", "--protocol",
-                        choices=["coap", "6lowpan", 'oneM2M'],
+                        choices=["coap", "6lowpan", 'onem2m'],
                         help="Choose the protocol to be analyzed by the TAT.",
                         default='coap',
                         )
