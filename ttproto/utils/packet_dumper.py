@@ -289,7 +289,8 @@ class AmqpDataPacketDumper:
                     logger.error(e)
 
             else:
-                logger.info('drop amqp message: ' + repr(m))
+                #logger.info('drop amqp message: ' + repr(m))
+                pass
 
 
         except NonCompliantMessageFormatError as e:
