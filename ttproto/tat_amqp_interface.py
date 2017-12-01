@@ -300,7 +300,6 @@ class AmqpInterface:
                 else:
                     logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
-                self.tat_protocol
                 # run the analysis
                 analysis_results = _analyze_capture(filename=filename,
                                                     testcase_id=testcase_id,
