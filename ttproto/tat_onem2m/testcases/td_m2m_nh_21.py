@@ -49,7 +49,7 @@ TD_M2M_NH_21:
 
     def run(self):
         
-        self.match('client', CoAP(type='con', code='get', pl=Not(b'')), 'fail'):
+        self.match('client', CoAP(type='con', code='get', pl=Not(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionUriQuery('fu=1'))), 'fail')

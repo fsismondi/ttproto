@@ -954,7 +954,7 @@ if __name__ == "__main__":
 
     analyzer = Analyzer('tat_onem2m')
 
-    params = './tmp/TD_M2M_NH_06.pcap', 'TD_M2M_NH_06'
+    params = './tmp/test.pcap', 'TD_M2M_NH_01'
     tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
     print('##### TC name')
     print(tc_name)
