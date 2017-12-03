@@ -47,11 +47,9 @@ TD_M2M_NH_01:
         self.match('client', CoAP(type='con', code='get'), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
         if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'):
-
             CMID = self.coap['mid']
             CTOK = self.coap['tok']
             OPTS = self.coap['opt']
-
             RI = OPTS[CoAPOptionOneM2MRequestIdentifier]
             RIVAL = RI[2]
 

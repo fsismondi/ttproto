@@ -54,16 +54,16 @@ TD_M2M_NH_12:
         self.match('client', CoAP(type="con", code="put", pl=Not(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat())), "fail")
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail')
+        if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'):
 
-        OPTS = self.coap['opt']
-        RI = OPTS[CoAPOptionOneM2MRequestIdentifier]
-        RIVAL = RI[2]
+            OPTS = self.coap['opt']
+            RI = OPTS[CoAPOptionOneM2MRequestIdentifier]
+            RIVAL = RI[2]
 
-    
-        self.next()
+        
+            self.next()
 
-        self.match("server", CoAP(type='con', code=Any(65, 68), pl=Not(b'')), 'fail')
-        self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')
-        self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('2004'))), 'fail')
-        self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')
+            self.match("server", CoAP(type='con', code=Any(65, 68), pl=Not(b'')), 'fail')
+            self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')
+            self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('2004'))), 'fail')
+            self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')
