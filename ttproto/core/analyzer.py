@@ -749,7 +749,7 @@ class Analyzer:
         # If no test case found
         if len(result) == 0:
             raise FileNotFoundError(
-                'No test case found using "%s" search query' % search_query
+                'No test case found for: "%s"' % search_query
             )
 
         # If the search query is the wildcard, sort the list
@@ -951,12 +951,10 @@ class Analyzer:
 if __name__ == "__main__":
     from os import getcwd, path
 
-    analyzer = Analyzer('tat_coap')
 
-    # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
-    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
-    # params = './tmp/TD_COAP_CORE_23_fail.pcap', 'TD_COAP_CORE_23'
-    # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
+    analyzer = Analyzer('tat_onem2m')
+
+    params = './tmp/TD_M2M_NH_06.pcap', 'TD_M2M_NH_06'
     tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
     print('##### TC name')
     print(tc_name)
@@ -979,3 +977,33 @@ if __name__ == "__main__":
         print(repr(traceback.format_exception(e1, e2, e3)))
 
     print('#####')
+
+    #
+    # analyzer = Analyzer('tat_coap')
+    #
+    # # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    # params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    # # params = './tmp/TD_COAP_CORE_23_fail.pcap', 'TD_COAP_CORE_23'
+    # # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
+    # tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
+    # print('##### TC name')
+    # print(tc_name)
+    # print('#####')
+    # print('##### Verdict given')
+    # print(verdict)
+    # print('#####')
+    # print('##### Review frames')
+    # print(rev_frames)
+    # print('#####')
+    # print('##### Text')
+    # print(str_log)
+    # print('##### Partial verdicts')
+    # for s in lst_log:
+    #     print(str(s))
+    # print('#####')
+    # print('##### Exceptions')
+    # for e in excepts:
+    #     e1, e2, e3 = e
+    #     print(repr(traceback.format_exception(e1, e2, e3)))
+    #
+    # print('#####')

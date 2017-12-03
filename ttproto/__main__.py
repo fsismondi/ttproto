@@ -16,8 +16,9 @@ SERVER_CONFIG = ("0.0.0.0", 2080)
 
 # default handler
 logger = logging.getLogger(__name__)
-sh = logging.StreamHandler()
-logger.addHandler(sh)
+logger.setLevel(logging.INFO)
+# sh = logging.StreamHandler()
+# logger.addHandler(sh)
 
 # TODO either update topics on demand from amqp interface, on find a generic regex for all topics 
 PCAP_DUMPER_AMQP_TOPICS = ['data.serial.fromAgent.coap_client_agent',
@@ -60,8 +61,8 @@ def main(argv):
     if dissector_option:  # auto dissection needs the traces in pcap files
         dumps_option = True
 
-    print('Configuration: interface %s, protocol %s, dissection option %s'
-          % (tat_interface, tat_protocol, dissector_option))
+    logger.info('Configuration: \n\tinterface: %s\n\tprotocol %s \n\tdissection option %s'
+                % (tat_interface, tat_protocol, dissector_option))
 
     if tat_interface == 'http':
         raise NotImplementedError
@@ -99,7 +100,7 @@ def main(argv):
             amqp_url = "amqp://local:{1}@{2}/{3}".format('guest', 'guest', 'localhost', '')
 
         logger.info('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s' % (amqp_url,
-                                                                                                      amqp_exchange))
+                                                                                                            amqp_exchange))
 
         # AMQP log handler & formatter
         rabbitmq_handler = RabbitMQHandler(amqp_url, COMPONENT_ID)

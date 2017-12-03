@@ -318,7 +318,6 @@ class AmqpInterface:
                 logger.error(str(e))
                 logger.error(e)
                 logger.error(type(e))
-                logger.error(e.__mro__)
                 return
 
             # let's prepare the message
