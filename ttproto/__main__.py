@@ -20,12 +20,10 @@ logger.setLevel(logging.INFO)
 # sh = logging.StreamHandler()
 # logger.addHandler(sh)
 
-# TODO either update topics on demand from amqp interface, on find a generic regex for all topics 
-PCAP_DUMPER_AMQP_TOPICS = ['data.serial.fromAgent.coap_client_agent',
-                           'data.serial.fromAgent.coap_server_agent',
-                           'data.tun.fromAgent.coap_server_agent',
-                           'data.tun.fromAgent.coap_client_agent',
-                           ]
+PCAP_DUMPER_AMQP_TOPICS = [
+    'data.serial.fromAgent.*',
+    'data.tun.fromAgent.*',
+]
 
 
 def main(argv):
