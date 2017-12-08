@@ -46,9 +46,9 @@ from ttproto.core.lib.all import *
 from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
-
-#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('[dissection]')
+log.setLevel(level=logging.DEBUG)
 
 __all__ = [
     'is_protocol',
@@ -58,7 +58,6 @@ __all__ = [
     'Dissector',
     'Capture'
 ]
-
 
 
 @typecheck
@@ -112,9 +111,9 @@ class Frame:
 
     @typecheck
     def __init__(
-        self,
-        id: int,
-        pcap_frame: (float, Message, optional(Exception))
+            self,
+            id: int,
+            pcap_frame: (float, Message, optional(Exception))
     ):
         """
         The init function of the Frame object
@@ -127,7 +126,7 @@ class Frame:
 
         # Put the different variables of it
         self.__id = id
-        log.debug("[Frame Init] New Frame id: %d" %id )
+        log.debug("[Frame Init] New Frame id: %d" % id)
 
         # Get the 3 values of a frame given by the PcapReader
         # ts: Its timestamp value (from the header)
@@ -190,14 +189,26 @@ class Frame:
         """
         return "<Frame %3d: %s>" % (self.__id, self.__msg.summary())
 
-    #@typecheck
+    @property
+    def timestamp(self):
+        return self.__timestamp
+
+    @property
+    def message(self):
+        return self.__msg
+
+    @property
+    def error(self):
+        return self.__error
+
+    @typecheck
     def __value_to_list(
-        self,
-        l: list,
-        value: Value,
-        extra_data: optional(str) = None,
-        layer_dict: optional(dict) = None,
-        is_option: optional(bool) = False
+            self,
+            l: list,
+            value: Value,
+            extra_data: optional(str) = None,
+            layer_dict: optional(dict) = None,
+            is_option: optional(bool) = False
     ):
         """
         An utility function to parse recursively packet datas
@@ -215,7 +226,7 @@ class Frame:
         """
         try:
             # Points to packet
-            log.debug("dissecting value: " + str(value) + " || type : " + str(type(value)) )
+            log.debug("dissecting value: " + str(value) + " || type : " + str(type(value)))
             if isinstance(value, PacketValue):
 
                 # Prepare the storage dict
@@ -227,7 +238,7 @@ class Frame:
 
                 # If a protocol value
                 else:
-                    #log.debug(' Protocol header:  ' + str(value.get_variant().__name__))
+                    # log.debug(' Protocol header:  ' + str(value.get_variant().__name__))
                     od['_type'] = 'protocol'
                     od['_protocol'] = value.get_variant().__name__
 
@@ -244,18 +255,19 @@ class Frame:
                 prot_options = []
                 for i in range(0, len(value)):
                     self.__value_to_list(prot_options, value[i], is_option=True)
-                #log.debug(' options:    || value : ' + str(prot_options))
+                # log.debug(' options:    || value : ' + str(prot_options))
                 layer_dict['Options'] = prot_options
 
             # If it's a single field
             else:
-                #log.debug(' field:  ' + str(extra_data) + '|| value : ' + str(value))
+                # log.debug(' field:  ' + str(extra_data) + '|| value : ' + str(value))
                 layer_dict[extra_data] = str(value)
 
         except TypeError as e:
-            #log.error(e.__traceback__)
+            # log.error(e.__traceback__)
             log.error(e, exc_info=True)
-            log.error( 'extra_data:  ' + str(extra_data) + '|| value : ' + str(value) + '|| layerDict : ' + str(layer_dict))
+            log.error(
+                'extra_data:  ' + str(extra_data) + '|| value : ' + str(value) + '|| layerDict : ' + str(layer_dict))
 
     @typecheck
     def dict(self) -> OrderedDict:
@@ -266,7 +278,6 @@ class Frame:
         :rtype: OrderedDict
         """
         if self.__dict is None:
-
             # Create its dictionnary representation
             self.__dict = OrderedDict()
 
@@ -280,16 +291,15 @@ class Frame:
                 self.__dict['protocol_stack'],
                 self.__msg.get_value()
             )
-
         # Return it
         return self.__dict
 
     @classmethod
     @typecheck
     def filter_frames(
-        cls,
-        frames: list_of(this_class),
-        protocol: is_protocol
+            cls,
+            frames: list_of(this_class),
+            protocol: is_protocol
     ) -> (list_of(this_class), list_of(this_class)):
         """
         Allow to filter frames on a protocol
@@ -347,8 +357,8 @@ class Frame:
 
     @typecheck
     def __getitem__(
-        self,
-        item: either(is_protocol, str)
+            self,
+            item: either(is_protocol, str)
     ) -> either(int, float, optional(Exception), str, is_layer_value):
         """
         Get the requested informations of the layer level for this frame. This
@@ -466,7 +476,6 @@ class Dissector:
 
         # Singleton pattern
         if cls.__implemented_protocols is None:
-
             # Just directly get the PacketValue and InetPacketValue subclasses
             cls.__implemented_protocols = []
             # cls.__implemented_protocols += PacketValue.__subclasses__()
@@ -483,8 +492,8 @@ class Dissector:
 
     @typecheck
     def summary(
-        self,
-        protocol: optional(is_protocol) = None
+            self,
+            protocol: optional(is_protocol) = None
     ) -> list_of((int, str)):
         """
         The summaries function to get the summary of frames
@@ -524,8 +533,8 @@ class Dissector:
 
         # Check the protocol
         if all((
-            protocol,
-            not is_protocol(protocol)
+                protocol,
+                not is_protocol(protocol)
         )):
             raise TypeError(protocol.__name__ + ' is not a protocol class')
 
@@ -544,8 +553,8 @@ class Dissector:
 
     @typecheck
     def dissect(
-        self,
-        protocol: optional(is_protocol) = None
+            self,
+            protocol: optional(is_protocol) = None
     ) -> list_of(OrderedDict):
         """
         The dissect function to dissect a pcap file into list of frames
@@ -558,11 +567,11 @@ class Dissector:
         :return: A list of Frame represented as API's dict form
         :rtype: [OrderedDict]
         """
-        #log.debug('Starting dissection.')
+        # log.debug('Starting dissection.')
         # Check the protocol is one entered
         if all((
-            protocol,
-            not is_protocol(protocol)
+                protocol,
+                not is_protocol(protocol)
         )):
             raise TypeError(protocol.__name__ + ' is not a protocol class')
 
@@ -616,20 +625,17 @@ class Capture:
     def filename(self):
         return self._filename
 
-
     @property
     def frames(self):
         if not self._frames:
             self.__process_file()
         return self._frames
 
-
     @property
     def malformed(self):
         if not self._malformed:
             self.__process_file()
         return self._malformed
-
 
     def __process_file(self):
         """
@@ -682,17 +688,23 @@ class Capture:
 
 
 if __name__ == "__main__":
+    import json
+    import logging
+
+
     dis = Dissector(
-     #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
-            'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
-     )
+        #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
+        # 'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
+        'tmp/frame2_onem2m.pcap'
+        #'tmp/frame1_onem2m.pcap'
+    )
     print(dis.summary())
     print('#####')
     print('##### Dissect with filtering on CoAP #####')
     print(dis.dissect(CoAP))
     print('#####')
     print('##### Dissect without filtering #####')
-    print(dis.dissect())
+    print(json.dumps(dis.dissect(), indent=4))
     # print('#####')
     # print('#####')
     # print(Dissector.get_implemented_protocols())
@@ -819,4 +831,4 @@ if __name__ == "__main__":
     # for i in ignored:
     #     print('%d: %s' % (c, i['value']))
     #     c += 1
-    #pass
+    # pass
