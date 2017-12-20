@@ -4,8 +4,9 @@ else runs amqp interface
 Should be run as: python3 -m ttproto.tat_coap
 """
 import argparse
+
+from ttproto import LOG_LEVEL
 from ttproto.tat_amqp_interface import *
-# TODO make protocol agnostic webserver
 from ttproto.tat_coap.webserver import *
 from ttproto.utils.packet_dumper import *
 from ttproto.utils.rmq_handler import JsonFormatter, RabbitMQHandler
@@ -16,7 +17,7 @@ SERVER_CONFIG = ("0.0.0.0", 2080)
 
 # default handler
 logger = logging.getLogger(COMPONENT_ID)
-logger.setLevel(logging.INFO)
+logger.setLevel(LOG_LEVEL)
 
 PCAP_DUMPER_AMQP_TOPICS = [
     'data.*.fromAgent.*',

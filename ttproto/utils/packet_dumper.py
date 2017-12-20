@@ -4,14 +4,15 @@ import pika
 import shutil
 import signal
 import logging
+from urllib.parse import urlparse
 from datetime import datetime
 from ttproto.utils.amqp_messages import *
 from ttproto.utils.pure_pcapy import Dumper, Pkthdr, DLT_RAW, DLT_IEEE802_15_4_NOFCS
 
 logger = logging.getLogger(__name__)
-logging.getLogger('pika').setLevel(logging.INFO)
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
+
 
 def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=None, dump_dir=None):
     def signal_int_handler(self, frame):
@@ -36,7 +37,7 @@ def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=No
         try:
             amqp_url = str(os.environ['AMQP_URL'])
             print('Imported AMQP_URL env var: %s' % amqp_url)
-            p = six.moves.urllib_parse.urlparse(amqp_url)
+            p = urlparse(amqp_url)
             user = p.username
             server = p.hostname
             logger.info(
@@ -47,13 +48,11 @@ def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=No
             # load default values
             amqp_url = "amqp://{0}:{1}@{2}/{3}".format("guest", "guest", "localhost", "/")
 
-
     if topics:
         pcap_amqp_topic_subscriptions = topics
     else:
-        pcap_amqp_topic_subscriptions = ['data.serial.fromAgent.*',
-                                         'data.tun.fromAgent.*',
-                                         ]
+        pcap_amqp_topic_subscriptions = ['data.tun.fromAgent.*',
+                                         'data.serial.fromAgent.*']
 
     # init pcap_dumper
     pcap_dumper = AmqpDataPacketDumper(
@@ -143,11 +142,10 @@ class AmqpDataPacketDumper:
                                 routing_key='control.session')
 
         # publish Hello message in bus
+        m = MsgTestingToolComponentReady(component=self.COMPONENT_ID)
         self.channel.basic_publish(
-            body=json.dumps({'_type': '%s.info' % self.COMPONENT_ID,
-                             'value': '%s is up!' % self.COMPONENT_ID, }
-                            ),
-            routing_key='control.%s.info' % self.COMPONENT_ID,
+            body=m.to_json(),
+            routing_key=m.routing_key,
             exchange=self.exchange,
             properties=pika.BasicProperties(
                 content_type='application/json',
@@ -166,13 +164,13 @@ class AmqpDataPacketDumper:
 
         self.pcap_15_4_dumper = Dumper(
             filename=os.path.join(self.dump_dir, self.DEFAULT_802154_DUMP_FILENAME_WR),
-            snaplen=200,
+            snaplen=2000,
             network=DLT_IEEE802_15_4_NOFCS
         )
 
         self.pcap_raw_ip_dumper = Dumper(
             filename=os.path.join(self.dump_dir, self.DEFAULT_RAWIP_DUMP_FILENAME_WR),
-            snaplen=200,
+            snaplen=2000,
             network=DLT_RAW
         )
 
@@ -230,7 +228,7 @@ class AmqpDataPacketDumper:
         except Exception as e:
             logger.error(e)
 
-        print('Messages dumped : ' + str(self.messages_dumped))
+        logger.info('Messages dumped : ' + str(self.messages_dumped))
 
     def dumps_rotate(self):
 
@@ -290,7 +288,6 @@ class AmqpDataPacketDumper:
                 #logger.info('drop amqp message: ' + repr(m))
                 pass
 
-
         except NonCompliantMessageFormatError as e:
             print('* * * * * * API VALIDATION ERROR * * * * * * * ')
             print("AMQP MESSAGE LIBRARY COULD PROCESS JSON MESSAGE")
@@ -309,9 +306,10 @@ class AmqpDataPacketDumper:
 
 
 if __name__ == '__main__':
+
     import multiprocessing
 
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
     p = multiprocessing.Process(target=launch_amqp_data_to_pcap_dumper(), args=())
     p.start()
@@ -319,3 +317,4 @@ if __name__ == '__main__':
         time.sleep(1)
         print(i)
     p.join()
+

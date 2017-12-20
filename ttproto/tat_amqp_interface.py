@@ -34,14 +34,20 @@
 
 import base64
 import pika
-import time, hashlib
-import json, errno, os, sys
+import time
+import hashlib
+import json
+import errno
+import os
+import sys
 import uuid
 import signal
 import logging
 
 from collections import OrderedDict
 from multiprocessing import Process
+
+from ttproto import LOG_LEVEL
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Dissector
 from ttproto.core.typecheck import typecheck, optional, either
@@ -62,16 +68,10 @@ TMPDIR = "tmp"
 LOGDIR = "log"
 AUTO_DISSECT_OUTPUT_FILE = 'auto_dissection'
 
-LOG_LEVEL = logging.INFO
-
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
-
-# lower versbosity of pika's logs
-logging.getLogger('pika').setLevel(logging.INFO)
-
 
 #####################
 
