@@ -62,16 +62,16 @@ TMPDIR = "tmp"
 LOGDIR = "log"
 AUTO_DISSECT_OUTPUT_FILE = 'auto_dissection'
 
+LOG_LEVEL = logging.INFO
+
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 # lower versbosity of pika's logs
 logging.getLogger('pika').setLevel(logging.INFO)
+
 
 #####################
 
@@ -95,6 +95,7 @@ class AmqpInterface:
         self.dissection_auto = dissection_auto
 
         self.logger = logging.getLogger(self.COMPONENT_ID)
+        self.logger.setLevel(LOG_LEVEL)
 
         # AMQP log handler & formatter
         rabbitmq_handler = RabbitMQHandler(AMQP_URL, self.COMPONENT_ID)
@@ -451,6 +452,9 @@ class AmqpInterface:
 
 
 # # # AUXILIARY FUNCTIONS # # #
+
+logger = logging.getLogger('tat|ttproto_api')
+logger.setLevel(LOG_LEVEL)
 
 
 def _analyze_capture(filename, protocol, testcase_id, output_file):
