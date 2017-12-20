@@ -11,18 +11,15 @@ from ttproto.utils.packet_dumper import *
 from ttproto.utils.rmq_handler import JsonFormatter, RabbitMQHandler
 
 # TTPROTO CONSTANTS
-COMPONENT_ID = 'tat'
+COMPONENT_ID = 'tat|main'
 SERVER_CONFIG = ("0.0.0.0", 2080)
 
 # default handler
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(COMPONENT_ID)
 logger.setLevel(logging.INFO)
-# sh = logging.StreamHandler()
-# logger.addHandler(sh)
 
 PCAP_DUMPER_AMQP_TOPICS = [
-    'data.serial.fromAgent.*',
-    'data.tun.fromAgent.*',
+    'data.*.fromAgent.*',
 ]
 
 

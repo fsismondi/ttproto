@@ -67,11 +67,11 @@ HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 # lower versbosity of pika's logs
 logging.getLogger('pika').setLevel(logging.INFO)
-
-logger = logging.getLogger(__name__)
-
 
 #####################
 
@@ -90,9 +90,17 @@ def launch_tat_amqp_interface(amqp_url, amqp_exchange, tat_protocol, dissection_
 
 class AmqpInterface:
     def __init__(self, amqp_url, amqp_exchange, tat_protocol, dissection_auto):
-        self.COMPONENT_ID = 'tat'
+        self.COMPONENT_ID = 'tat|amqp_interface'
         self.tat_protocol = tat_protocol
         self.dissection_auto = dissection_auto
+
+        self.logger = logging.getLogger(self.COMPONENT_ID)
+
+        # AMQP log handler & formatter
+        rabbitmq_handler = RabbitMQHandler(AMQP_URL, self.COMPONENT_ID)
+        json_formatter = JsonFormatter()
+        rabbitmq_handler.setFormatter(json_formatter)
+        self.logger.addHandler(rabbitmq_handler)
 
         self.amqp_url = amqp_url
         self.amqp_exchange = amqp_exchange
@@ -148,7 +156,7 @@ class AmqpInterface:
 
         # start main job (the following is a blocking call)
 
-        logger.info("Awaiting for analysis & dissection requests")
+        self.logger.info("Awaiting for analysis & dissection requests")
         self.channel.start_consuming()
 
     def stop(self):
@@ -171,7 +179,7 @@ class AmqpInterface:
 
         self.connection.close()
 
-        logger.info('Stopping.. Bye bye!')
+        self.logger.info('Stopping.. Bye bye!')
 
         sys.exit(0)
 
@@ -193,7 +201,7 @@ class AmqpInterface:
             event_received.update_properties(**props_dict)
 
         except Exception as e:
-            logger.error(str(e))
+            self.logger.error(str(e))
             return
 
         if isinstance(event_received, amqp_messages.MsgPacketSniffedRaw):
@@ -210,11 +218,14 @@ class AmqpInterface:
                                                    AmqpDataPacketDumper.DEFAULT_RAWIP_DUMP_FILENAME
                                                    )
                 else:
-                    logger.error('Not implemented protocol dissection for %s' % event_received.interface_name)
+                    self.logger.error('Not implemented protocol dissection for %s' % event_received.interface_name)
                     return
 
-                logger.info("Data plane activity")
-                # this acts as a filter, we dont want a dissection per message on the bus, we need on for all data messages
+                self.logger.info("Data plane activity")
+
+                # this acts as a filter, we dont want a dissection message per packet sent on the bus
+                # we gather all the packets sent on a second since the first packet was seen on the bus, then we dissect
+                # note : the sniffing and pcap generation is not done here but by the generic packet dumper component
                 time.sleep(1)
                 ch.queue_purge(queue=self.data_queue_name)
 
@@ -225,11 +236,11 @@ class AmqpInterface:
                 )
 
             except (TypeError, pure_pcapy.PcapError) as e:
-                logger.error("Error processing PCAP: %s" % e)
+                self.logger.error("Error processing PCAP: %s" % e)
                 return
 
             except Exception as e:
-                logger.error(str(e))
+                self.logger.error(str(e))
                 return
 
             # prepare response with dissection info:
@@ -240,12 +251,12 @@ class AmqpInterface:
                 testcase_ref='unknown'
             )
             _publish_message(ch, event_diss)
-            logger.info("Auto dissection message sent.. ")
+            self.logger.info("Auto dissection message sent.. ")
 
             return
 
         else:
-            logger.debug('Unknonwn message. Message dropped: %s' % event_received)
+            self.logger.debug('Unknonwn message. Message dropped: %s' % event_received)
 
     def on_service_request(self, ch, method, props, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -265,11 +276,11 @@ class AmqpInterface:
             service_request.update_properties(**props_dict)
 
         except Exception as e:
-            logger.error(str(e))
+            self.logger.error(str(e))
             return
 
         if isinstance(service_request, amqp_messages.MsgInteropTestCaseAnalyze):
-            logger.debug("Starting analysis of PCAP")
+            self.logger.debug("Starting analysis of PCAP")
 
             # generation of token
             operation_token = _get_token()
@@ -295,10 +306,10 @@ class AmqpInterface:
                             error_message='Empty PCAP file received'
                         )
                     )
-                    logger.warning("Empty PCAP received")
+                    self.logger.warning("Empty PCAP received")
                     return
                 else:
-                    logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
+                    self.logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
                 # run the analysis
                 analysis_results = _analyze_capture(filename=filename,
@@ -315,9 +326,9 @@ class AmqpInterface:
                         error_message=str(e)
                     )
                 )
-                logger.error(str(e))
-                logger.error(e)
-                logger.error(type(e))
+                self.logger.error(str(e))
+                self.logger.error(e)
+                self.logger.error(type(e))
                 return
 
             # let's prepare the message
@@ -335,7 +346,7 @@ class AmqpInterface:
                 )
                 # send response
                 _publish_message(ch, response)
-                logger.info("Analysis response sent: " + repr(response))
+                self.logger.info("Analysis response sent: " + repr(response))
 
             except Exception as e:
                 _publish_message(
@@ -345,11 +356,11 @@ class AmqpInterface:
                         error_message=str(e)
                     )
                 )
-                logger.error(str(e))
+                self.logger.error(str(e))
                 return
 
         elif isinstance(service_request, amqp_messages.MsgTestSuiteGetTestCases):
-            logger.warning("API call not implemented. Test coordinator provides this service.")
+            self.logger.warning("API call not implemented. Test coordinator provides this service.")
             return
 
             # # Get the list of test cases
@@ -366,12 +377,12 @@ class AmqpInterface:
             #             ch,
             #             amqp_messages.MsgErrorReply(ok=False, error_message='File not found error')
             #     )
-            #     logger.error('Cannot fetch test cases list:\n' + str(fnfe))
+            #     self.logger.error('Cannot fetch test cases list:\n' + str(fnfe))
             #     return
 
         elif isinstance(service_request, amqp_messages.MsgDissectionDissectCapture):
-            logger.info("Starting dissection of PCAP ...")
-            logger.info("Decoding PCAP file using base64 ...")
+            self.logger.info("Starting dissection of PCAP ...")
+            self.logger.info("Decoding PCAP file using base64 ...")
 
             # get dissect params from request
             pcap_file_base64 = service_request.value
@@ -390,11 +401,11 @@ class AmqpInterface:
                         error_message='Empty PCAP file received'
                     )
                 )
-                logger.warning("Empty PCAP received")
+                self.logger.warning("Empty PCAP received")
                 return
 
             else:
-                logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
+                self.logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
             # Lets dissect
             operation_token = _get_token()
@@ -412,7 +423,7 @@ class AmqpInterface:
                         error_message="Error processing PCAP. Error: %s" % str(e)
                     )
                 )
-                logger.error("Error processing PCAP: %s" % e)
+                self.logger.error("Error processing PCAP: %s" % e)
                 return
             except Exception as e:
                 _publish_message(
@@ -422,7 +433,7 @@ class AmqpInterface:
                         error_message="Error found while dissecting pcap. Error: %s" % str(e)
                     )
                 )
-                logger.error(str(e))
+                self.logger.error(str(e))
                 return
 
             # prepare response with dissection info:
@@ -435,7 +446,7 @@ class AmqpInterface:
             return
 
         else:
-            logger.warning('Coudnt process the service request: %s' % service_request)
+            self.logger.warning('Coudnt process the service request: %s' % service_request)
             return
 
 

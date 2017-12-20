@@ -37,7 +37,7 @@ from os import path
 import logging
 import re
 
-from ttproto.core.exceptions import Error, ReaderError
+from ttproto.core.exceptions import Error, ReaderError, UnknownField
 from ttproto.core.data import Data, Message
 from ttproto.core.list import ListValue
 from ttproto.core.packet import Value, PacketValue
@@ -46,9 +46,11 @@ from ttproto.core.lib.all import *
 from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
+
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('[dissection]')
-log.setLevel(level=logging.DEBUG)
+log.propagate = True  # so AMQP handler (if attached by ancestor) emits logs into the bus
+log.setLevel(level=logging.WARNING)
 
 __all__ = [
     'is_protocol',
@@ -172,7 +174,7 @@ class Frame:
                 continue
 
             # If none found, leave the loop
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, UnknownField):
                 pass
             break
 
