@@ -47,7 +47,6 @@ from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
 
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger('[dissection]')
 log.propagate = True  # so AMQP handler (if attached by ancestor) emits logs into the bus
 log.setLevel(level=logging.WARNING)

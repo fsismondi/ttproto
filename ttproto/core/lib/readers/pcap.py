@@ -43,7 +43,7 @@ from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.readers.capture_reader import CaptureReader
 
 log = logging.getLogger(__name__)
-log.setLevel(level=logging.DEBUG)
+log.setLevel(level=logging.WARNING)
 
 _map_link_type = {
     pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
