@@ -108,7 +108,7 @@ class PcapReader(CaptureReader):
         try:
             log.debug('Decoding bytes as %s: %s ' % (repr(b), self.__decode_type))
             m = Message(b, self.__decode_type)
-            log.debug(m.display())
+            #log.debug(m.display())
             exc = None
         except Exception as e:
             m = Message(b)

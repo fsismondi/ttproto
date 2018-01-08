@@ -464,6 +464,7 @@ class Dissector:
 
         # Get the capture of the file
         self.__capture = Capture(filename)
+        logging.warning("Deprication of Dissector class and its API in favour of Capture's")
 
     @classmethod
     @typecheck
@@ -687,11 +688,116 @@ class Capture:
             else:
                 self._frames.append(Frame(count, ternary_tuple))
 
+    #@typecheck
+    def dissect(
+            self,
+            protocol: optional(is_protocol) = None
+    ) -> list_of(OrderedDict):
+        """
+        Function to dissect a capture as a list of frames represented as strings
+
+        :param protocol: Protocol class for filtering purposes
+        :type protocol: type
+        :raises TypeError: If protocol is not a protocol class
+        :raises ReaderError: If the reader couldn't process the file
+
+        :return: A list of Frame represented as API's dict form
+        :rtype: [OrderedDict]
+
+        """
+        # log.debug('Starting dissection.')
+        # Check the protocol is one entered
+        if all((
+                protocol,
+                not is_protocol(protocol)
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
+
+        fs = self._frames
+
+        # For speeding up the process
+        with Data.disable_name_resolution():
+
+            # Filter the frames for the selected protocol
+            if protocol is not None:
+                fs, _ = Frame.filter_frames(fs, protocol)
+
+        if fs is None:
+            raise Error('Empty capture cannot be dissected')
+
+        # Then return the list of dictionary frame representation
+        return [frame.dict() for frame in fs]
+
+    @typecheck
+    def summary(
+            self,
+            protocol: optional(is_protocol) = None
+    ) -> list_of((int, str)):
+        """
+        The summaries function to get the summary of frames
+
+        :param protocol: Protocol class for filtering purposes
+        :type protocol: type
+
+        :Example:
+
+        from ttproto.core.lib.all import Ieee802154
+
+        for s in dissector.summary(protocol = Ieee802154):
+
+            print(s)
+
+        :raises TypeError: If protocol is not a protocol class
+        :raises ReaderError: If the reader couldn't process the file
+
+        :return: Basic informations about frames like the underlying example
+        :rtype: [(int, str)]
+
+        :Example:
+
+            [
+                (13, '[127.0.0.1 -> 127.0.0.1] CoAP [CON 38515] GET /test'),
+
+                (14, '[127.0.0.1 -> 127.0.0.1] CoAP [ACK 38515] 2.05 Content'),
+
+                (21, '[127.0.0.1 -> 127.0.0.1] CoAP [CON 38516] PUT /test'),
+
+                (22, '[127.0.0.1 -> 127.0.0.1] CoAP [ACK 38516] 2.04 Changed')]
+            ]
+
+        .. todo:: Filter uninteresting frames ? (to decrease the load)
+        .. note:: With the protocol option we can filter
+        """
+
+        return self.dissect(protocol)
+
+    @classmethod
+    @typecheck
+    def get_implemented_protocols(cls) -> list_of(type):
+        """
+        Returns implemented protocols types
+
+        :return: Implemented protocols
+        :rtype: [type]
+        """
+
+        # Just directly get the PacketValue and InetPacketValue subclasses
+        implemented_protocols = []
+        # cls.__implemented_protocols += PacketValue.__subclasses__()
+        # cls.__implemented_protocols += InetPacketValue.__subclasses__()
+
+        # NOTE: This may ben needed if we change the protocol getter system
+        add_subclass(implemented_protocols, PacketValue)
+
+        # Remove the InetPacketValue class
+        implemented_protocols.remove(InetPacketValue)
+
+        # Return the singleton value
+        return implemented_protocols
 
 if __name__ == "__main__":
     import json
     import logging
-
 
     dis = Dissector(
         #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
