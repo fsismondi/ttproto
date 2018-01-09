@@ -1,6 +1,6 @@
 import unittest
 
-from ttproto.core.dissector import Frame, Dissector, ReaderError
+from ttproto.core.dissector import Frame, Capture, ReaderError, get_dissectable_protocols
 from ttproto.core.typecheck3000 import InputParameterError
 from ttproto.core.packet import PacketValue
 from ttproto.core.lib.inet.coap import CoAP
@@ -8,9 +8,9 @@ from ttproto.core.lib.inet.meta import InetPacketValue
 from tests.test_tools.struct_validator import StructureValidator
 
 
-class DissectorTestCase(unittest.TestCase):
+class CaptureAndDissectionsTestCase(unittest.TestCase):
     """
-    Test class for the dissector tool
+    Test dissections
     """
 
     # #################### Tests parameters #########################
@@ -34,7 +34,7 @@ class DissectorTestCase(unittest.TestCase):
         """
             Initialize the dissector instance
         """
-        self.dissector = Dissector(self.PCAP_FILE)
+        self.capture = Capture(self.PCAP_FILE)
 
 
     # #################### Utilities functions #########################
@@ -49,11 +49,11 @@ class DissectorTestCase(unittest.TestCase):
 
     # #################### Tests functions #########################
 
-    # ##### get_implemented_protocols
-    def test_get_implemented_protocols(self):
+    # ##### get_dissectable_protocols
+    def test_get_dissectable_protocols(self):
 
         # Get implemented protocols and check their values
-        implemented_protocols = Dissector.get_implemented_protocols()
+        implemented_protocols = get_dissectable_protocols()
         self.assertEqual(type(implemented_protocols), list)
         self.assertGreater(len(implemented_protocols), 0)
         for prot in implemented_protocols:
@@ -63,7 +63,7 @@ class DissectorTestCase(unittest.TestCase):
     def test_summary_without_filtering(self):
 
         # Get and check the summary
-        summary = self.dissector.summary()
+        summary = self.capture.summary()
         self.assertTrue(type(summary), list)
         self.assertTrue(len(summary), 5)
 
@@ -74,13 +74,13 @@ class DissectorTestCase(unittest.TestCase):
             i += 1
 
         # Try to get another summary with None provided
-        summary_with_none = self.dissector.summary(None)
+        summary_with_none = self.capture.summary(None)
         self.assertEqual(summary, summary_with_none)
 
     def test_summary_with_filtering_on_coap(self):
 
         # Get and check the summary
-        summary = self.dissector.summary(CoAP)
+        summary = self.capture.summary(CoAP)
         self.assertTrue(type(summary), list)
         self.assertTrue(len(summary), 2)
 
@@ -93,10 +93,10 @@ class DissectorTestCase(unittest.TestCase):
     def test_summary_with_filtering_on_protocols(self):
 
         # For every implemented protocols
-        for prots in Dissector.get_implemented_protocols():
+        for prots in get_dissectable_protocols():
 
             # Get and check the summary
-            summary = self.dissector.summary(prots)
+            summary = self.capture.summary(prots)
             self.assertTrue(type(summary), list)
             for f_sum in summary:
                 self.check_summary(f_sum)
@@ -105,31 +105,29 @@ class DissectorTestCase(unittest.TestCase):
 
         # Get and check the summary
         with self.assertRaises(InputParameterError):
-            summary = self.dissector.summary(type(None))
+            summary = self.capture.summary(type(None))
 
     def test_summary_with_filtering_on_not_a_protocol(self):
 
         # Get and check the summary
         with self.assertRaises(InputParameterError):
-            summary = self.dissector.summary(Frame)
+            summary = self.capture.summary(Frame)
 
     def test_summary_with_wrong_pcap_file(self):
 
-        # Create two wrong dissect instances
-        dis_wrong_file = Dissector(self.NOT_A_PCAP_FILE)
-        dis_empty_file = Dissector(self.EMPTY_PCAP_FILE)
-
-        # Get and check the summary
+        # Create two wrong dissect instances, assert an exeption is raised
         with self.assertRaises(ReaderError):
+            dis_wrong_file = Capture(self.NOT_A_PCAP_FILE)
             dis = dis_wrong_file.summary()
         with self.assertRaises(ReaderError):
+            dis_empty_file = Capture(self.EMPTY_PCAP_FILE)
             dis = dis_empty_file.summary()
 
     # ##### dissect
-    def test_dissect_without_filtering(self):
+    def test_dissection_without_filtering(self):
 
         # Get and check the dissect
-        dissect = self.dissector.dissect()
+        dissect = self.capture.get_dissection()
         self.assertTrue(type(dissect), list)
         self.assertTrue(len(dissect), 5)
 
@@ -140,13 +138,13 @@ class DissectorTestCase(unittest.TestCase):
             i += 1
 
         # Try to get another dissect with None provided
-        dissect_with_none = self.dissector.dissect(None)
+        dissect_with_none = self.capture.get_dissection(None)
         self.assertEqual(dissect, dissect_with_none)
 
-    def test_dissect_with_filtering_on_coap(self):
+    def test_dissection_with_filtering_on_coap(self):
 
         # Get and check the dissect
-        dissect = self.dissector.dissect(CoAP)
+        dissect = self.capture.get_dissection(CoAP)
         self.assertTrue(type(dissect), list)
         self.assertTrue(len(dissect), 2)
 
@@ -156,40 +154,37 @@ class DissectorTestCase(unittest.TestCase):
             self.assertEqual(frame['id'], i)
             i += 1
 
-    def test_dissect_with_filtering_on_protocols(self):
+    def test_dissection_with_filtering_on_protocols(self):
 
         # For every implemented protocols
-        for prots in Dissector.get_implemented_protocols():
+        for prots in get_dissectable_protocols():
 
             # Get and check the dissect
-            dissect = self.dissector.dissect(prots)
+            dissect = self.capture.get_dissection(prots)
             self.assertTrue(type(dissect), list)
             for frame in dissect:
                 self.struct_validator.check_frame(frame)
 
-    def test_dissect_with_filtering_on_none_type(self):
+    def test_dissection_with_filtering_on_none_type(self):
 
         # Get and check the dissect
         with self.assertRaises(InputParameterError):
-            dissect = self.dissector.dissect(type(None))
+            dissect = self.capture.get_dissection(type(None))
 
-    def test_dissect_with_filtering_on_not_a_protocol(self):
+    def test_dissection_with_filtering_on_not_a_protocol(self):
 
         # Get and check the dissect
         with self.assertRaises(InputParameterError):
-            dissect = self.dissector.dissect(Frame)
+            dissect = self.capture.get_dissection(Frame)
 
-    def test_dissect_with_wrong_pcap_file(self):
+    def test_dissection_with_wrong_pcap_file(self):
 
-        # Create two wrong dissect instances
-        dis_wrong_file = Dissector(self.NOT_A_PCAP_FILE)
-        dis_empty_file = Dissector(self.EMPTY_PCAP_FILE)
-
-        # Get and check the dissect
         with self.assertRaises(ReaderError):
-            dis = dis_wrong_file.dissect()
+            dis_wrong_file = Capture(self.NOT_A_PCAP_FILE)
+            dis = dis_wrong_file.get_dissection()
         with self.assertRaises(ReaderError):
-            dis = dis_empty_file.dissect()
+            dis_empty_file = Capture(self.EMPTY_PCAP_FILE)
+            dis = dis_empty_file.get_dissection()
 
 # #################### Main run the tests #########################
 if __name__ == '__main__':
