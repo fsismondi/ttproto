@@ -49,7 +49,7 @@ from multiprocessing import Process
 
 from ttproto import LOG_LEVEL
 from ttproto.core.analyzer import Analyzer
-from ttproto.core.dissector import Dissector
+from ttproto.core.dissector import Capture
 from ttproto.core.typecheck import typecheck, optional, either
 from ttproto.utils import pure_pcapy
 from ttproto.core.lib.all import *
@@ -501,9 +501,9 @@ def _dissect_capture(filename, proto_filter=None, output_file=None):
             raise Exception('Unknown protocol %s' % proto_filter)
 
     if proto_matched and len(proto_matched) == 1:
-        dissection = Dissector(filename).dissect(eval(proto_matched[0]['name']))
+        dissection = Capture(filename).get_dissection(eval(proto_matched[0]['name']))
     else:
-        dissection = Dissector(filename).dissect()
+        dissection = Capture(filename).get_dissection()
 
     logger.info('PCAP dissected')
     if output_file and type(output_file) is str:
@@ -740,7 +740,7 @@ def _get_protocol(
     answer = []
 
     # Getter of protocol's classes from dissector
-    prot_classes = Dissector.get_implemented_protocols()
+    prot_classes = get_implemented_dissectable_protocols()
     logger.debug(str(prot_classes))
 
     # Build the clean results list

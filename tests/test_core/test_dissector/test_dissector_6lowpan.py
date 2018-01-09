@@ -1,9 +1,11 @@
 import unittest
 import os
+import json
 import logging
 
-from ttproto.core.dissector import Frame, Capture, ReaderError
+from ttproto.core.dissector import Capture, get_dissectable_protocols
 from ttproto.core.packet import PacketValue
+from ttproto.core.lib.inet.sixlowpan import SixLowpan
 from tests.test_tools.struct_validator import StructureValidator
 from ttproto.utils.pcap_filter import openwsn_profile_filter
 
@@ -99,27 +101,45 @@ class DissectorTestCase(unittest.TestCase):
     def test_get_implemented_protocols(self):
 
         # Get implemented protocols and check their values
-        implemented_protocols = Capture.get_implemented_protocols()
-        print("implemented protos: " + str(implemented_protocols))
+        implemented_protocols = get_dissectable_protocols()
+        logging.info("implemented protos: " + str(implemented_protocols))
         self.assertEqual(type(implemented_protocols), list)
         self.assertGreater(len(implemented_protocols), 0)
         for prot in implemented_protocols:
             self.assertTrue(issubclass(prot, PacketValue))
 
     def test_dissect_pcaps_6lo(self):
+        """
+        this test that the docoders dont raise any errors
+        :return:
+        """
 
         logging.info("[dissector unittests] loaded %s .pcap files for dissection tests" % len(self.pcap_for_test))
-        # for p in self.pcap_for_test:
-        #     logging.info(p)
 
-        self.dissected_pcaps = []
-        self.summaries = []
         for p_file in self.pcap_for_test:
             logging.info('[dissector unittests] dissecting %s' % p_file)
-            d = Capture(p_file).dissect()
-            self.dissected_pcaps.append(d)
-            self.summaries.append(d.summary())
-            assert d, 'Empty result/dissection for .pcap : %s'% p_file
+            c = Capture(p_file)
+            d = c.get_dissection()
+            try:
+                logging.debug('frame dissection: %s' % json.dumps(d, indent=4))
+            except:
+                logging.debug('frame dissection: %s' % d)
+
+    def test_dissect_pcaps_6lo_are_not_empty(self):
+        """
+        this test that the docoders dont raise any errors
+        :return:
+        """
+
+        logging.info("[dissector unittests] loaded %s .pcap files for dissection tests" % len(self.pcap_for_test))
+
+        for p_file in self.pcap_for_test:
+            logging.info('[dissector unittests] dissecting %s' % p_file)
+            c = Capture(p_file)
+            d = c.get_dissection(SixLowpan)
+            if len(d) == 0:
+                self.fail('got empty dissection for 6LoWPAN layer for .pcap %s' % p_file)
+            logging.debug('frame dissection: %s' % json.dumps(d, indent=4))
 
 
 # # #################### Main run the tests #########################

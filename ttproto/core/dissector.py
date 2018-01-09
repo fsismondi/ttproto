@@ -46,19 +46,44 @@ from ttproto.core.lib.all import *
 from ttproto.core.lib.inet.meta import InetPacketValue
 from ttproto.core.lib.readers.pcap import PcapReader
 
-
 log = logging.getLogger('[dissection]')
 log.propagate = True  # so AMQP handler (if attached by ancestor) emits logs into the bus
 log.setLevel(level=logging.WARNING)
 
 __all__ = [
+    'get_dissectable_protocols',
     'is_protocol',
     'is_layer_value',
     'ProtocolNotFound',
     'Frame',
     'Dissector',
-    'Capture'
+    'Capture',
 ]
+
+
+def add_subclass(impl_list, new_class):
+    subclasses = new_class.__subclasses__()
+    # print(new_class.__name__ + ':')
+    # print(subclasses)
+    impl_list += subclasses
+    # print('#####################')
+    for subclass in subclasses:
+        add_subclass(impl_list, subclass)
+
+
+@typecheck
+def get_dissectable_protocols() -> list_of(type):
+    """
+    Return list of the implemented protocols (PacketValue classes)
+    :return: Implemented protocols
+    :rtype: [type]
+    """
+    # Just directly get the PacketValue and InetPacketValue subclasses
+    implemented_protocols = []
+    add_subclass(implemented_protocols, PacketValue)
+    # Remove the InetPacketValue class
+    implemented_protocols.remove(InetPacketValue)
+    return implemented_protocols
 
 
 @typecheck
@@ -76,7 +101,7 @@ def is_protocol(arg: anything) -> bool:
     return all((
         arg is not None,
         type(arg) == type,
-        arg in Dissector.get_implemented_protocols()
+        arg in get_dissectable_protocols()
     ))
 
 
@@ -202,7 +227,7 @@ class Frame:
     def error(self):
         return self.__error
 
-    @typecheck
+    # @typecheck
     def __value_to_list(
             self,
             l: list,
@@ -212,7 +237,7 @@ class Frame:
             is_option: optional(bool) = False
     ):
         """
-        An utility function to parse recursively packet datas
+        An utility function to parse recursively packets' data
 
         :param l: The list in which we put the values parsed
         :param value: The value to store
@@ -227,7 +252,7 @@ class Frame:
         """
         try:
             # Points to packet
-            log.debug("dissecting value: " + str(value) + " || type : " + str(type(value)))
+            # print("dissecting value: " + str(value) + " || type : " + str(type(value)))
             if isinstance(value, PacketValue):
 
                 # Prepare the storage dict
@@ -279,7 +304,7 @@ class Frame:
         :rtype: OrderedDict
         """
         if self.__dict is None:
-            # Create its dictionnary representation
+            # Create its dictionary representation
             self.__dict = OrderedDict()
 
             # Put the values into it
@@ -434,14 +459,6 @@ class Frame:
             )
 
 
-def add_subclass(impl_list, new_class):
-    subclasses = new_class.__subclasses__()
-    # print(new_class.__name__ + ':')
-    # print(subclasses)
-    impl_list += subclasses
-    # print('#####################')
-    for subclass in subclasses:
-        add_subclass(impl_list, subclass)
 
 
 class Dissector:
@@ -475,7 +492,7 @@ class Dissector:
         :return: Implemented protocols
         :rtype: [type]
         """
-
+        logging.warning("Deprecation warning in favour of package's get_dissectable_protocols method!")
         # Singleton pattern
         if cls.__implemented_protocols is None:
             # Just directly get the PacketValue and InetPacketValue subclasses
@@ -614,14 +631,17 @@ class Capture:
     @typecheck
     def __init__(self, filename: str):
         """
-        Initialize a capture only from its filename
+        Initialize a capture from .pcap filename
 
-        :param filename: The file from which we will generate the frames
+        :param filename: The .pcap file of the network traces capture
         :type filename: str
         """
         self._filename = filename
         self._frames = None
         self._malformed = None
+
+        # dissect pcap capture
+        self.__process_file()
 
     @property
     def filename(self):
@@ -688,13 +708,13 @@ class Capture:
             else:
                 self._frames.append(Frame(count, ternary_tuple))
 
-    #@typecheck
-    def dissect(
+    @typecheck
+    def get_dissection(
             self,
             protocol: optional(is_protocol) = None
     ) -> list_of(OrderedDict):
         """
-        Function to dissect a capture as a list of frames represented as strings
+        Function to get dissection of a capture as a list of frames represented as strings
 
         :param protocol: Protocol class for filtering purposes
         :type protocol: type
@@ -713,13 +733,13 @@ class Capture:
         )):
             raise TypeError(protocol.__name__ + ' is not a protocol class')
 
-        fs = self._frames
+        fs = self.frames
 
         # For speeding up the process
         with Data.disable_name_resolution():
 
             # Filter the frames for the selected protocol
-            if protocol is not None:
+            if protocol:
                 fs, _ = Frame.filter_frames(fs, protocol)
 
         if fs is None:
@@ -765,35 +785,30 @@ class Capture:
                 (22, '[127.0.0.1 -> 127.0.0.1] CoAP [ACK 38516] 2.04 Changed')]
             ]
 
-        .. todo:: Filter uninteresting frames ? (to decrease the load)
-        .. note:: With the protocol option we can filter
+        .. note:: With the protocol option we can filter the response
         """
 
-        return self.dissect(protocol)
+        if all((
+                protocol,
+                not is_protocol(protocol)
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
 
-    @classmethod
-    @typecheck
-    def get_implemented_protocols(cls) -> list_of(type):
-        """
-        Returns implemented protocols types
+        fs = self.frames
 
-        :return: Implemented protocols
-        :rtype: [type]
-        """
+        # For speeding up the process
+        with Data.disable_name_resolution():
 
-        # Just directly get the PacketValue and InetPacketValue subclasses
-        implemented_protocols = []
-        # cls.__implemented_protocols += PacketValue.__subclasses__()
-        # cls.__implemented_protocols += InetPacketValue.__subclasses__()
+            # Filter the frames for the selected protocol
+            if protocol:
+                fs, _ = Frame.filter_frames(fs, protocol)
 
-        # NOTE: This may ben needed if we change the protocol getter system
-        add_subclass(implemented_protocols, PacketValue)
+        if fs is None:
+            raise Error('Empty capture cannot be dissected')
 
-        # Remove the InetPacketValue class
-        implemented_protocols.remove(InetPacketValue)
+        # Return list of frames summary
+        return [frame.summary() for frame in fs]
 
-        # Return the singleton value
-        return implemented_protocols
 
 if __name__ == "__main__":
     import json
@@ -803,7 +818,7 @@ if __name__ == "__main__":
         #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
         # 'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
         'tmp/frame2_onem2m.pcap'
-        #'tmp/frame1_onem2m.pcap'
+        # 'tmp/frame1_onem2m.pcap'
     )
     print(dis.summary())
     print('#####')
