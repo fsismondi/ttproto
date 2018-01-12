@@ -26,7 +26,7 @@ Usage:
 ------
 >>> m = MsgTestCaseSkip(testcase_id = 'some_testcase_id')
 >>> m
-MsgTestCaseSkip(_api_version = 1.0.2, description = Skip testcase, node = someNode, testcase_id = some_testcase_id, )
+MsgTestCaseSkip(_api_version = 1.0.3, description = Skip testcase, node = someNode, testcase_id = some_testcase_id, )
 >>> m.routing_key
 'testsuite.testcase.skip'
 >>> m.message_id # doctest: +SKIP
@@ -37,24 +37,24 @@ MsgTestCaseSkip(_api_version = 1.0.2, description = Skip testcase, node = someNo
 # also we can modify some of the fields (rewrite the default ones)
 >>> m = MsgTestCaseSkip(testcase_id = 'TD_COAP_CORE_03')
 >>> m
-MsgTestCaseSkip(_api_version = 1.0.2, description = Skip testcase, node = someNode, testcase_id = TD_COAP_CORE_03, )
+MsgTestCaseSkip(_api_version = 1.0.3, description = Skip testcase, node = someNode, testcase_id = TD_COAP_CORE_03, )
 >>> m.testcase_id
 'TD_COAP_CORE_03'
 
 # and even export the message in json format (for example for sending the message though the amqp event bus)
 >>> m.to_json()
-'{"_api_version": "1.0.2", "description": "Skip testcase", "node": "someNode", "testcase_id": "TD_COAP_CORE_03"}'
+'{"_api_version": "1.0.3", "description": "Skip testcase", "node": "someNode", "testcase_id": "TD_COAP_CORE_03"}'
 
 # We can use the Message class to import json into Message objects:
 >>> m=MsgTestSuiteStart()
 >>> m.routing_key
 'testsuite.start'
 >>> m.to_json()
-'{"_api_version": "1.0.2", "description": "Test suite START command"}'
+'{"_api_version": "1.0.3", "description": "Test suite START command"}'
 >>> json_message = m.to_json()
 >>> obj=Message.load(json_message,'testsuite.start', None )
 >>> obj
-MsgTestSuiteStart(_api_version = 1.0.2, description = Test suite START command, )
+MsgTestSuiteStart(_api_version = 1.0.3, description = Test suite START command, )
 >>> type(obj) # doctest: +SKIP
 <class '__main__.MsgTestSuiteStart'>
 
@@ -66,7 +66,7 @@ MsgTestSuiteStart(_api_version = 1.0.2, description = Test suite START command, 
 # the error reply (note that we pass the message of the request to build the reply):
 >>> err = MsgErrorReply(m)
 >>> err
-MsgErrorReply(_api_version = 1.0.2, error_code = Some error code TBD, error_message = Some error message TBD, ok = False, )
+MsgErrorReply(_api_version = 1.0.3, error_code = Some error code TBD, error_message = Some error message TBD, ok = False, )
 
 # properties of the message are auto-generated:
 >>> m.reply_to
@@ -200,10 +200,10 @@ class Message(object):
         >>> m.routing_key
         'sniffing.getcapture.request'
         >>> m.to_json()
-        '{"_api_version": "1.0.2", "capture_id": "TD_COAP_CORE_01"}'
+        '{"_api_version": "1.0.3", "capture_id": "TD_COAP_CORE_01"}'
         >>> json_message = m.to_json()
         >>> json_message
-        '{"_api_version": "1.0.2", "capture_id": "TD_COAP_CORE_01"}'
+        '{"_api_version": "1.0.3", "capture_id": "TD_COAP_CORE_01"}'
         >>> obj=Message.load(json_message,'testsuite.start', None )
         >>> type(obj) # doctest
         <class '__main__.MsgTestSuiteStart'>
