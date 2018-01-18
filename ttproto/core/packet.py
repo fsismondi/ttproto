@@ -1229,14 +1229,14 @@ class PacketValue(Value):
             hdr = "%s%s= " % (' ' * indent, f.name)
 
             if f.name == "Payload":
-                print(hdr)
+                print(hdr,file=output)
                 # TODO: display alternative payloads in a better way
                 for p in self.get_datas(i):
                     p._display(indent, output)
 
             # FIXME: ugly hack -> do something more generic
             elif issubclass(f.type, ttproto.core.list.ListValue):
-                print(hdr)
+                print(hdr,file=output)
                 for v in self.get_datas(i):
                     v._display(indent, output)
             else:

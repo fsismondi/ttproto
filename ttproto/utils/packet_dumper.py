@@ -1,17 +1,29 @@
 import os
-import six
+import json
 import pika
-import shutil
 import signal
+import shutil
 import logging
-from urllib.parse import urlparse
 from datetime import datetime
-from ttproto.utils.amqp_messages import *
-from ttproto.utils.pure_pcapy import Dumper, Pkthdr, DLT_RAW, DLT_IEEE802_15_4_NOFCS
+
+# use this as main and also lib:
+try:
+    from messages import *
+    from pure_pcapy import Dumper, Pkthdr, DLT_RAW, DLT_IEEE802_15_4_NOFCS
+except:
+    from .messages import *
+    from .pure_pcapy import Dumper, Pkthdr, DLT_RAW, DLT_IEEE802_15_4_NOFCS
+
+try:
+    # For Python 3.0 and later
+    from urllib.parse import urlparse
+except ImportError:
+    # Fall back to Python 2
+    from urlparse import urlparse
 
 logger = logging.getLogger(__name__)
 
-VERSION = '0.0.2'
+VERSION = '0.1.0'
 
 
 def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=None, dump_dir=None):
@@ -51,9 +63,11 @@ def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=No
     if topics:
         pcap_amqp_topic_subscriptions = topics
     else:
-        pcap_amqp_topic_subscriptions = ['data.tun.fromAgent.*',
-                                         'data.serial.fromAgent.*']
-
+        pcap_amqp_topic_subscriptions = [
+            MsgTestingToolTerminate.routing_key,
+            '#.fromAgent.#',  # API v.0.1 fixme deprecate this
+            'fromAgent.#',  # API v.1.0
+        ]
     # init pcap_dumper
     pcap_dumper = AmqpDataPacketDumper(
         amqp_url=amqp_url,
@@ -67,8 +81,8 @@ def launch_amqp_data_to_pcap_dumper(amqp_url=None, amqp_exchange=None, topics=No
 
 class AmqpDataPacketDumper:
     """
-    Sniffs data.serial and dumps into pcap file (assumes that frames are DLT_IEEE802_15_4)
-    Sniffs data.tun and dumps into pcap file (assumes that frames are DLT_RAW)
+    Sniffs data from serial captures from bus and dumps into pcap file (assumes that frames are DLT_IEEE802_15_4)
+    Sniffs data from tun captures from bus and dumps into pcap file (assumes that frames are DLT_RAW)
 
     about pcap header:
         ts_sec: the date and time when this packet was captured. This value is in seconds since January 1,
@@ -139,7 +153,7 @@ class AmqpDataPacketDumper:
         # subscribe to channel where the terminate session message is published
         self.channel.queue_bind(exchange=self.exchange,
                                 queue=self.data_queue_name,
-                                routing_key='control.session')
+                                routing_key=MsgTestingToolTerminate.routing_key)
 
         # publish Hello message in bus
         m = MsgTestingToolComponentReady(component=self.COMPONENT_ID)
@@ -252,30 +266,15 @@ class AmqpDataPacketDumper:
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
-
-            props_dict = {
-                'content_type': props.content_type,
-                'delivery_mode': props.delivery_mode,
-                'correlation_id': props.correlation_id,
-                'reply_to': props.reply_to,
-                'message_id': props.message_id,
-                'timestamp': props.timestamp,
-                'user_id': props.user_id,
-                'app_id': props.app_id,
-            }
-
-            m = Message.from_json(body)
-            m.update_properties(**props_dict)
+            m = Message.load_from_pika(method, props, body)
             logger.info('got event: %s' % type(m))
 
             if isinstance(m, MsgTestingToolTerminate):
                 ch.stop_consuming()
                 self.stop()
 
-            if isinstance(m, MsgPacketSniffedRaw):
-
+            elif isinstance(m, MsgPacketSniffedRaw):
                 self.dump_packet(m)
-
                 try:  # rotate files each X messages dumped
                     if self.messages_dumped != 0 and self.messages_dumped % self.QUANTITY_MESSAGES_PER_PCAP == 0:
                         self.dumps_rotate()
@@ -285,7 +284,6 @@ class AmqpDataPacketDumper:
                     logger.error(e)
 
             else:
-                #logger.info('drop amqp message: ' + repr(m))
                 pass
 
         except NonCompliantMessageFormatError as e:

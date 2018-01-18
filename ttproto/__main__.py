@@ -20,7 +20,8 @@ logger = logging.getLogger(COMPONENT_ID)
 logger.setLevel(LOG_LEVEL)
 
 PCAP_DUMPER_AMQP_TOPICS = [
-    'data.*.fromAgent.*',
+    'fromAgent.#.packet.raw'
+    'data.*.fromAgent.*',  # fixme deprecate this (old API)
 ]
 
 

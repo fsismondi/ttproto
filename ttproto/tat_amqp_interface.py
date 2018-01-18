@@ -49,12 +49,12 @@ from multiprocessing import Process
 
 from ttproto import LOG_LEVEL
 from ttproto.core.analyzer import Analyzer
-from ttproto.core.dissector import Capture
+from ttproto.core.dissector import Capture, get_dissectable_protocols
 from ttproto.core.typecheck import typecheck, optional, either
 from ttproto.utils import pure_pcapy
 from ttproto.core.lib.all import *
 from ttproto.utils.rmq_handler import AMQP_URL, AMQP_EXCHANGE, JsonFormatter, RabbitMQHandler
-from ttproto.utils import amqp_messages
+from ttproto.utils import messages
 from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDataPacketDumper
 
 COMPONENT_ID = NotImplementedError
@@ -72,6 +72,7 @@ AUTO_DISSECT_OUTPUT_FILE = 'auto_dissection'
 HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
+
 
 #####################
 
@@ -118,12 +119,12 @@ class AmqpInterface:
         # subscribe to analysis services requests
         self.channel.queue_bind(exchange=AMQP_EXCHANGE,
                                 queue=self.services_queue_name,
-                                routing_key='control.analysis.service')
+                                routing_key=messages.MsgInteropTestCaseAnalyze.routing_key)
 
         # subscribe to dissection services requests
         self.channel.queue_bind(exchange=AMQP_EXCHANGE,
                                 queue=self.services_queue_name,
-                                routing_key='control.dissection.service')
+                                routing_key=messages.MsgDissectionDissectCapture.routing_key)
 
         self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(self.on_service_request, queue=self.services_queue_name)
@@ -140,19 +141,19 @@ class AmqpInterface:
             # subscribe to data events just to check if there's activity in the data plane
             self.channel.queue_bind(exchange=AMQP_EXCHANGE,
                                     queue=self.data_queue_name,
-                                    routing_key='data.#')
+                                    routing_key='fromAgent.#.packet.raw')
 
     def run(self):
         # let's send bootstrap message (analysis)
         _publish_message(
             self.channel,
-            amqp_messages.MsgTestingToolComponentReady(component='analysis')
+            messages.MsgTestingToolComponentReady(component='analysis')
         )
 
         #  let's send bootstrap message (dissector)
         _publish_message(
             self.channel,
-            amqp_messages.MsgTestingToolComponentReady(component='dissection')
+            messages.MsgTestingToolComponentReady(component='dissection')
         )
 
         # start main job (the following is a blocking call)
@@ -169,13 +170,13 @@ class AmqpInterface:
         # dissection shutdown message
         _publish_message(
             self.channel,
-            amqp_messages.MsgTestingToolComponentShutdown(component='dissection')
+            messages.MsgTestingToolComponentShutdown(component='dissection')
         )
 
         # analysis shutdown message
         _publish_message(
             self.channel,
-            amqp_messages.MsgTestingToolComponentShutdown(component='analysis')
+            messages.MsgTestingToolComponentShutdown(component='analysis')
         )
 
         self.connection.close()
@@ -188,24 +189,12 @@ class AmqpInterface:
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
-            props_dict = {
-                'content_type': props.content_type,
-                'delivery_mode': props.delivery_mode,
-                'correlation_id': props.correlation_id,
-                'reply_to': props.reply_to,
-                'message_id': props.message_id,
-                'timestamp': props.timestamp,
-                'user_id': props.user_id,
-                'app_id': props.app_id,
-            }
-            event_received = amqp_messages.Message.from_json(body)
-            event_received.update_properties(**props_dict)
-
+            event_received = messages.Message.load_from_pika(method, props, body)
         except Exception as e:
             self.logger.error(str(e))
             return
 
-        if isinstance(event_received, amqp_messages.MsgPacketSniffedRaw):
+        if isinstance(event_received, messages.MsgPacketSniffedRaw):
 
             try:
 
@@ -230,7 +219,7 @@ class AmqpInterface:
                 time.sleep(1)
                 ch.queue_purge(queue=self.data_queue_name)
 
-                dissection_results = _dissect_capture(
+                dissection_structured_text, dissection_simple_text = _dissect_capture(
                     filename=pcap_to_dissect,
                     proto_filter=None,
                     output_file=AUTO_DISSECT_OUTPUT_FILE,
@@ -245,9 +234,10 @@ class AmqpInterface:
                 return
 
             # prepare response with dissection info:
-            event_diss = amqp_messages.MsgDissectionAutoDissect(
+            event_diss = messages.MsgDissectionAutoDissect(
                 token=None,
-                frames=dissection_results,
+                frames=dissection_structured_text,
+                frames_simple_text = dissection_simple_text,
                 testcase_id='unknown',
                 testcase_ref='unknown'
             )
@@ -263,24 +253,12 @@ class AmqpInterface:
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
-            props_dict = {
-                'content_type': props.content_type,
-                'delivery_mode': props.delivery_mode,
-                'correlation_id': props.correlation_id,
-                'reply_to': props.reply_to,
-                'message_id': props.message_id,
-                'timestamp': props.timestamp,
-                'user_id': props.user_id,
-                'app_id': props.app_id,
-            }
-            service_request = amqp_messages.Message.from_json(body)
-            service_request.update_properties(**props_dict)
-
+            service_request = messages.Message.load_from_pika(method, props, body)
         except Exception as e:
             self.logger.error(str(e))
             return
 
-        if isinstance(service_request, amqp_messages.MsgInteropTestCaseAnalyze):
+        if isinstance(service_request, messages.MsgInteropTestCaseAnalyze):
             self.logger.debug("Starting analysis of PCAP")
 
             # generation of token
@@ -301,7 +279,7 @@ class AmqpInterface:
                 if (nb <= 24):
                     _publish_message(
                         ch,
-                        amqp_messages.MsgErrorReply(
+                        messages.MsgErrorReply(
                             service_request,
                             ok=False,
                             error_message='Empty PCAP file received'
@@ -322,19 +300,18 @@ class AmqpInterface:
             except Exception as e:
                 _publish_message(
                     ch,
-                    amqp_messages.MsgErrorReply(
+                    messages.MsgErrorReply(
                         service_request,
                         error_message=str(e)
                     )
                 )
-                self.logger.error(str(e))
                 self.logger.error(e)
                 self.logger.error(type(e))
                 return
 
             # let's prepare the message
             try:
-                response = amqp_messages.MsgInteropTestCaseAnalyzeReply(
+                response = messages.MsgInteropTestCaseAnalyzeReply(
                     service_request,
                     ok=True,
                     verdict=analysis_results[1],
@@ -352,7 +329,7 @@ class AmqpInterface:
             except Exception as e:
                 _publish_message(
                     ch,
-                    amqp_messages.MsgErrorReply(
+                    messages.MsgErrorReply(
                         service_request,
                         error_message=str(e)
                     )
@@ -360,7 +337,7 @@ class AmqpInterface:
                 self.logger.error(str(e))
                 return
 
-        elif isinstance(service_request, amqp_messages.MsgTestSuiteGetTestCases):
+        elif isinstance(service_request, messages.MsgTestSuiteGetTestCases):
             self.logger.warning("API call not implemented. Test coordinator provides this service.")
             return
 
@@ -381,7 +358,7 @@ class AmqpInterface:
             #     self.logger.error('Cannot fetch test cases list:\n' + str(fnfe))
             #     return
 
-        elif isinstance(service_request, amqp_messages.MsgDissectionDissectCapture):
+        elif isinstance(service_request, messages.MsgDissectionDissectCapture):
             self.logger.info("Starting dissection of PCAP ...")
             self.logger.info("Decoding PCAP file using base64 ...")
 
@@ -397,7 +374,7 @@ class AmqpInterface:
             if (nb <= 24):
                 _publish_message(
                     ch,
-                    amqp_messages.MsgErrorReply(
+                    messages.MsgErrorReply(
                         service_request,
                         error_message='Empty PCAP file received'
                     )
@@ -409,17 +386,17 @@ class AmqpInterface:
                 self.logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
             # Lets dissect
-            operation_token = _get_token()
             try:
-                dissection = _dissect_capture(
-                    filename,
-                    proto_filter,
-                    operation_token
+                operation_token = _get_token()
+                dissection_structured_text, dissection_simple_text = _dissect_capture(
+                    filename=filename,
+                    proto_filter=proto_filter,
+                    output_file=operation_token
                 )
             except (TypeError, pure_pcapy.PcapError) as e:
                 _publish_message(
                     ch,
-                    amqp_messages.MsgErrorReply(
+                    messages.MsgErrorReply(
                         service_request,
                         error_message="Error processing PCAP. Error: %s" % str(e)
                     )
@@ -429,7 +406,7 @@ class AmqpInterface:
             except Exception as e:
                 _publish_message(
                     ch,
-                    amqp_messages.MsgErrorReply(
+                    messages.MsgErrorReply(
                         service_request,
                         error_message="Error found while dissecting pcap. Error: %s" % str(e)
                     )
@@ -438,10 +415,11 @@ class AmqpInterface:
                 return
 
             # prepare response with dissection info:
-            response = amqp_messages.MsgDissectionDissectCaptureReply(
+            response = messages.MsgDissectionDissectCaptureReply(
                 service_request,
                 token=operation_token,
-                frames=dissection
+                frames=dissection_structured_text,
+                frames_simple_text= dissection_simple_text
             )
             _publish_message(ch, response)
             return
@@ -500,17 +478,22 @@ def _dissect_capture(filename, proto_filter=None, output_file=None):
         if proto_matched is None:
             raise Exception('Unknown protocol %s' % proto_filter)
 
+    cap = Capture(filename)
+
     if proto_matched and len(proto_matched) == 1:
-        dissection = Capture(filename).get_dissection(eval(proto_matched[0]['name']))
+        proto = eval(proto_matched[0]['name'])
+        dissection_as_dicts = cap.get_dissection(proto)
+        dissection_as_text = cap.get_dissection_simple_format(proto)
     else:
-        dissection = Capture(filename).get_dissection()
+        dissection_as_dicts = cap.get_dissection()
+        dissection_as_text = cap.get_dissection_simple_format()
 
     logger.info('PCAP dissected')
     if output_file and type(output_file) is str:
         # save dissection response
-        _dump_json_to_file(json.dumps(dissection), os.path.join(DATADIR, output_file))
+        _dump_json_to_file(json.dumps(dissection_as_dicts), os.path.join(DATADIR, output_file))
 
-    return dissection
+    return dissection_as_dicts, dissection_as_text
 
 
 @typecheck
@@ -576,14 +559,14 @@ def _auto_dissect_service():
 
         # request to sniffing component
         try:
-            request = amqp_messages.MsgSniffingGetCaptureLast()
+            request = messages.MsgSniffingGetCaptureLast()
             response = _amqp_request(channel, request, COMPONENT_ID)
 
         except TimeoutError as amqp_err:
             logger.error(
                 'Sniffer didnt respond to Request: %s . Error: %s'
                 % (
-                    request._type,
+                    type(request),
                     str(amqp_err)
                 )
             )
@@ -593,7 +576,7 @@ def _auto_dissect_service():
             logger.error(
                 'Sniffing component coundlt process the %s request correcly, response: %s'
                 % (
-                    request._type,
+                    type(request),
                     repr(request)
                 )
             )
@@ -624,7 +607,12 @@ def _auto_dissect_service():
 
                     # let's dissect
                     try:
-                        dissection, operation_token = _dissect_capture(filename, proto_filter, None)
+                        operation_token = _get_token()
+                        dissection_structured_text, dissection_simple_text = _dissect_capture(
+                            filename=filename,
+                            proto_filter=proto_filter,
+                            output_file=operation_token
+                        )
                     except (TypeError, pure_pcapy.PcapError) as e:
                         logger.error("Error processing PCAP. More: %s" % str(e))
                         return
@@ -633,9 +621,10 @@ def _auto_dissect_service():
                         return
 
                     # lets create and push the message to the bus
-                    m = amqp_messages.MsgDissectionAutoDissect(
+                    m = messages.MsgDissectionAutoDissect(
                         token=operation_token,
-                        frames=dissection,
+                        frames=dissection_structured_text,
+                        frames_simple_text=dissection_simple_text,
                         testcase_id=filename.strip('.pcap'),  # dirty solution but less coding :)
                         testcase_ref='unknown'  # not really needed
                     )
@@ -688,13 +677,13 @@ def _amqp_request(channel, request_message: Message, component_id: str):
     if retries_left > 0:
 
         body_dict = json.loads(body.decode('utf-8'), object_pairs_hook=OrderedDict)
-        response = amqp_messages.MsgReply(request_message, **body_dict)
+        response = messages.MsgReply(request_message, **body_dict)
 
     else:
         raise TimeoutError(
             "Response timeout! rkey: %s , request type: %s" % (
                 request_message.routing_key,
-                request_message._type
+                type(request_message)
             )
         )
 
@@ -740,7 +729,7 @@ def _get_protocol(
     answer = []
 
     # Getter of protocol's classes from dissector
-    prot_classes = get_implemented_dissectable_protocols()
+    prot_classes = get_dissectable_protocols()
     logger.debug(str(prot_classes))
 
     # Build the clean results list
@@ -846,6 +835,6 @@ if __name__ == "__main__":
     # print(str(_get_protocol('CoAP')))
     # print(str(_get_protocol()))
     print(str(eval('CoAP')))
-    dissection = Dissector(TMPDIR + '/TD_COAP_CORE_02.pcap').dissect()  # eval('CoAP'))
+    dissection = Capture(TMPDIR + '/TD_COAP_CORE_02.pcap').get_dissection()  # eval('CoAP'))
     # dissection = Dissector(TMPDIR + '/tun_sniffed_coap.pcap').dissect(eval('CoAP'))
     print(dissection)

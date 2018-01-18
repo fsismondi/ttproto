@@ -483,7 +483,7 @@ class TextRecordValue (Value):
 
 			#FIXME: ugly hack -> do something more generic
 			if issubclass (f.type, core.list.ListValue):
-				print (hdr)
+				print (hdr,file=output)
 				for v in self.get_datas (i):
 					v._display (indent, output)
 			else:

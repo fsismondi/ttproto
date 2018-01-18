@@ -459,8 +459,6 @@ class Frame:
             )
 
 
-
-
 class Dissector:
     """
         Class for the dissector tool
@@ -711,7 +709,7 @@ class Capture:
     @typecheck
     def get_dissection(
             self,
-            protocol: optional(is_protocol) = None
+            protocol: optional(is_protocol) = None,
     ) -> list_of(OrderedDict):
         """
         Function to get dissection of a capture as a list of frames represented as strings
@@ -747,6 +745,66 @@ class Capture:
 
         # Then return the list of dictionary frame representation
         return [frame.dict() for frame in fs]
+
+    @typecheck
+    def get_dissection_simple_format(
+            self,
+            protocol: optional(is_protocol) = None,
+    ) -> list_of(str):
+        """
+        Function to get dissection of a capture as a list of frames represented as strings
+
+        :param protocol: Protocol class for filtering purposes
+        :type protocol: type
+        :raises TypeError: If protocol is not a protocol class
+        :raises ReaderError: If the reader couldn't process the file
+
+        :return: A list of Frame represented as plain non-structured text
+        :rtype: [str]
+
+        """
+        # log.debug('Starting dissection.')
+        # Check the protocol is one entered
+        if all((
+                protocol,
+                not is_protocol(protocol)
+        )):
+            raise TypeError(protocol.__name__ + ' is not a protocol class')
+
+        fs = self.frames
+
+        # For speeding up the process
+        with Data.disable_name_resolution():
+
+            # Filter the frames for the selected protocol
+            if protocol:
+                fs, _ = Frame.filter_frames(fs, protocol)
+
+        if fs is None:
+            raise Error('Empty capture cannot be dissected')
+
+        # fixme modify Message class from ttproto.data structure so I can get text display wihtout this patch
+        class WritableObj(object):
+            def __init__(self, text=''):
+                self.val = text
+
+            def __str__(self):
+                return self.val
+
+            def write(self, text):
+                self.val += text
+
+        frame_dissection_list = []
+
+        for f in fs:
+            text_output = WritableObj()
+            f.message.display(
+                output=text_output
+            )
+            frame_dissection_list.append(str(text_output))
+
+        # Then return the list of frames,each as a simple text dissection
+        return frame_dissection_list
 
     @typecheck
     def summary(
@@ -814,19 +872,27 @@ if __name__ == "__main__":
     import json
     import logging
 
-    dis = Dissector(
+    cap = Capture(
         #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
-        # 'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
-        'tmp/frame2_onem2m.pcap'
+        'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
+        # 'tmp/frame2_onem2m.pcap'
         # 'tmp/frame1_onem2m.pcap'
     )
-    print(dis.summary())
-    print('#####')
-    print('##### Dissect with filtering on CoAP #####')
-    print(dis.dissect(CoAP))
-    print('#####')
-    print('##### Dissect without filtering #####')
-    print(json.dumps(dis.dissect(), indent=4))
+    dis = cap.get_dissection_simple_format()
+    # for i in dis:
+    #     print(i)
+    #     print('\n' * 2)
+    #
+    # print('********' * 2)
+
+    # print(cap.summary())
+    # print('#####')
+    # print(cap.summary())
+    # print('##### Dissect with filtering on CoAP #####')
+    # print(cap.get_dissection(CoAP))
+    # print('#####')
+    # print('##### Dissect without filtering #####')
+    # print(json.dumps(cap.get_dissection(), indent=4))
     # print('#####')
     # print('#####')
     # print(Dissector.get_implemented_protocols())

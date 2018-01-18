@@ -316,7 +316,7 @@ There are two ways to build a message:
 from contextlib import contextmanager
 import re, sys
 
-from ttproto.core.typecheck import *
+from ttproto.core.typecheck import typecheck, optional, iterable, this_class, either, with_attr
 from ttproto.core import named, exceptions
 
 __all__ = [
@@ -2113,9 +2113,9 @@ class Message:
             print("%s    %s  %s" % (
                 pfx,
                 " ".join(format(c, "02x") for c in b[i:i + 8]),
-                " ".join(format(c, "02x") for c in b[i + 8:i + 16])))
+                " ".join(format(c, "02x") for c in b[i + 8:i + 16])), file=output)
         if remainder:
-            print("%s(last byte truncated at bit %d)" % (pfx, remainder))
+            print("%s(last byte truncated at bit %d)" % (pfx, remainder), file=output)
 
 
 class MessageDescription:
