@@ -23,7 +23,7 @@ TD_6LOWPAN_ND_HC_01:
         -   c: The 6LN sends à Neighbor Solicitation (NS) to all-nodes multicast address with SLLAO (EUI-64).
                Source = link-local based on EUI-64
         -   c: The 6LR (EUT2) receives the Neighbor Solicitation (NS) the 6LN (EUT1)
-        -   f: Hop Limit is 64 and source address begin by fe80::
+        -   f: "Hop Limit is 64 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
@@ -32,7 +32,7 @@ TD_6LOWPAN_ND_HC_01:
         -   v: The 6LR (EUT2) receives the Neighbor Solicitation (NS) the 6LN (EUT1)
         -   c: The 6LR (EUT2) sends a unicast Neighbor Advertisement (NA) containing the ARO.
                Link local addresses are used.
-        -   f: Hop Limit is 255 and source address begin by fe80::
+        -   f: "Hop Limit is 1 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed

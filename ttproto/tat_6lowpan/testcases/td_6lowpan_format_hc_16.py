@@ -8,7 +8,7 @@ TD_6LOWPAN_FORMAT_HC_16:
     cfg: Node-Node
     not: Null
     obj: check that EUTs correctly handle compressed multicasted 6LoWPAN packets (16-bit
-        link-local, hop limit=1 and payload=0)
+         link-local, hop limit=1 and payload=0)
     pre:
         - Header compression is enabled on both EUT1 and EUT2
         - EUT1 and EUT2 are configured to use EUI-64 addresses
@@ -22,7 +22,7 @@ TD_6LOWPAN_FORMAT_HC_16:
         -   c: EUT1 sends a compressed 6LoWPAN packet containing the Echo
                 Request message multicasted to ff02'::1
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
-        -   f: Hop Limit is 64 and source address begin by fe80::
+        -   f: "Hop Limit is 64 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
@@ -32,7 +32,7 @@ TD_6LOWPAN_FORMAT_HC_16:
         -   c: EUT2 sends a compressed 6LoWPAN packet containing the Echo Reply
                 message to EUT1
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
-        -   f: Hop Limit is 64 and source address begin by fe80::
+        -   f: "Hop Limit is 64 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed

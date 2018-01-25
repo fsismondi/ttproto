@@ -23,7 +23,7 @@ TD_6LOWPAN_FORMAT_HC_09:
         -   c: EUT1 sends a compressed 6LoWPAN packet containing the Echo
                 Request message to EUT2
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
-        -   f: Hop Limit is 1 and source address begin by fe80::
+        -   f: "Hop Limit is 1 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
@@ -33,7 +33,7 @@ TD_6LOWPAN_FORMAT_HC_09:
         -   c: EUT2 sends a compressed 6LoWPAN packet containing the Echo Reply
                 message to EUT1
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
-        -   f: Hop Limit is 64 and source address begin by fe80::
+        -   f: "Hop Limit is 64 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
