@@ -112,11 +112,14 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
             if path.isfile(filename):
                 tc_name, verdict, tc_bck, _, log, excepts = self.analyzer.analyse(filename, tc[0])
                 self.assertTrue(verdict == 'pass',
-                                msg='TC implementation got verdict: %s expected PASS \n details: \n %s '
+                                msg='%s implementation got verdict: %s expected PASS \n details: \n %s errors: \n %s '
                                     %
-                                    (str(verdict),
-                                     json.dumps(log, indent=4) if log else "",
-                                     )
+                                    (
+                                        tc_name,
+                                        str(verdict),
+                                        json.dumps(log, indent=4) if log else "",
+                                        str(excepts) if excepts else ""
+                                    )
                                 )
 
                 print('Testcase %s , got verdict: %s' % (str(tc[0]), str(verdict).upper()))
