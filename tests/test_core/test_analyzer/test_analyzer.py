@@ -1,4 +1,4 @@
-import unittest, logging
+import unittest, logging, json
 
 from os import getcwd, path
 from ttproto.core.analyzer import Analyzer
@@ -112,14 +112,17 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
             if path.isfile(filename):
                 tc_name, verdict, tc_bck, _, log, excepts = self.analyzer.analyse(filename, tc[0])
                 self.assertTrue(verdict == 'pass',
-                                msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + str(
-                                    verdict) + '\nLOG:\n' + str(log))
+                                msg='TC implementation got verdict: %s expected PASS \n details: \n %s '
+                                    %
+                                    (str(verdict),
+                                     json.dumps(log, indent=4) if log else "",
+                                     )
+                                )
 
                 print('Testcase %s , got verdict: %s' % (str(tc[0]), str(verdict).upper()))
 
 
 class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
-
     # #################### Tests parameters #########################
     TEST_ENV = 'tat_6lowpan'
     TEST_DIR = './tests/test_dumps/analysis/6lowpan_hc/'
@@ -127,6 +130,7 @@ class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
     TEST_CASE_ID = 'TD_6LOWPAN_FORMAT_HC_01'
     UNKNOWN_TEST_CASE_ID = 'TD_6LOWPAN_FORMAT_HC_666'
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
+
 
 # #################### Main run the tests #########################
 if __name__ == '__main__':
