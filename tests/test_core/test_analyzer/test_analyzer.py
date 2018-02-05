@@ -110,15 +110,19 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
             print('Testcase found %s , dump file %s for test exist: %s' % (str(tc[0]), filename, path.isfile(filename)))
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
-                tc_name, verdict, tc_bck, _, log, excepts = self.analyzer.analyse(filename, tc[0])
+                tc_name, verdict, rev_frames, log, partial_verdicts, exceptions = self.analyzer.analyse(filename, tc[0])
                 self.assertTrue(verdict == 'pass',
-                                msg='%s implementation got verdict: %s expected PASS \n details: \n %s errors: \n %s '
+                                msg='%s implementation got verdict: %s expected PASS \n '
+                                    'details: \n %s '
+                                    'errors: \n %s '
+                                    'logs: \n %s'
                                     %
                                     (
                                         tc_name,
                                         str(verdict),
-                                        json.dumps(log, indent=4) if log else "",
-                                        str(excepts) if excepts else ""
+                                        json.dumps(partial_verdicts, indent=4) if log else "",
+                                        str(exceptions) if exceptions else "",
+                                        log
                                     )
                                 )
 
