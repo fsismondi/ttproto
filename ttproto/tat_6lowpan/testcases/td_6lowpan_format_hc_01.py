@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_01 (SixlowpanTestCase):
+class TD_6LOWPAN_FORMAT_HC_01(SixlowpanTestCase):
     """
 ---
 TD_6LOWPAN_FORMAT_HC_01:
@@ -61,7 +61,7 @@ TD_6LOWPAN_FORMAT_HC_01:
                     # Length(IPv6, 35),
                     IPv6(
                         tc=0x00,
-                        #fl=0x00099cba,
+                        # fl=0x00099cba,
                         hl=64,
                         pl=ICMPv6EchoRequest(
                             # pl=Length(bytes, 0)
@@ -105,7 +105,7 @@ TD_6LOWPAN_FORMAT_HC_01:
             tf=0b01,
             iecn=0b00,
             idscp=Omit(),
-            ifl=0x99cba
+            ifl=Omit()
         ))
         self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=64)))
 
@@ -137,7 +137,7 @@ TD_6LOWPAN_FORMAT_HC_01:
             tf=0b01,
             iecn=0b00,
             idscp=Omit(),
-            ifl=0xdbd3a
+            ifl=Omit()
         ))
 
         # TS 10
