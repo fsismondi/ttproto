@@ -35,7 +35,7 @@ import re
 from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
 from ttproto.core.dissector import Frame
 from ttproto.core.templates import All, Not, Any, Length
-from ttproto.core.typecheck import *
+from ttproto.core.typecheck import typecheck, tuple_of, optional, anything, list_of
 from ttproto.core.lib.all import *
 from urllib import parse
 from ttproto.core.exceptions import Error
