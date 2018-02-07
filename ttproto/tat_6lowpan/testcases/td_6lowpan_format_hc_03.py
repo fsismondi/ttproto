@@ -81,9 +81,6 @@ TD_6LOWPAN_FORMAT_HC_03:
         :return: The nodes of this TC
         :rtype: [Node]
 
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
         """
         return [
             Node('EUT1', ICMPv6EchoRequest()),
