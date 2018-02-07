@@ -133,7 +133,7 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
                                     %
                                     (
                                         tc_name,
-                                        str(verdict),
+                                        str(verdict).upper(),
                                         json.dumps(partial_verdicts, indent=4) if log else "",
                                         exc_str if exc_str else "No exception registered",
                                         log

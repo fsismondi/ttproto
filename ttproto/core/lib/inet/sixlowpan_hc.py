@@ -207,10 +207,10 @@ class SixLowpanIPHC(
             True: "Compressed",
         },
         "HLIM": {
-            0b00: "Inline",
-            0b01: "1",
-            0b10: "64",
-            0b11: "255",
+            0b00: "Hop Limit Inline",
+            0b01: "Compressed hop limit = 1",
+            0b10: "Compressed hop limit = 64",
+            0b11: "Compressed hop limit = 255",
         },
         "CID": {
             False: "No additional context",

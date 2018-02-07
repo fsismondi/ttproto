@@ -102,8 +102,6 @@ TD_6LOWPAN_FORMAT_HC_15:
         self.match('EUT1', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0xba484
         ))
         self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=1, DestinationAddress="ff02::1")))
 
@@ -134,8 +132,6 @@ TD_6LOWPAN_FORMAT_HC_15:
         self.match('EUT2', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0xdbd3a
         ))
 
         # TS 10

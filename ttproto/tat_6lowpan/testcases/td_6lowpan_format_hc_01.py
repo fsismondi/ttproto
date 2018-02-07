@@ -88,6 +88,10 @@ TD_6LOWPAN_FORMAT_HC_01:
         ]
 
     def run(self):
+        # fixme add a self.match_feature in SixlowpanTestCase class for testing the <features> steps
+        # fixme (cont..) if mismatch then testcase should not issue inconc. nor fail, should just say
+        # fixme (cont..) "protocol feature not used" or sth like that..
+
         # NOTE: Should we check the IP adresses to check that it is really the
         #       EUT1 and EUT2?
 
@@ -144,6 +148,3 @@ TD_6LOWPAN_FORMAT_HC_01:
             dam=0b11
         ),)
 
-        # TS 12
-        # NOTE: Only one sniff file so we can't check that the EUT2 didn't
-        #       receive the echo request message
