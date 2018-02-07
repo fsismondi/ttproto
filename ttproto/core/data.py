@@ -1682,10 +1682,10 @@ class TypeMismatch(Mismatch):
     The pattern and the value have different types.
     """
 
-    def describe_value(self):
+    def describe_value(self, describe_func=None) -> str:
         return type(self.value).__name__
 
-    def describe_expected(self):
+    def describe_expected(self, describe_func=None) -> str:
         return self.pattern.get_type().__name__
 
 
@@ -1700,10 +1700,10 @@ class VariantMismatch(Mismatch):
         Mismatch.__init__(self, v, p)
         assert isinstance(p, packet.PacketValue)
 
-    def describe_value(self):
+    def describe_value(self, describe_func=None) -> str:
         return type(self.value).__name__
 
-    def describe_expected(self):
+    def describe_expected(self, describe_func=None) -> str:
         return self.pattern.get_variant().__name__
 
 
@@ -1713,10 +1713,10 @@ class LengthMismatch(Mismatch):
     The value and the pattern have a different length
     """
 
-    def describe_value(self):
+    def describe_value(self, describe_func=None) -> str:
         return "%d elements" % len(self.value)
 
-    def describe_expected(self):
+    def describe_expected(self, describe_func=None) -> str:
         return "%d elements" % len(self.pattern)
 
 

@@ -467,12 +467,8 @@ class TestCase(object):
                     self.log("             %s: %s\n" % (".".join(path), type(mismatch).__name__))
                     # for i in diff_list:
                     #     self.log("             List Diff Item: %s\n" % (i))
-                    if type(mismatch) is TypeMismatch:
-                        self.log("                 got field type:        %s\n" % mismatch.describe_value())
-                        self.log("                 expected field type: %s\n" % mismatch.describe_expected())
-                    else:
-                        self.log("                 got:        %s\n" % mismatch.describe_value(describe))
-                        self.log("                 expected: %s\n" % mismatch.describe_expected(describe))
+                    self.log("                 got:      %s\n" % mismatch.describe_value(describe))
+                    self.log("                 expected: %s\n" % mismatch.describe_expected(describe))
 
                 if on_mismatch_msg != '':
                     partial_verdict_message = on_mismatch_msg
