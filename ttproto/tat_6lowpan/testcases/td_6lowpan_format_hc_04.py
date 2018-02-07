@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_04 (SixlowpanTestCase):
+class TD_6LOWPAN_FORMAT_HC_04(SixlowpanTestCase):
     """
 ---
 TD_6LOWPAN_FORMAT_HC_04:
@@ -62,7 +62,6 @@ TD_6LOWPAN_FORMAT_HC_04:
                     # Length(IPv6, 35),
                     IPv6(
                         tc=0x00,
-                        #fl=0x00099cba,
                         hl=64,
                         pl=ICMPv6EchoRequest(
                             # pl=Length(bytes, 0)
@@ -82,9 +81,6 @@ TD_6LOWPAN_FORMAT_HC_04:
         :return: The nodes of this TC
         :rtype: [Node]
 
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
         """
         return [
             Node('EUT1', ICMPv6EchoRequest()),
@@ -105,8 +101,6 @@ TD_6LOWPAN_FORMAT_HC_04:
         self.match('EUT1', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0b00
         ))
 
         self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=64)))
@@ -138,8 +132,6 @@ TD_6LOWPAN_FORMAT_HC_04:
         self.match('EUT2', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0b00
         ))
 
         # TS 10

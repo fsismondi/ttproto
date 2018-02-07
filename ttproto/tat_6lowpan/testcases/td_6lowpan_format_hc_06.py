@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_06 (SixlowpanTestCase):
+class TD_6LOWPAN_FORMAT_HC_06(SixlowpanTestCase):
     """
 ---
 TD_6LOWPAN_FORMAT_HC_06:
@@ -62,7 +62,7 @@ TD_6LOWPAN_FORMAT_HC_06:
                     # Length(IPv6, 35),
                     IPv6(
                         tc=0x00,
-                        #fl=0x00099cba,
+                        # fl=0x00099cba,
                         hl=1,
                         pl=ICMPv6EchoRequest(
                             # pl=Length(bytes, 0)
@@ -82,9 +82,6 @@ TD_6LOWPAN_FORMAT_HC_06:
         :return: The nodes of this TC
         :rtype: [Node]
 
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
         """
         return [
             Node('EUT1', ICMPv6EchoRequest()),
@@ -105,8 +102,6 @@ TD_6LOWPAN_FORMAT_HC_06:
         self.match('EUT1', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0xba484
         ))
         self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=1)))
 
@@ -137,20 +132,21 @@ TD_6LOWPAN_FORMAT_HC_06:
         self.match('EUT2', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0xdbd3a
         ))
 
         # TS 10
-        self.match('EUT2', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT2', SixLowpanIPHC(hl=0b01, ihl=Omit()))
 
         # TS 11
-        self.match('EUT2', SixLowpanIPHC(
-            sac=False,
-            sam=0b01,
-            dac=False,
-            dam=0b11
-        ))
+        self.match('EUT2',
+                   SixLowpanIPHC(
+                       sac=False,
+                       sam=0b01,
+                       dac=False,
+                       dam=0b11
+                   ),
+                   'fail',
+                   )
 
         # TS 12
         # NOTE: Only one sniff file so we can't check that the EUT2 didn't

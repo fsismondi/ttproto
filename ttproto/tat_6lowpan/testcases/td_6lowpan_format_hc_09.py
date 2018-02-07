@@ -82,9 +82,6 @@ TD_6LOWPAN_FORMAT_HC_09:
         :return: The nodes of this TC
         :rtype: [Node]
 
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
         """
         return [
             Node('EUT1', ICMPv6EchoRequest()),
@@ -105,8 +102,6 @@ TD_6LOWPAN_FORMAT_HC_09:
         self.match('EUT1', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0xba484
         ))
         self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=1)))
 
@@ -137,12 +132,10 @@ TD_6LOWPAN_FORMAT_HC_09:
         self.match('EUT2', SixLowpanIPHC(
             tf=0b01,
             iecn=0b00,
-            idscp=Omit(),
-            ifl=0xdbd3a
         ))
 
         # TS 10
-        self.match('EUT2', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT2', SixLowpanIPHC(hl=0b01, ihl=Omit()))
 
         # TS 11
         self.match('EUT2', SixLowpanIPHC(

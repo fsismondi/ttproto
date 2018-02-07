@@ -950,7 +950,7 @@ class Data(named.NamedObject):
          - its type is compatible ('value' is an instance of self.get_type())
          - in case 'self' derives from a parent data, 'value' must match
            this data
-         - it fulfils type-specific chechs implemented in self._match()
+         - it fulfils type-specific checks implemented in self._match()
 
         The mismatch_list can be used to get detailed information in
         case of mismatch. If used, it must be initialised to an empty
@@ -1460,7 +1460,7 @@ class Value(Data):
 
 class Omit(Value):
     """Special type to be used in structured types where fields can
-    optionnaly contain no value
+    optionally contain no value
 
     Assigning 'Omit()' to a field is different from assigning 'None'. The
     former is truly considered as a Value object whereas the latter means
@@ -1468,7 +1468,7 @@ class Omit(Value):
 
     Thus:
      - Value.build_message() will not replace it with a default value
-     - Value.match() will expect that the compated value is also equals to
+     - Value.match() will expect that the compared value is also equals to
        Omit() (whereas if the pattern is None, any value will be accepted)
 
     Omit() is encoded and decoded as an empty string.
@@ -1682,10 +1682,10 @@ class TypeMismatch(Mismatch):
     The pattern and the value have different types.
     """
 
-    def describe_value(self):
+    def describe_value(self, describe_func=None) -> str:
         return type(self.value).__name__
 
-    def describe_expected(self):
+    def describe_expected(self, describe_func=None) -> str:
         return self.pattern.get_type().__name__
 
 
@@ -1700,10 +1700,10 @@ class VariantMismatch(Mismatch):
         Mismatch.__init__(self, v, p)
         assert isinstance(p, packet.PacketValue)
 
-    def describe_value(self):
+    def describe_value(self, describe_func=None) -> str:
         return type(self.value).__name__
 
-    def describe_expected(self):
+    def describe_expected(self, describe_func=None) -> str:
         return self.pattern.get_variant().__name__
 
 
@@ -1713,10 +1713,10 @@ class LengthMismatch(Mismatch):
     The value and the pattern have a different length
     """
 
-    def describe_value(self):
+    def describe_value(self, describe_func=None) -> str:
         return "%d elements" % len(self.value)
 
-    def describe_expected(self):
+    def describe_expected(self, describe_func=None) -> str:
         return "%d elements" % len(self.pattern)
 
 

@@ -110,18 +110,32 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
             print('Testcase found %s , dump file %s for test exist: %s' % (str(tc[0]), filename, path.isfile(filename)))
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
-                tc_name, verdict, rev_frames, log, partial_verdicts, exceptions = self.analyzer.analyse(filename, tc[0])
+                tc_name, verdict, rev_frames, log, partial_verdicts, exception_info = self.analyzer.analyse(filename,
+                                                                                                            tc[0])
+
+                # I apologize to you future reader for the utterly ugly way of unpacking the exception info :)
+                exc_str = ''
+                if exception_info:
+                    counter = 0
+                    for i in exception_info:
+                        counter += 1
+                        exc_str += '\nException n:%s' % counter
+                        exc_str += '\n\ttype: %s ' % i[0]
+                        exc_str += '\n\texception: %s' % i[1]
+                        exc_str += '\n\ttracelog: %s' % i[2]
+                        exc_str += '\n'
+
                 self.assertTrue(verdict == 'pass',
                                 msg='%s implementation got verdict: %s expected PASS \n '
-                                    'details: \n %s '
-                                    'errors: \n %s '
-                                    'logs: \n %s'
+                                    'details: \n %s \n'
+                                    'errors: \n %s \n'
+                                    'logs: \n %s \n'
                                     %
                                     (
                                         tc_name,
-                                        str(verdict),
+                                        str(verdict).upper(),
                                         json.dumps(partial_verdicts, indent=4) if log else "",
-                                        str(exceptions) if exceptions else "",
+                                        exc_str if exc_str else "No exception registered",
                                         log
                                     )
                                 )
