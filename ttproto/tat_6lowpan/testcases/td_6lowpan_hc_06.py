@@ -1,25 +1,25 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_07 (SixlowpanTestCase):
+class TD_6LOWPAN_HC_06(SixlowpanTestCase):
     """
 ---
-TD_6LOWPAN_FORMAT_HC_07:
+TD_6LOWPAN_HC_06:
     cfg: Node-Node
     not: Null
-    obj: Check that EUTs correctly handle compressed 6LoWPAN packets (16-bit link-local to EUI-64 link-local,
-     hop limit=64 and payload=0)
+    obj: Check that EUTs correctly handle compressed 6LoWPAN packets (EUI-64
+         link-local, hop limit=1 and payload=0)
     pre:
         - Header compression is enabled on both EUT1 and EUT2
-        - EUT1 is configured to use 16-bit address.
-        - EUT2 is configured to use EUI-64 address.
-        - EUT1 and EUT2 are configured with a default hop limit of 64
+        - EUT1 is configured to use EUI-64 address.
+        - EUT2 is configured to use 16-bit address.
+        - EUT1 and EUT2 are configured with a default hop limit of 1
     ref: RFC 6282 section 3; RFC 4944 section 4
     seq:
         -   s:
             - EUT1 initiates an echo request to EUT2's link-local address
-            - ICMP payload = 4 bytes, total IPv6 size 35 bytes
-            - Hop Limit is 64, no traffic class or flow label is being used
+            - ICMP payload = 0 bytes, total IPv6 size 35 bytes
+            - Hop Limit is 1, no traffic class or flow label is being used
         -   c: EUT1 sends a compressed 6LoWPAN packet containing the Echo
                 Request message to EUT2
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
@@ -28,7 +28,7 @@ TD_6LOWPAN_FORMAT_HC_07:
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
                 away
-        -   f: In IP_HC, SAC=0, SAM=01; DAC=0; DAM=11
+        -   f: In IP_HC, SAC=0, SAM=11; DAC=0; DAM=01
         -   v: EUT2 receives the Echo Request message from EUT1
         -   c: EUT2 sends a compressed 6LoWPAN packet containing the Echo Reply
                 message to EUT1
@@ -38,7 +38,7 @@ TD_6LOWPAN_FORMAT_HC_07:
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
                 away
-        -   f: In IP_HC, SAC=0, SAM=11; DAC=0; DAM=01
+        -   f: In IP_HC, SAC=0, SAM=01; DAC=0; DAM=11
         -   v: EUT1 receives the Echo Reply message from EUT2
     """
 
@@ -62,8 +62,8 @@ TD_6LOWPAN_FORMAT_HC_07:
                     # Length(IPv6, 35),
                     IPv6(
                         tc=0x00,
-                        #fl=0x00099cba,
-                        hl=64,
+                        # fl=0x00099cba,
+                        hl=1,
                         pl=ICMPv6EchoRequest(
                             # pl=Length(bytes, 0)
                         )
@@ -103,17 +103,17 @@ TD_6LOWPAN_FORMAT_HC_07:
             tf=0b01,
             iecn=0b00,
         ))
-        self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=64)))
+        self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=1)))
 
         # TS 4
-        self.match('EUT1', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT1', SixLowpanIPHC(hl=0b01, ihl=Omit()))
 
         # TS 5
         self.match('EUT1', SixLowpanIPHC(
             sac=False,
-            sam=0b01,
+            sam=0b11,
             dac=False,
-            dam=0b11
+            dam=0b01
         ))
 
         # TS 6
@@ -135,15 +135,18 @@ TD_6LOWPAN_FORMAT_HC_07:
         ))
 
         # TS 10
-        self.match('EUT2', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT2', SixLowpanIPHC(hl=0b01, ihl=Omit()))
 
         # TS 11
-        self.match('EUT2', SixLowpanIPHC(
-            sac=False,
-            sam=0b11,
-            dac=False,
-            dam=0b01
-        ))
+        self.match('EUT2',
+                   SixLowpanIPHC(
+                       sac=False,
+                       sam=0b01,
+                       dac=False,
+                       dam=0b11
+                   ),
+                   'fail',
+                   )
 
         # TS 12
         # NOTE: Only one sniff file so we can't check that the EUT2 didn't

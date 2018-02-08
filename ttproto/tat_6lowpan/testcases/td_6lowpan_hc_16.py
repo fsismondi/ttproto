@@ -1,13 +1,13 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_13 (SixlowpanTestCase):
+class TD_6LOWPAN_HC_16(SixlowpanTestCase):
     """
 ---
-TD_6LOWPAN_FORMAT_HC_13:
+TD_6LOWPAN_HC_16:
     cfg: Node-Node
     not: Null
-    obj: check that EUTs correctly handle compressed multicasted 6LoWPAN packets (EUI-64
+    obj: check that EUTs correctly handle compressed multicasted 6LoWPAN packets (16-bit
          link-local, hop limit=1 and payload=0)
     pre:
         - Header compression is enabled on both EUT1 and EUT2
@@ -16,9 +16,9 @@ TD_6LOWPAN_FORMAT_HC_13:
     ref: RFC 6282 section 3; RFC 4944 section 4
     seq:
         -   s:
-            - EUT1 initiates an echo request with the multicast address ff02'::1.
+            - EUT1 initiates an echo request with the multicast address ff02'::1
             - ICMP payload = 0 bytes, total IPv6 size 35 bytes
-            - Hop Limit is 1, no traffic class or flow label is being used
+            - Hop Limit is 64, no traffic class or flow label is being used
         -   c: EUT1 sends a compressed 6LoWPAN packet containing the Echo
                 Request message multicasted to ff02'::1
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
@@ -51,7 +51,7 @@ TD_6LOWPAN_FORMAT_HC_13:
         :return: The stimulis of this TC
         :rtype: [Value]
 
-        .. warning::0b01
+        .. warning::
             For the moment, we didn't manage to generate packets with the
             wanted size so we just don't take them into account
         """
@@ -88,6 +88,10 @@ TD_6LOWPAN_FORMAT_HC_13:
         ]
 
     def run(self):
+        # fixme add a self.match_feature in SixlowpanTestCase class for testing the <features> steps
+        # fixme (cont..) if mismatch then testcase should not issue inconc. nor fail, should just say
+        # fixme (cont..) "protocol feature not used" or sth like that..
+
         # NOTE: Should we check the IP adresses to check that it is really the
         #       EUT1 and EUT2?
 
@@ -134,16 +138,14 @@ TD_6LOWPAN_FORMAT_HC_13:
         ))
 
         # TS 10
-        self.match('EUT2', SixLowpanIPHC(hl=0b01, ihl=Omit()))
+        self.match('EUT2', SixLowpanIPHC(hl=0b10, ihl=Omit()))
 
         # TS 11
-        self.match('EUT2', SixLowpanIPHC(
-            sac=False,
-            sam=0b11,
-            dac=False,
-            dam=0b11
-        ))
 
-        # TS 12
-        # NOTE: Only one sniff file so we can't check that the EUT2 didn't
-        #       receive the echo request message
+        # self.match('EUT2', SixLowpanIPHC(
+        #     sac=False,
+        #     sam=0b11,
+        #     dac=False,
+        #     dam=0b11
+        # ))
+
