@@ -1,10 +1,10 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_14 (SixlowpanTestCase):
+class TD_6LOWPAN_HC_14 (SixlowpanTestCase):
     """
 ---
-TD_6LOWPAN_FORMAT_HC_14:
+TD_6LOWPAN_HC_14:
     cfg: Node-Node
     not: Null
     obj: check that EUTs correctly handle compressed multicasted 6LoWPAN packets (EUI-64 link-local to 16-bit link-local

@@ -960,7 +960,7 @@ if __name__ == "__main__":
     #
     # analyzer = Analyzer('tat_6lowpan')
     #
-    # params = './tmp/TD_6LOWPAN_FORMAT_HC_01.pcap', 'TD_6LOWPAN_FORMAT_HC_01'
+    # params = './tmp/TD_6LOWPAN_HC_01.pcap', 'TD_6LOWPAN_HC_01'
     # tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
     # print('##### TC name')
     # print(tc_name)

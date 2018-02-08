@@ -1,34 +1,32 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_15 (SixlowpanTestCase):
+class TD_6LOWPAN_HC_12 (SixlowpanTestCase):
     """
 ---
-TD_6LOWPAN_FORMAT_HC_15:
+TD_6LOWPAN_HC_12:
     cfg: Node-Node
     not: Null
-    obj: check that EUTs correctly handle compressed multicasted 6LoWPAN packets (16 bits link-local to
-         EUI-64 link-local, hop limit=1 and payload=0)
+    obj: Check that EUTs correctly handle compressed 6LoWPAN packets (16-bit link-local, hop limit=1 and payload=0)
     pre:
         - Header compression is enabled on both EUT1 and EUT2
-        - EUT1 is configured to use 16-bit address
-        - EUT2 is configured to use EUI-64 address
+        - EUT1 and EUT2 are configured to use EUI-64 addresses
         - EUT1 and EUT2 are configured with a default hop limit of 1
     ref: RFC 6282 section 3; RFC 4944 section 4
     seq:
         -   s:
-            - EUT1 initiates an echo request with the multicast address ff02'::1
+            - EUT1 initiates an echo request to EUT2's link-local address
             - ICMP payload = 0 bytes, total IPv6 size 35 bytes
-            - Hop Limit is 64, no traffic class or flow label is being used
+            - Hop Limit is 1, no traffic class or flow label is being used
         -   c: EUT1 sends a compressed 6LoWPAN packet containing the Echo
-                Request message multicasted to ff02'::1
+                Request message to EUT2
         -   c: "Dispatch value in 6LowPAN packet is 0011TFxHL"
-        -   f: "Hop Limit is 1 and source address begin by fe80::"
+        -   f: "Hop Limit is 64 and source address begin by fe80::"
         -   f: In IP_HC, TF is 11 and the ecn, dscp and flow label fields are
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
                 away
-        -   f: In IP_HC, SAC=0, SAM=01; DAC=0; DAM=11
+        -   f: In IP_HC, SAC=0, SAM=01; DAC=0; DAM=01
         -   v: EUT2 receives the Echo Request message from EUT1
         -   c: EUT2 sends a compressed 6LoWPAN packet containing the Echo Reply
                 message to EUT1
@@ -38,7 +36,7 @@ TD_6LOWPAN_FORMAT_HC_15:
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
                 away
-        -   f: In IP_HC, SAC=0, SAM=11; DAC=0; DAM=01
+        -   f: In IP_HC, SAC=0, SAM=01; DAC=0; DAM=01
         -   v: EUT1 receives the Echo Reply message from EUT2
     """
 
@@ -103,7 +101,7 @@ TD_6LOWPAN_FORMAT_HC_15:
             tf=0b01,
             iecn=0b00,
         ))
-        self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=1, DestinationAddress="ff02::1")))
+        self.match('EUT1', SixLowpanIPHC(pl=IPv6(HopLimit=1)))
 
         # TS 4
         self.match('EUT1', SixLowpanIPHC(hl=0b01, ihl=Omit()))
@@ -113,7 +111,7 @@ TD_6LOWPAN_FORMAT_HC_15:
             sac=False,
             sam=0b01,
             dac=False,
-            dam=0b11
+            dam=0b01
         ))
 
         # TS 6
@@ -135,12 +133,12 @@ TD_6LOWPAN_FORMAT_HC_15:
         ))
 
         # TS 10
-        self.match('EUT2', SixLowpanIPHC(hl=0b10, ihl=Omit()))
+        self.match('EUT2', SixLowpanIPHC(hl=0b01, ihl=Omit()))
 
         # TS 11
         self.match('EUT2', SixLowpanIPHC(
             sac=False,
-            sam=0b11,
+            sam=0b01,
             dac=False,
             dam=0b01
         ))

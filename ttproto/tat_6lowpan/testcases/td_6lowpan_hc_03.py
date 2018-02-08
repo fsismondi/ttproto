@@ -1,18 +1,17 @@
 from ..common import *
 
 
-class TD_6LOWPAN_FORMAT_HC_06(SixlowpanTestCase):
+class TD_6LOWPAN_HC_03 (SixlowpanTestCase):
     """
 ---
-TD_6LOWPAN_FORMAT_HC_06:
+TD_6LOWPAN_HC_03:
     cfg: Node-Node
     not: Null
     obj: Check that EUTs correctly handle compressed 6LoWPAN packets (EUI-64
          link-local, hop limit=1 and payload=0)
     pre:
         - Header compression is enabled on both EUT1 and EUT2
-        - EUT1 is configured to use EUI-64 address.
-        - EUT2 is configured to use 16-bit address.
+        - EUT1 and EUT2 are configured to use EUI-64 addresses
         - EUT1 and EUT2 are configured with a default hop limit of 1
     ref: RFC 6282 section 3; RFC 4944 section 4
     seq:
@@ -28,7 +27,7 @@ TD_6LOWPAN_FORMAT_HC_06:
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
                 away
-        -   f: In IP_HC, SAC=0, SAM=11; DAC=0; DAM=01
+        -   f: In IP_HC, SAC=0, SAM=11; DAC=0; DAM=11
         -   v: EUT2 receives the Echo Request message from EUT1
         -   c: EUT2 sends a compressed 6LoWPAN packet containing the Echo Reply
                 message to EUT1
@@ -38,7 +37,7 @@ TD_6LOWPAN_FORMAT_HC_06:
                 compressed away
         -   f: In IP_HC, HLIM (HL) is 10 and the hop limit field is compressed
                 away
-        -   f: In IP_HC, SAC=0, SAM=01; DAC=0; DAM=11
+        -   f: In IP_HC, SAC=0, SAM=11; DAC=0; DAM=11
         -   v: EUT1 receives the Echo Reply message from EUT2
     """
 
@@ -62,7 +61,7 @@ TD_6LOWPAN_FORMAT_HC_06:
                     # Length(IPv6, 35),
                     IPv6(
                         tc=0x00,
-                        # fl=0x00099cba,
+                        #fl=0x00099cba,
                         hl=1,
                         pl=ICMPv6EchoRequest(
                             # pl=Length(bytes, 0)
@@ -113,7 +112,7 @@ TD_6LOWPAN_FORMAT_HC_06:
             sac=False,
             sam=0b11,
             dac=False,
-            dam=0b01
+            dam=0b11
         ))
 
         # TS 6
@@ -138,15 +137,12 @@ TD_6LOWPAN_FORMAT_HC_06:
         self.match('EUT2', SixLowpanIPHC(hl=0b01, ihl=Omit()))
 
         # TS 11
-        self.match('EUT2',
-                   SixLowpanIPHC(
-                       sac=False,
-                       sam=0b01,
-                       dac=False,
-                       dam=0b11
-                   ),
-                   'fail',
-                   )
+        self.match('EUT2', SixLowpanIPHC(
+            sac=False,
+            sam=0b11,
+            dac=False,
+            dam=0b11
+        ))
 
         # TS 12
         # NOTE: Only one sniff file so we can't check that the EUT2 didn't

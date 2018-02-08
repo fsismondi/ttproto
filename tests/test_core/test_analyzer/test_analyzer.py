@@ -148,8 +148,8 @@ class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
     TEST_ENV = 'tat_6lowpan'
     TEST_DIR = './tests/test_dumps/analysis/6lowpan_hc/'
     UNKNOWN_TEST_ENV = 'unknown'
-    TEST_CASE_ID = 'TD_6LOWPAN_FORMAT_HC_01'
-    UNKNOWN_TEST_CASE_ID = 'TD_6LOWPAN_FORMAT_HC_666'
+    TEST_CASE_ID = 'TD_6LOWPAN_HC_01'
+    UNKNOWN_TEST_CASE_ID = 'TD_6LOWPAN_HC_666'
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
 
 
