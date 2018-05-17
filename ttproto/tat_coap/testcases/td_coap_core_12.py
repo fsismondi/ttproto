@@ -40,7 +40,8 @@ TD_COAP_CORE_12:
         :rtype: [Value]
         """
         return [
-            CoAP(type='con', code='get', tok=b'')
+            CoAP(type='con', code='get', tok=b'',
+                 opt=Opt(CoAPOptionUriPath("test")))
         ]
 
     def run(self):
@@ -51,7 +52,7 @@ TD_COAP_CORE_12:
         self.next_skip_ack()
 
         if self.match("server", CoAP(code=2.05,
-                                          pl=Not(b""),
-                                          opt=Opt(CoAPOptionContentFormat()),
-                                          )):
+                                     pl=Not(b""),
+                                     opt=Opt(CoAPOptionContentFormat()),
+                                     )):
             self.match("server", CoAP(tok=b""), "fail")
