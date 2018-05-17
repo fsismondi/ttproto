@@ -41,8 +41,9 @@ import inspect
 import sys
 import traceback
 
-from os import path
+from os import path, environ
 from importlib import import_module
+import logging
 
 from ttproto.core.data import Data, DifferenceList, Value
 from ttproto.core.dissector import (Frame, Capture, is_protocol,
@@ -51,6 +52,10 @@ from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import typecheck, tuple_of, optional, anything, list_of
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(environ.get('LOG_LEVEL', logging.DEBUG))
 
 __all__ = [
     'Verdict',
@@ -562,10 +567,11 @@ class TestCase(object):
                  - A list of typles representing the exceptions that occurred
         :rtype: (str, [int], str,[(str,str)], [(type, Exception, traceback)])
         """
-
+        # Next line is before for 6lowpan TC, where nodes_identification_templates
+        # is not generic.
+        TestCase.get_nodes_identification_templates = self.get_nodes_identification_templates
         # Pre-process / filter conversations corresponding to the TC
-        self._conversations, self._ignored = self.preprocess(self._capture)
-
+        self._conversations, self._ignored = self.preprocess(self._capture, self.get_stimulis())
         # print("----conversations----")
         # print(self._conversations)
         # print("----ignored----")
@@ -574,8 +580,9 @@ class TestCase(object):
         # Run the test case for every conversations
         for conv in self._conversations:
 
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                for frame in conv:logger.debug(frame)
             try:
-
                 # Get an iterator on the current conversation frames
                 # and its list of nodes
                 self._iter = iter(conv)
@@ -659,15 +666,19 @@ class TestCase(object):
         """
         raise NotImplementedError()
 
+    @classmethod
     @typecheck
     def preprocess(
-            self,
-            capture: Capture
+            cls,
+            capture: Capture,
+            expected_frames_pattern:list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Pre-process and filter the frames of the capture into test case related
         conversations. This has to be implemented into the protocol's common
         test case class.
+        This method depends on the protocol features, so it cannot be
+        implemented in a generic way.
         """
         raise NotImplementedError()
 

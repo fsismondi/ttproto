@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_09 (CoAPTestCase):
+class TD_COAP_CORE_09(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_09:
@@ -59,7 +59,7 @@ TD_COAP_CORE_09:
         :rtype: [Value]
         """
         return [
-            CoAP(type='con', code='get')
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("separate")))
         ]
 
     def run(self):
@@ -71,7 +71,7 @@ TD_COAP_CORE_09:
         self.next()
 
         #FIXME: may be out-of-order
-        if not self.match("server", CoAP (type="ack", code=0, mid=CMID, pl = b"")):
+        if not self.match("server", CoAP (type="ack", code=0, mid=CMID, pl=b"")):
             raise self.Stop()
 
         self.next()
@@ -88,5 +88,3 @@ TD_COAP_CORE_09:
         self.next()
 
         self.match ("client", CoAP (type="ack", code=0, mid=SMID,pl=b""))
-
-

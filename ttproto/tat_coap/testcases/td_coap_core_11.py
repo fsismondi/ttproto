@@ -57,14 +57,15 @@ TD_COAP_CORE_11:
         """
         # TODO client message w/ token length = 0 -> fail?
         return [
-            CoAP(type='con', code='get', tok=Not(b''))
+            CoAP(type='con', code='get', tok=Not(b''),
+                 opt=Opt(CoAPOptionUriPath("separate")))
         ]
 
-    def run (self):
-        self.match ("client", CoAP (	type="con",
+    def run(self):
+        self.match ("client", CoAP(type="con",
                             code = "get",
-                            tok = Not (b""),
-                            opt = self.uri ("/separate"),
+                            tok = Not(b""),
+                            opt = self.uri("/separate"),
                 ))
         self.match ("client", CoAP (tok = Length (bytes, (1, 8))
                 ), "fail")
@@ -74,7 +75,7 @@ TD_COAP_CORE_11:
         self.next()
 
         # FIXME: may be out-of-order
-        if not self.match	("server", CoAP (type="ack", code=0, mid=CMID,pl=b"")):
+        if not self.match("server", CoAP(type="ack", code=0, mid=CMID,pl=b"")):
             raise self.Stop()
 
         self.next()
@@ -91,5 +92,3 @@ TD_COAP_CORE_11:
         self.next()
 
         self.match ("client", CoAP (type="ack", code=0, mid=SMID,pl=b""))
-
-

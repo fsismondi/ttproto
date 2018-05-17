@@ -73,8 +73,8 @@ TD_COAP_CORE_23:
             Check the number/value of the uri query options or not?
         """
         return [
-            CoAP(type='con', code='put'),  # Step 1
-            CoAP(type='con', code='put')   # Step 5
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("create1"))),  # Step 1
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("create1")))   # Step 5
         ]
 
     request_uri = "/create1"
