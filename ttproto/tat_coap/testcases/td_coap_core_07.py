@@ -50,13 +50,15 @@ TD_COAP_CORE_07:
                 type='non',
                 code='put',
                 pl=Not(b''),
-                opt=Opt(CoAPOptionContentFormat())
+                opt=Opt(CoAPOptionContentFormat(), CoAPOptionUriPath("test"))
             )
         ]
 
     def run(self):
+        if self._frame is None: #inconclusive instead of error is no frame at all.
+            return
         self.match("client", CoAP(type="non", code="put", opt=self.uri("/test")))
-        self.match("client", CoAP(pl=Not(b''), opt=Opt(CoAPOptionContentFormat()), ), "fail")
+        self.match("client", CoAP(pl=Not(b''), opt=Opt(CoAPOptionContentFormat()), ), "inconclusive")
 
         CTOK = self.coap["tok"]
 

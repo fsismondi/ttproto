@@ -105,10 +105,12 @@ class CoAPTestCase(TestCase):
             Node('server', UDP(sport=5683))
         ]
 
+    @classmethod
     @typecheck
     def preprocess(
-        self,
-        capture: Capture
+            cls,
+            capture: Capture,
+            expected_frames_pattern:list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Preprocess and filter the frames of the capture into test case related
@@ -118,15 +120,8 @@ class CoAPTestCase(TestCase):
         :return: list of conversations and list of ignored frames
         """
 
-        # TODO assert is subclass of TesCase?
-
-        # Get informations from the test case
-        # TODO: Get attrbutes stimuli , protocol under test, nodes patterns
-        #       directly from child's atrib?
-
-        stimulis = self.get_stimulis()
-        protocol = self.get_protocol()
-        nodes = self.get_nodes_identification_templates()
+        protocol =CoAPTestCase.get_protocol()
+        nodes = CoAPTestCase.get_nodes_identification_templates()
 
         conversations = []
         ignored = []
@@ -142,7 +137,7 @@ class CoAPTestCase(TestCase):
             )
 
         # If there is no stimuli at all
-        if not stimulis or len(stimulis) == 0:
+        if not expected_frames_pattern or len(expected_frames_pattern) == 0:
             raise NoStimuliFoundForTestcase(
                 'Expected stimuli declaration from the test case'
             )
@@ -153,11 +148,11 @@ class CoAPTestCase(TestCase):
         # Get a counter of the current stimuli
         sti_count = 0
         current_conversation = None
-        nb_stimulis = len(stimulis)
+        nb_stimulis = len(expected_frames_pattern)
         for frame in frames:
 
             # If the frame matches a stimuli
-            if stimulis[sti_count].match(frame[protocol]):
+            if expected_frames_pattern[sti_count].match(frame[protocol]):
 
                 # If it's the first stimuli
                 if sti_count == 0:
@@ -194,7 +189,7 @@ class CoAPTestCase(TestCase):
                     %
                     (
                         nb_stimulis - sti_count,
-                        stimulis[sti_count]
+                        expected_frames_pattern[sti_count]
                     )
                 )
 
