@@ -646,16 +646,31 @@ _content_format_description = {
     42:	"application/octet-stream",
     47:	"application/exi",
     50:	"application/json",
+    11542 : "application/vnd.oma.lwm2m+tlv",
+    11543 : "application/vnd.oma.lwm2m+json",
 }
 
 _ResponseStutusCode_format_description = {
-    65:	"2001",
+    65: "2001",
     66: "2002",
     67:	"2003",
     68:	"2004",
     69:	"2000",
 }
 
+_TY_format_description = {
+    "AE": "2",
+    "container": "3",
+    "contentInstance": "4",
+    "accessControlPolicy": "1",
+    "subscription": "23",
+    "node": "14",
+    "remoteCSE": "16",
+    "group": "9",
+    "pollingChannel": "15",
+    "flexContainer" : "28",
+    "mgmtCmd": "12",   
+}
 def _max_age_description (v):
 
     if v == 0:
@@ -728,7 +743,7 @@ for i, n, t, l, d in (
         (263, "OneM2MNotificationURI" , "String" , (0, 255) , None),
         (265, "OneM2MResponseStatusCode" , "UInt" , (0, 2) , _ResponseStutusCode_format_description),
         (266, "OneM2MGroupRequestIdentifier" , "String" , (0, 255) , None),
-        (267, "OneM2MTY" , "String" , (0, 255) , None),
+        (267, "OneM2MTY" , "UInt" , (0, 2) , _TY_format_description),
     ):
     exec(
 """
