@@ -1,20 +1,19 @@
 from ..common import *
 
 
-class TD_IPSO_3300_01(CoAPTestCase):
+class TD_IPSO_3303_01(CoAPTestCase):
     """
----
 --- !testcase
-testcase_id: TD_IPSO_3300_01
+testcase_id: TD_IPSO_3303_01
 uri : http://openmobilealliance.org/iot/lightweight-m2m-lwm2m
 configuration: LWM2M_CFG_01
 objective: 
-  - Querying the following data on the client (IPSO Generic Sensor Object = ID 3300) in text plain format
+  - Querying the following data on the client (IPSO Temperature Object = ID 3303) in text plain format
   - - Sensor Value
     - Sensor Units
 pre_conditions: Device is registered at the LWM2M server
 sequence:
-  - step_id: 'TD_ IPSO_3300_01_step_01'
+  - step_id: 'TD_IPSO_3303_01_step_01'
     type: stimuli
     node : lwm2m_server
     description:
@@ -22,28 +21,28 @@ sequence:
       - - Type = 0 (CON)
         - Code = 1 (GET)
 
-  - step_id: 'TD_ IPSO_3300_01_step_02'
+  - step_id: 'TD_IPSO_3303_01_step_02'
     type: check
     description:
       - 'The request sent by the server contains'
       - - Type=0 and Code=1
         - Accept option = text/plain
-        - Uri-Path option = 3300/0/5700
+        - Uri-Path option = 3303/0/5700
 
-  - step_id: 'TD_ IPSO_3300_01_step_03'
+  - step_id: 'TD_IPSO_3303_01_step_03'
     type: check
     description:
         - 'Client sends response containing'
         - - Code = 2.05 (Content)
           - Non-empty Payload
 
-  - step_id: 'TD_ IPSO_3300_01_step_04'
+  - step_id: 'TD_IPSO_3300_01_step_04'
     type: verify
     node: lwm2m_server
     description:
         - 'Requested data is successfully displayed'
 
-  - step_id: 'TD_IPSO_3300_01_step_05'
+  - step_id: 'TD_IPSO_3303_01_step_05'
     type: stimuli
     node : lwm2m_server
     description:
@@ -51,26 +50,27 @@ sequence:
       - - Type = 0 (CON)
         - Code = 1 (GET)
 
-  - step_id: 'TD_ IPSO_3300_01_step_06'
+  - step_id: 'TD_ IPSO_3303_01_step_06'
     type: check
     description:
       - 'The request sent by the server contains'
       - - Type=0 and Code=1
         - Accept option = text/plain
-        - Uri-Path option = 3300/0/5701
+        - Uri-Path option = 3303/0/5701
 
-  - step_id: 'TD_ IPSO_3300_01_step_07'
+  - step_id: 'TD_IPSO_3303_01_step_07'
     type: check
     description:
         - 'Client sends response containing'
         - - Code = 2.05 (Content)
           - Non-empty Payload
 
-  - step_id: 'TD_ IPSO_3300_01_step_08'
+  - step_id: 'TD_ IPSO_3303_01_step_08'
     type: verify
     node: lwm2m_server
     description:
         - 'Requested data is successfully displayed'
+
     """
 
     @classmethod
@@ -86,7 +86,7 @@ sequence:
         return [CoAP(type='con', code='get')]
 
     def run(self):
-        self.match('server', CoAP(type='con', code='get', opt=self.uri('/3300/0/5700')), 'fail')
+        self.match('server', CoAP(type='con', code='get', opt=self.uri('/3303/0/5700')), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionAccept('40'))), 'fail')
         
         self.next()
@@ -96,7 +96,7 @@ sequence:
 
         self.next()
 
-        self.match('server', CoAP(type='con', code='get', opt=self.uri('/3300/0/5701')), 'fail')
+        self.match('server', CoAP(type='con', code='get', opt=self.uri('/3303/0/5701')), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionAccept('40'))), 'fail')
         
         self.next()

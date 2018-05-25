@@ -121,29 +121,31 @@ sequence:
     def run(self):
         self.match('server', CoAP(type='con', code='get', opt=self.uri('/3/0/0')), 'fail')
         self.match('server', CoAP(pl=(b'')), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('40'))), 'fail')
         
         self.next()
 
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('0'))), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')
 
         self.next()
 
         self.match('server', CoAP(type='con', code='get', opt=self.uri('/3/0/1')), 'fail')
         self.match('server', CoAP(pl=(b'')), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('40'))), 'fail')
         
         self.next()
 
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('0'))), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')
         
         self.next()
 
         self.match('server', CoAP(type='con', code='get', opt=self.uri('/3/0/2')), 'fail')
         self.match('server', CoAP(pl=(b'')), 'fail')
-    
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('40'))), 'fail')
         
         self.next()
 
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('0'))), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')

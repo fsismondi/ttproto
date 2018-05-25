@@ -25,15 +25,15 @@ sequence:
     type: stimuli
     node: lwm2m_server
     description:
-      - 'LwM2M server sends a WRITE request (CoAP POST) on server object instance'
+      - 'LwM2M server sends a WRITE request (CoAP PUT) on server object instance'
       - - Type = 0 (CON)
-        - Code = 2 (POST)
+        - Code = 3 (PUT)
 
   - step_id: 'TD_LWM2M_1.0_INT_220_step_02'
     type: check
     description:
       - 'Sent POST request contains'
-      - - Type=0 and Code=2
+      - - Type=0 and Code=3
         - Non-empty payload = array of Default Minimum Period, Default Maximum Period, Disable Timeout, Notification Storing When Disabled or offline, and Binding resource values
         - content-format=application/vnd.oma.lwm2m+json
         - URI-Path option= 1/0
@@ -159,16 +159,50 @@ sequence:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        return [CoAP(type='con', code='put')]
+        return [CoAP(type='con', code='post'), CoAP(type='con', code='get'), CoAP(type='con', code='put')]
 
     def run(self):
-
         self.match('server', CoAP(type='con', code='put', opt=self.uri('/1/0')), 'fail')
         self.match('server', CoAP(pl=Not(b'')), 'fail')
-        self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
         
         self.next()
 
-        self.match('client', CoAP(code=Any(65, 68)), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('0'))), 'fail')
+        self.match('client', CoAP(code=Any(65, 68), pl=(b'')), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+
+        self.next()
+
+        self.match('server', CoAP(type='con', code='get', opt=self.uri('/1/0')), 'fail')
+        self.match('server', CoAP(pl=(b'')), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
+        
+        self.next()
+
+        self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+
+        self.next()
+
+        self.match('server', CoAP(type='con', code='put', opt=self.uri('/1/0')), 'fail')
+        self.match('server', CoAP(pl=Not(b'')), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+        
+        self.next()
+
+        self.match('client', CoAP(code=Any(65, 68), pl=(b'')), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+
+        self.next()
+
+        self.match('server', CoAP(type='con', code='get', opt=self.uri('/1/0')), 'fail')
+        self.match('server', CoAP(pl=(b'')), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
+        
+        self.next()
+
+        self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
