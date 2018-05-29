@@ -33,7 +33,7 @@ def main(argv):
                         default="amqp",
                         help="Choose the interface.")
     parser.add_argument("-p", "--protocol",
-                        choices=["coap", "6lowpan", 'onem2m'],
+                        choices=ALLOWED_PROTOCOLS_FOR_ANALYSIS,
                         help="Choose the protocol to be analyzed by the TAT.",
                         default='coap',
                         )

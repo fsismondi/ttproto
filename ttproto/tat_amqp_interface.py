@@ -60,7 +60,7 @@ from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDat
 COMPONENT_ID = NotImplementedError
 
 ALLOWED_EXTENSIONS = set(['pcap'])
-ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m']
+ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m', 'lwm2m']
 
 # Directories
 DATADIR = "data"
@@ -237,7 +237,7 @@ class AmqpInterface:
             event_diss = messages.MsgDissectionAutoDissect(
                 token=None,
                 frames=dissection_structured_text,
-                frames_simple_text = dissection_simple_text,
+                frames_simple_text=dissection_simple_text,
                 testcase_id='unknown',
                 testcase_ref='unknown'
             )
@@ -419,7 +419,7 @@ class AmqpInterface:
                 service_request,
                 token=operation_token,
                 frames=dissection_structured_text,
-                frames_simple_text= dissection_simple_text
+                frames_simple_text=dissection_simple_text
             )
             _publish_message(ch, response)
             return
