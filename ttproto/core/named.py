@@ -34,7 +34,7 @@
 """A module for guessing a name for the objects"""
 
 from ttproto.core.typecheck import *
-import inspect, opcode, os
+import dis, inspect, opcode, os
 
 __all__ = [
     'NamedObject',
@@ -68,23 +68,12 @@ def _print_stack(st):
         i -= 1
 
 
-# guess the name of the variable that will store the result of the calling function
-# TODO: handle storing attributes
-_OPCODES_CALL_FUNCTION_ANY = (opcode.opmap['CALL_FUNCTION'],
-                              opcode.opmap['CALL_FUNCTION_KW'],
-                              opcode.opmap['CALL_FUNCTION_VAR'],
-                              opcode.opmap['CALL_FUNCTION_VAR_KW'],
-                              )
-_OPCODES_CALL_OPERATOR_ANY = (
-    opcode.opmap['BINARY_TRUE_DIVIDE'],
-)
-
-_OPCODES_STORE_NAME = (
-    opcode.opmap['STORE_NAME'],
+_OPCODES_STORE = (
+    opcode.opmap['STORE_DEREF'],
+    opcode.opmap['STORE_FAST'],
     opcode.opmap['STORE_GLOBAL'],
+    opcode.opmap['STORE_NAME'],
 )
-_OPCODE_STORE_FAST = opcode.opmap['STORE_FAST']
-_OPCODE_STORE_DEREF = opcode.opmap['STORE_DEREF']
 _OPCODE_JUMP_FORWARD = opcode.opmap['JUMP_FORWARD']
 _REJECTED_NEXT_OPCODES = (opcode.opmap['BUILD_TUPLE'],
                           opcode.opmap['COMPARE_OP'],
@@ -104,8 +93,11 @@ _REJECTED_NEXT_OPCODES = (opcode.opmap['BUILD_TUPLE'],
                           )
 
 
-def _read_word(bytes_, offset):
-    return bytes_[offset] + bytes_[offset + 1] * 256
+def _forward_instruction(it_instructions, offset):
+    for opcode in it_instructions:
+        assert opcode.offset <= offset
+        if opcode.offset == offset:
+            return opcode
 
 
 def get_parent_var_name():
@@ -116,7 +108,7 @@ def get_parent_var_name():
     rely on this feature at all. Its purpose is just to bring some useful
     indicative into the test logs.
 
-    Exemples:
+    Examples:
         >>> blah_blah_blah = NamedObject()
         >>> blah_blah_blah.__name__
         'blah_blah_blah'
@@ -189,33 +181,27 @@ def get_parent_var_name():
 
             id = id_next
 
-        #		print ("frame id:", id)
+        #print ("frame id:", id)
         code = frame.f_code.co_code
+        it_instructions = dis.get_instructions(frame.f_code)
 
-        currop = code[frame.f_lasti]
-        #		print ("currop", opcode.opname [currop])
+        istr = _forward_instruction(it_instructions, frame.f_lasti)
+        #print ("istr", istr)
 
-        if currop in _OPCODES_CALL_FUNCTION_ANY:
-            id_nexti = frame.f_lasti + 3
-        elif currop in _OPCODES_CALL_OPERATOR_ANY:
-            id_nexti = frame.f_lasti + 1
+        if istr.opname.startswith("CALL_"):
+            istr = next(it_instructions)
+            #print ("next", istr)
         else:
             raise Error("Current instruction is %d %s but should be a function call" % (currop, opcode.opname[currop]))
+        while istr.opcode == _OPCODE_JUMP_FORWARD:
+            istr = _forward_instruction(it_instructions, istr.argval)
+            #print ("next", istr)
+         
+        nextop = istr.opcode
+        #print ("nextop", opcode.opname [nextop])
 
-        nextop = code[id_nexti]
-        while nextop == _OPCODE_JUMP_FORWARD:
-            id_nexti += _read_word(code, id_nexti + 1) + 3
-            nextop = code[id_nexti]
-
-        # print ("nextop", opcode.opname [nextop])
-
-        nameid = _read_word(code, id_nexti + 1)
-        if nextop in _OPCODES_STORE_NAME:
-            name = frame.f_code.co_names[nameid]
-        elif nextop == _OPCODE_STORE_FAST:
-            name = frame.f_code.co_varnames[nameid]
-        elif nextop == _OPCODE_STORE_DEREF:
-            name = frame.f_code.co_cellvars[nameid]
+        if nextop in _OPCODES_STORE:
+            name = istr.argval
         else:
             if nextop not in _REJECTED_NEXT_OPCODES:
                 _print_stack(stack)
@@ -236,7 +222,7 @@ def skip_parent_var_name(func):
     """A decorator for functions that should be skipped by
     get_parent_var_name() when inspecting the stack.
 
-    Exemple:
+    Example:
         >>> def some_factory_function():
         ...   result = NamedObject()
         ...   return result

@@ -1,12 +1,19 @@
 # -*- coding:utf-8 -*-
-import os, errno
+import os, errno, logging
 
-__version__ = '0.1.1'  
+__version__ = '0.1.1'
 
 # Directories
 DATADIR = "data"
 TMPDIR = "tmp"
 LOGDIR = "log"
+
+LOG_LEVEL = logging.INFO
+LOG_FORMAT = '%(levelname)s %(name)s [%(threadName)s] %(message)s'
+logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
+
+# lower versbosity of pika's logs
+logging.getLogger('pika').setLevel(logging.WARNING)
 
 for d in TMPDIR, DATADIR, LOGDIR:
     try:

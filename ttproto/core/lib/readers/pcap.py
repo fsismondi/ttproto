@@ -42,9 +42,8 @@ from ttproto.core.lib.inet.ipv6 import IPv6
 from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.readers.capture_reader import CaptureReader
 
-LOGGER = logging.getLogger(__name__)
-#logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
+log.setLevel(level=logging.WARNING)
 
 _map_link_type = {
     pure_pcapy.DLT_LINUX_SLL: LinuxCookedCapture,
@@ -107,7 +106,9 @@ class PcapReader(CaptureReader):
 
         # decode the packet
         try:
+            log.debug('Decoding bytes as %s: %s ' % (repr(b), self.__decode_type))
             m = Message(b, self.__decode_type)
+            #log.debug(m.display())
             exc = None
         except Exception as e:
             m = Message(b)

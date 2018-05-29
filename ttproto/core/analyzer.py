@@ -48,7 +48,7 @@ from ttproto.core.data import Data, DifferenceList, Value
 from ttproto.core.dissector import (Frame, Capture, is_protocol,
                                     ProtocolNotFound)
 from ttproto.core.exceptions import Error
-from ttproto.core.typecheck import *
+from ttproto.core.typecheck import typecheck, tuple_of, optional, anything, list_of
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
 
@@ -311,7 +311,7 @@ class Conversation(list):
                 len(nodes)
             )
 
-        # The node dictionnary
+        # The node dictionary
         self._nodes = {}
         for node in nodes:
             self._nodes[node.name] = node.value
@@ -402,7 +402,7 @@ class TestCase(object):
         Abstract function to match the current frame value with the template passed as argument
 
         :param node_name: The node source of the frame
-        :param template: The template to match agains the frame value
+        :param template: The template to match against the frame value
         :param on_mismatch_verdict: Verdict applied when there's a mismatch, normally used with inconclusive, fail
         or None
         :param on_mismatch_msg: Message applied when there's a mismatch
@@ -465,7 +465,9 @@ class TestCase(object):
             if on_mismatch_verdict is not None:
                 def callback(path, mismatch, describe):
                     self.log("             %s: %s\n" % (".".join(path), type(mismatch).__name__))
-                    self.log("                 got:        %s\n" % mismatch.describe_value(describe))
+                    # for i in diff_list:
+                    #     self.log("             List Diff Item: %s\n" % (i))
+                    self.log("                 got:      %s\n" % mismatch.describe_value(describe))
                     self.log("                 expected: %s\n" % mismatch.describe_expected(describe))
 
                 if on_mismatch_msg != '':
@@ -557,7 +559,7 @@ class TestCase(object):
                  - The list of the result important frames
                  - A string with the log of the test case
                  - A list of all the partial verdicts and their messages
-                 - A list of typles representing the exceptions that occured
+                 - A list of typles representing the exceptions that occurred
         :rtype: (str, [int], str,[(str,str)], [(type, Exception, traceback)])
         """
 
@@ -598,14 +600,18 @@ class TestCase(object):
                 #     - The type of the exception being handled
                 #     - The exception instance
                 #     - The traceback object
-                exc_info = sys.exc_info()
+                _exception_type, _exception_value, _exception_traceback = sys.exc_info()
 
-                # Add those exception informations to the list
-                self._exceptions.append(exc_info)
+                # Add those exception information to the list
+                self._exceptions.append((
+                    _exception_type,
+                    _exception_value,
+                    _exception_traceback
+                ))
 
                 # Put the verdict and log the exception
                 self.set_verdict('error', 'unhandled exception')
-                self.log(exc_info[1])
+                self.log(_exception_value)
 
         # Return the results
         return (
@@ -749,7 +755,7 @@ class Analyzer:
         # If no test case found
         if len(result) == 0:
             raise FileNotFoundError(
-                'No test case found using "%s" search query' % search_query
+                'No test case found for: "%s"' % search_query
             )
 
         # If the search query is the wildcard, sort the list
@@ -892,7 +898,7 @@ class Analyzer:
                  - The list of the result important frames
                  - A string with logs
                  - A list of all the partial verdicts
-                 - A list of tuples representing the exceptions that occured
+                 - A list of tuples representing the exceptions that occurred
         :rtype: (str, str, [int], str,[(str, str)], [(type, Exception, traceback)])
 
         :raises FileNotFoundError: If the test env of the tc is not found
@@ -905,7 +911,7 @@ class Analyzer:
         .. note::
             Allows multiple occurrences of executions of the testcase, returns as verdict:
                 - fail: if at least one on the occurrences failed
-                - inconclusive: if all ocurrences returned a inconv verdict
+                - inconclusive: if all occurrences returned a inconclusive verdict
                 - pass: all occurrences are inconclusive or at least one is PASS and
                         the rest is inconclusive
         """
@@ -951,10 +957,39 @@ class Analyzer:
 if __name__ == "__main__":
     from os import getcwd, path
 
+    #
+    # analyzer = Analyzer('tat_6lowpan')
+    #
+    # params = './tmp/TD_6LOWPAN_HC_01.pcap', 'TD_6LOWPAN_HC_01'
+    # tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
+    # print('##### TC name')
+    # print(tc_name)
+    # print('#####')
+    # print('##### Verdict given')
+    # print(verdict)
+    # print('#####')
+    # print('##### Review frames')
+    # print(rev_frames)
+    # print('#####')
+    # print('##### Text')
+    # print(str_log)
+    # print('##### Partial verdicts')
+    # for s in lst_log:
+    #     print(str(s))
+    # print('#####')
+    # print('##### Exceptions')
+    # for e in excepts:
+    #     e1, e2, e3 = e
+    #     print(repr(traceback.format_exception(e1, e2, e3)))
+    #
+    # print('#####')
+
+
     analyzer = Analyzer('tat_coap')
 
     # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
-    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    # params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
     # params = './tmp/TD_COAP_CORE_23_fail.pcap', 'TD_COAP_CORE_23'
     # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
     tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
