@@ -48,11 +48,10 @@ from collections import OrderedDict
 from multiprocessing import Process
 
 from ttproto import LOG_LEVEL
-from ttproto.core.analyzer import Analyzer
-from ttproto.core.dissector import Capture, get_dissectable_protocols
+from ttproto.tat_services import analyze_capture, dissect_capture, get_test_cases, base64_to_pcap_file
+
 from ttproto.core.typecheck import typecheck, optional, either
 from ttproto.utils import pure_pcapy
-from ttproto.core.lib.all import *
 from ttproto.utils.rmq_handler import AMQP_URL, AMQP_EXCHANGE, JsonFormatter, RabbitMQHandler
 from ttproto.utils import messages
 from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDataPacketDumper
@@ -66,7 +65,7 @@ ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m']
 DATADIR = "data"
 TMPDIR = "tmp"
 LOGDIR = "log"
-AUTO_DISSECT_OUTPUT_FILE = 'auto_dissection'
+AUTO_DISSECT_OUTPUT_FILE = os.path.join(DATADIR, 'auto_dissection')
 
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
@@ -78,8 +77,13 @@ TOKEN_LENGTH = 28
 
 
 def launch_tat_amqp_interface(amqp_url, amqp_exchange, tat_protocol, dissection_auto):
+    """
+    Att this is blocking. Launches the TAT AMQP interface.
+    See doc for more info about the AMQP API endpoints
+    """
+
     def signal_int_handler(self, frame):
-        logger.info('got SIGINT, stopping dumper..')
+        print('got SIGINT, stopping dumper..')
 
         if amqp_interface:
             amqp_interface.stop()
@@ -219,7 +223,7 @@ class AmqpInterface:
                 time.sleep(1)
                 ch.queue_purge(queue=self.data_queue_name)
 
-                dissection_structured_text, dissection_simple_text = _dissect_capture(
+                dissection_structured_text, dissection_simple_text = dissect_capture(
                     filename=pcap_to_dissect,
                     proto_filter=None,
                     output_file=AUTO_DISSECT_OUTPUT_FILE,
@@ -237,7 +241,7 @@ class AmqpInterface:
             event_diss = messages.MsgDissectionAutoDissect(
                 token=None,
                 frames=dissection_structured_text,
-                frames_simple_text = dissection_simple_text,
+                frames_simple_text=dissection_simple_text,
                 testcase_id='unknown',
                 testcase_ref='unknown'
             )
@@ -273,7 +277,7 @@ class AmqpInterface:
                 if hasattr(service_request, 'protocol') and service_request.protocol is not None:
                     protocol = service_request.protocol
 
-                nb = _save_capture(filename, pcap_file_base64)
+                nb = base64_to_pcap_file(os.path.join(TMPDIR, filename), pcap_file_base64)
 
                 # if pcap file has less than 24 bytes then its an empty pcap file
                 if (nb <= 24):
@@ -291,11 +295,11 @@ class AmqpInterface:
                     self.logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
 
                 # run the analysis
-                analysis_results = _analyze_capture(filename=filename,
-                                                    testcase_id=testcase_id,
-                                                    protocol=protocol,
-                                                    output_file=operation_token
-                                                    )
+                analysis_results = analyze_capture(filename=os.path.join(DATADIR, filename),
+                                                   testcase_id=testcase_id,
+                                                   protocol=protocol,
+                                                   output_file=operation_token
+                                                   )
 
             except Exception as e:
                 _publish_message(
@@ -343,7 +347,7 @@ class AmqpInterface:
 
             # # Get the list of test cases
             # try:
-            #     test_cases = _get_test_cases()
+            #     test_cases = get_test_cases()
             #
             #     # lets prepare content of response
             #     tc_list = []
@@ -368,7 +372,7 @@ class AmqpInterface:
             proto_filter = service_request.protocol_selection
 
             # save pcap as file
-            nb = _save_capture(filename, pcap_file_base64)
+            nb = base64_to_pcap_file(os.path.join(TMPDIR, filename), pcap_file_base64)
 
             # if pcap file has less than 24 bytes then its an empty pcap file
             if (nb <= 24):
@@ -388,10 +392,10 @@ class AmqpInterface:
             # Lets dissect
             try:
                 operation_token = _get_token()
-                dissection_structured_text, dissection_simple_text = _dissect_capture(
+                dissection_structured_text, dissection_simple_text = dissect_capture(
                     filename=filename,
                     proto_filter=proto_filter,
-                    output_file=operation_token
+                    output_file=os.path.join(DATADIR, operation_token)
                 )
             except (TypeError, pure_pcapy.PcapError) as e:
                 _publish_message(
@@ -419,7 +423,7 @@ class AmqpInterface:
                 service_request,
                 token=operation_token,
                 frames=dissection_structured_text,
-                frames_simple_text= dissection_simple_text
+                frames_simple_text=dissection_simple_text
             )
             _publish_message(ch, response)
             return
@@ -431,120 +435,10 @@ class AmqpInterface:
 
 # # # AUXILIARY FUNCTIONS # # #
 
-logger = logging.getLogger('tat|ttproto_api')
-logger.setLevel(LOG_LEVEL)
-
-
-def _analyze_capture(filename, protocol, testcase_id, output_file):
-    assert filename
-    assert protocol
-    assert testcase_id
-
-    if os.path.isfile(filename) is False and os.path.isfile(os.path.join(TMPDIR, filename)):
-        filename = os.path.join(TMPDIR, filename)
-
-    logger.info("Analyzing PCAP file %s" % filename)
-
-    if protocol.lower() not in ALLOWED_PROTOCOLS_FOR_ANALYSIS:
-        raise NotImplementedError('Protocol %s not among the allowed analysis test suites' % protocol)
-
-    analysis_results = Analyzer('tat_' + protocol.lower()).analyse(filename, testcase_id)
-    logger.info('analysis result: %s' % str(analysis_results))
-    logger.debug('PCAP analysed')
-
-    if output_file and type(output_file) is str:
-        # save analysis response
-        _dump_json_to_file(json.dumps(analysis_results), os.path.join(DATADIR, output_file))
-
-    return analysis_results
-
-
-def _dissect_capture(filename, proto_filter=None, output_file=None):
-    """
-    Raises TypeError or pure_pcapy.PcapError if there's an error with the PCAP file
-    """
-    assert filename
-
-    if os.path.isfile(filename) is False and os.path.isfile(os.path.join(TMPDIR, filename)):
-        filename = os.path.join(TMPDIR, filename)
-
-    logger.info("Dissecting PCAP file %s" % filename)
-
-    proto_matched = None
-
-    if proto_filter:
-        # In function of the protocol asked
-        proto_matched = _get_protocol(proto_filter)
-        if proto_matched is None:
-            raise Exception('Unknown protocol %s' % proto_filter)
-
-    cap = Capture(filename)
-
-    if proto_matched and len(proto_matched) == 1:
-        proto = eval(proto_matched[0]['name'])
-        dissection_as_dicts = cap.get_dissection(proto)
-        dissection_as_text = cap.get_dissection_simple_format(proto)
-    else:
-        dissection_as_dicts = cap.get_dissection()
-        dissection_as_text = cap.get_dissection_simple_format()
-
-    logger.info('PCAP dissected')
-    if output_file and type(output_file) is str:
-        # save dissection response
-        _dump_json_to_file(json.dumps(dissection_as_dicts), os.path.join(DATADIR, output_file))
-
-    return dissection_as_dicts, dissection_as_text
-
-
-@typecheck
-def _get_test_cases(
-        testcase_id: optional(str) = None,
-        verbose: bool = False
-) -> OrderedDict:
-    """
-    Function to get the implemented test cases
-
-    :param testcase_id: The id of the single test case if one wanted
-    :param verbose: True if we want a verbose response
-    :type testcase_id: str
-    :type verbose: bool
-
-    :return: The implemented test cases using doc.f-interop.eu format
-    :rtype: OrderedDict
-    """
-
-    test_cases = OrderedDict()
-    tc_query = [] if not testcase_id else [testcase_id]
-    raw_tcs = Analyzer('tat_coap').get_implemented_testcases(
-        tc_query,
-        verbose
-    )
-
-    # Build the clean results list
-    for raw_tc in raw_tcs:
-        tc_basic = OrderedDict()
-        tc_basic['_type'] = 'tc_basic'
-        tc_basic['id'] = raw_tc[0]
-        tc_basic['objective'] = raw_tc[1]
-
-        tc_implementation = OrderedDict()
-        tc_implementation['_type'] = 'tc_implementation'
-        tc_implementation['implementation'] = raw_tc[2]
-
-        # Tuple, basic + implementation
-        test_cases[raw_tc[0]] = OrderedDict()
-        test_cases[raw_tc[0]]['tc_basic'] = tc_basic
-        test_cases[raw_tc[0]]['tc_implementation'] = tc_implementation
-
-    # If a single element is asked
-    if testcase_id:
-        test_cases = test_cases[raw_tcs[0][0]]
-
-    # Return the results
-    return test_cases
-
-
 def _auto_dissect_service():
+    logger = logging.getLogger('ttproto|auto-dissect')
+    logger.setLevel(LOG_LEVEL)
+
     global AUTO_DISSECT_PERIOD
     last_polled_pcap = None
 
@@ -596,7 +490,7 @@ def _auto_dissect_service():
                 last_polled_pcap = pcap_file_base64
 
                 # save pcap as file
-                nb = _save_capture(filename, pcap_file_base64)
+                nb = base64_to_pcap_file(os.path.join(TMPDIR, filename), pcap_file_base64)
 
                 # if pcap file has less than 24 bytes then its an empty pcap file
                 if (nb <= 24):
@@ -608,10 +502,10 @@ def _auto_dissect_service():
                     # let's dissect
                     try:
                         operation_token = _get_token()
-                        dissection_structured_text, dissection_simple_text = _dissect_capture(
+                        dissection_structured_text, dissection_simple_text = dissect_capture(
                             filename=filename,
                             proto_filter=proto_filter,
-                            output_file=operation_token
+                            output_file=os.path.join(DATADIR, operation_token)
                         )
                     except (TypeError, pure_pcapy.PcapError) as e:
                         logger.error("Error processing PCAP. More: %s" % str(e))
@@ -631,7 +525,7 @@ def _auto_dissect_service():
                     _publish_message(channel, m)
 
 
-def _amqp_request(channel, request_message: Message, component_id: str):
+def _amqp_request(channel, request_message: messages.Message, component_id: str):
     # NOTE: channel must be a pika channel
 
     # check first that sender didnt forget about reply to and corr id
@@ -712,84 +606,6 @@ def _publish_message(channel, message):
 
 
 @typecheck
-def _get_protocol(
-        protocol: optional(str) = None
-) -> either(list, type(None)):
-    """
-    Function to get the protocols protocol(s) info dict
-
-    :param protocol: The name of the protocol
-    :type protocol: str
-
-    :return: list of implemented protocols, conditioned to the protocol filter
-    :rtype: list of OrderedDict(s)
-    """
-
-    # list to return
-    answer = []
-
-    # Getter of protocol's classes from dissector
-    prot_classes = get_dissectable_protocols()
-    logger.debug(str(prot_classes))
-
-    # Build the clean results list
-    for prot_class in prot_classes:
-
-        if protocol and protocol.lower() == prot_class.__name__.lower():
-            # Prepare the dict for the answer
-            prot = OrderedDict()
-            prot['_type'] = 'implemented_protocol'
-            prot['name'] = prot_class.__name__
-            prot['description'] = ''
-            return [prot]
-        elif protocol is None:
-            # Prepare the subdir for the dict-inception (answer)
-            prot = OrderedDict()
-            prot['_type'] = 'implemented_protocol'
-            prot['name'] = prot_class.__name__
-            prot['description'] = ''
-            answer.append(prot)
-        else:
-            # not the selected one
-            pass
-
-    if answer is None or len(answer) == 0:
-        return None
-    else:
-        return answer
-
-
-def _dump_json_to_file(json_object, filename):
-    """
-
-    :param json_object:
-    :param filename: filename must include PATH
-    :return:
-    """
-
-    if '.json' not in filename:
-        filename += '.json'
-
-    with open(filename, 'w') as f:
-        f.write(json_object)
-
-
-def _save_capture(filename, pcap_file_base64):
-    """
-    Returns number of bytes saved.
-
-    :param filename:
-    :param pcap_file_base64:
-    :return:
-    """
-    # save to file
-    with open(os.path.join(TMPDIR, filename), "wb") as pcap_file:
-        nb = pcap_file.write(base64.b64decode(pcap_file_base64))
-
-        return nb
-
-
-@typecheck
 def _get_token(tok: optional(str) = None):
     """
     Function to get a token, if there's a valid one entered just return it
@@ -829,12 +645,3 @@ def _get_token(tok: optional(str) = None):
 
     # Remove the '=' at the end of it, it is used by base64 for padding
     return token.replace('=', '')
-
-
-if __name__ == "__main__":
-    # print(str(_get_protocol('CoAP')))
-    # print(str(_get_protocol()))
-    print(str(eval('CoAP')))
-    dissection = Capture(TMPDIR + '/TD_COAP_CORE_02.pcap').get_dissection()  # eval('CoAP'))
-    # dissection = Dissector(TMPDIR + '/tun_sniffed_coap.pcap').dissect(eval('CoAP'))
-    print(dissection)
