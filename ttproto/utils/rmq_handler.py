@@ -171,7 +171,6 @@ class JsonFormatter(logging.Formatter):
 
         try:
             log_record = OrderedDict()
-            log_record['_type'] = 'log'
             log_record['component'] = record.name
         except NameError:
             log_record = {}

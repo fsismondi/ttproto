@@ -18,8 +18,8 @@ Using the ttproto console:
 
 For running a dissection of a PCAP file:
 ```
-    >>> dis = Dissector('tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap')
-    >>> dissection = dis.dissect()
+    >>> capture = Capture('tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap')
+    >>> dissection = capture.get_dissection()
     >>> print(json.dumps(dissection, indent=4))
 
     [

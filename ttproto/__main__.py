@@ -4,27 +4,25 @@ else runs amqp interface
 Should be run as: python3 -m ttproto.tat_coap
 """
 import argparse
+
+from ttproto import LOG_LEVEL
 from ttproto.tat_amqp_interface import *
-# TODO make protocol agnostic webserver
 from ttproto.tat_coap.webserver import *
 from ttproto.utils.packet_dumper import *
 from ttproto.utils.rmq_handler import JsonFormatter, RabbitMQHandler
 
 # TTPROTO CONSTANTS
-COMPONENT_ID = 'tat'
+COMPONENT_ID = 'tat|main'
 SERVER_CONFIG = ("0.0.0.0", 2080)
 
 # default handler
-logger = logging.getLogger(__name__)
-sh = logging.StreamHandler()
-logger.addHandler(sh)
+logger = logging.getLogger(COMPONENT_ID)
+logger.setLevel(LOG_LEVEL)
 
-# TODO either update topics on demand from amqp interface, on find a generic regex for all topics 
-PCAP_DUMPER_AMQP_TOPICS = ['data.serial.fromAgent.coap_client_agent',
-                           'data.serial.fromAgent.coap_server_agent',
-                           'data.tun.fromAgent.coap_server_agent',
-                           'data.tun.fromAgent.coap_client_agent',
-                           ]
+PCAP_DUMPER_AMQP_TOPICS = [
+    'fromAgent.#.packet.raw'
+    'data.*.fromAgent.*',  # fixme deprecate this (old API)
+]
 
 
 def main(argv):
@@ -60,8 +58,8 @@ def main(argv):
     if dissector_option:  # auto dissection needs the traces in pcap files
         dumps_option = True
 
-    print('Configuration: interface %s, protocol %s, dissection option %s'
-          % (tat_interface, tat_protocol, dissector_option))
+    logger.info('Configuration: \n\tinterface: %s\n\tprotocol %s \n\tdissection option %s'
+                % (tat_interface, tat_protocol, dissector_option))
 
     if tat_interface == 'http':
         raise NotImplementedError
@@ -99,7 +97,7 @@ def main(argv):
             amqp_url = "amqp://local:{1}@{2}/{3}".format('guest', 'guest', 'localhost', '')
 
         logger.info('Env vars for AMQP connection succesfully imported: AMQP_URL: %s, AMQP_EXCHANGE: %s' % (amqp_url,
-                                                                                                      amqp_exchange))
+                                                                                                            amqp_exchange))
 
         # AMQP log handler & formatter
         rabbitmq_handler = RabbitMQHandler(amqp_url, COMPONENT_ID)

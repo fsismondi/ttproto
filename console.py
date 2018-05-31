@@ -30,48 +30,52 @@
 #
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
-import rlcompleter, readline
-readline.parse_and_bind('tab: complete')
+import rlcompleter
+import readline
+import atexit
+import os
+import sys
+import json
 
-from ttproto.core.lib.all	import *
-from ttproto.core.data	import *
+from ttproto.core.lib.all import *
+from ttproto.core.data import *
 from ttproto.core.dissector import *
 from ttproto.core.analyzer import *
-import	atexit, os, sys
 
-__HISTORY_FILE = os.path.join (os.path.expanduser ("~"), ".ttproto_history")
+readline.parse_and_bind('tab: complete')
+
+__HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".ttproto_history")
 
 
 class Console:
-	"""Welcome to ttproto console.
+    """Welcome to ttproto console.
 - run as: python3 -i console.py
 - Use [tab] to complete
 - Use help(object) to print help messages.
 - Quit using ctrl+d"""
-	pass
+    pass
 
-def help( obj ):
-	if obj.__doc__ is not None:
-		print( obj.__doc__)
-	else:
-		print("undocumented")
+
+def help(obj):
+    if obj.__doc__ is not None:
+        print(obj.__doc__)
+    else:
+        print("undocumented")
 
 
 def save_history():
-	readline.write_history_file(__HISTORY_FILE)
+    readline.write_history_file(__HISTORY_FILE)
 
 help(Console)
 
 try:
-	readline.read_history_file (__HISTORY_FILE)
+    readline.read_history_file(__HISTORY_FILE)
 except IOError:
-	print("cannot access history file")
+    print("cannot access history file")
 
-atexit.register (save_history)
+atexit.register(save_history)
 
 for v in sys.argv[1:]:
-	readline.add_history (v)
-	print (">>>", v)
-	exec (v)
-
-
+    readline.add_history(v)
+    print(">>>", v)
+    exec(v)

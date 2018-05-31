@@ -1,4 +1,4 @@
-import unittest, logging
+import unittest, logging, json
 
 from os import getcwd, path
 from ttproto.core.analyzer import Analyzer
@@ -6,7 +6,7 @@ from ttproto.core.typecheck3000 import InputParameterError
 from tests.test_tools.struct_validator import StructureValidator
 
 
-class AnalyzerTestCase(unittest.TestCase):
+class CoAPAnalyzerTestCase(unittest.TestCase):
     """
     Test class for the analyzer tool
     """
@@ -78,13 +78,14 @@ class AnalyzerTestCase(unittest.TestCase):
 
     def test_get_implemented_testcases_single_test_case_which_bugged(self):
 
-        # Get implemented test cases and check their values
-        tcs = self.analyzer.get_implemented_testcases(
-            [self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST]
-        )
-        self.struct_validator.check_tc_from_analyzer(tcs)
-        self.assertEqual(len(tcs), 1)
-        self.assertEqual(tcs[0][0], self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST)
+        if self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST:
+            # Get implemented test cases and check their values
+            tcs = self.analyzer.get_implemented_testcases(
+                [self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST]
+            )
+            self.struct_validator.check_tc_from_analyzer(tcs)
+            self.assertEqual(len(tcs), 1)
+            self.assertEqual(tcs[0][0], self.TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST)
 
     def test_get_implemented_testcases_unknown_test_case(self):
 
@@ -103,14 +104,53 @@ class AnalyzerTestCase(unittest.TestCase):
     # ##### analyse
     def test_analyse_basic_pass_PCAPs(self):
         dir = self.TEST_DIR
-        print('looking for test dumps for testing the test cases: %s' %dir)
+        print('looking for test dumps for testing the test cases: %s' % dir)
         for tc in self.analyzer.get_implemented_testcases():
-            filename = path.join(dir,tc[0] + '_PASS.pcap')
-            print('Testcase found %s , dump file %s for test exist: %s' %(str(tc[0]),filename,path.isfile(filename)))
+            filename = path.join(dir, tc[0] + '_PASS.pcap')
+            print('Testcase found %s , dump file %s for test exist: %s' % (str(tc[0]), filename, path.isfile(filename)))
             # check if there's a pcap_pass_test for the testcase
             if path.isfile(filename):
-                tc_name, verdict, tc_bck,_ , log, excepts = self.analyzer.analyse(filename, tc[0])
-                self.assertTrue(verdict == 'pass', msg='TC implementation not passing the pcap_pass_test' + '\n' + 'VERDICT: ' + str(verdict) + '\nLOG:\n' + str(log))
+                tc_name, verdict, rev_frames, log, partial_verdicts, exception_info = self.analyzer.analyse(filename,
+                                                                                                            tc[0])
+
+                # I apologize to you future reader for the utterly ugly way of unpacking the exception info :)
+                exc_str = ''
+                if exception_info:
+                    counter = 0
+                    for i in exception_info:
+                        counter += 1
+                        exc_str += '\nException n:%s' % counter
+                        exc_str += '\n\ttype: %s ' % i[0]
+                        exc_str += '\n\texception: %s' % i[1]
+                        exc_str += '\n\ttracelog: %s' % i[2]
+                        exc_str += '\n'
+
+                self.assertTrue(verdict == 'pass',
+                                msg='%s implementation got verdict: %s expected PASS \n '
+                                    'details: \n %s \n'
+                                    'errors: \n %s \n'
+                                    'logs: \n %s \n'
+                                    %
+                                    (
+                                        tc_name,
+                                        str(verdict).upper(),
+                                        json.dumps(partial_verdicts, indent=4) if log else "",
+                                        exc_str if exc_str else "No exception registered",
+                                        log
+                                    )
+                                )
+
+                print('Testcase %s , got verdict: %s' % (str(tc[0]), str(verdict).upper()))
+
+
+class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
+    # #################### Tests parameters #########################
+    TEST_ENV = 'tat_6lowpan'
+    TEST_DIR = './tests/test_dumps/analysis/6lowpan_hc/'
+    UNKNOWN_TEST_ENV = 'unknown'
+    TEST_CASE_ID = 'TD_6LOWPAN_HC_01'
+    UNKNOWN_TEST_CASE_ID = 'TD_6LOWPAN_HC_666'
+    TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
 
 
 # #################### Main run the tests #########################
