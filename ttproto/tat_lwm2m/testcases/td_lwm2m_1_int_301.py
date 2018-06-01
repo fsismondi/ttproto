@@ -37,7 +37,6 @@ references: 'OMA-ETS-LightweightM2M-V1_0_1-20170926-A'
 
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
 
-
         self.next()
 
         self.match('server', CoAP(type='con', code='put', opt=self.uri('/3/0/7')), 'fail')
@@ -76,4 +75,3 @@ references: 'OMA-ETS-LightweightM2M-V1_0_1-20170926-A'
 
         self.match('client', CoAP(code=2.05), 'fail')
 
-        

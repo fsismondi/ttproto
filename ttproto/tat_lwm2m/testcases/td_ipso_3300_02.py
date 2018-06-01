@@ -66,6 +66,3 @@ sequence:
 
         validation = validate(str(self.coap['pl']),'3300')
         self.set_verdict(validation, 'payload validation')
-
-
-     
