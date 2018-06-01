@@ -1,11 +1,16 @@
 import unittest
+import logging
+import json
 
-from ttproto.core.dissector import Frame, Capture, ReaderError, get_dissectable_protocols
 from ttproto.core.typecheck3000 import InputParameterError
-from ttproto.core.packet import PacketValue
-from ttproto.core.lib.inet.coap import CoAP
-from ttproto.core.lib.inet.meta import InetPacketValue
 from tests.test_tools.struct_validator import StructureValidator
+
+from ttproto.core.packet import PacketValue
+from ttproto.core.lib.inet.meta import InetPacketValue
+from ttproto.core.lib.inet.coap import CoAP
+from ttproto.core.lib.inet.sixlowpan import SixLowpan
+from ttproto.core.dissector import Frame, Capture, ReaderError, get_dissectable_protocols
+from ttproto.utils.pcap_filter import openwsn_profile_filter
 
 
 class CaptureAndDissectionsTestCase(unittest.TestCase):
@@ -35,7 +40,6 @@ class CaptureAndDissectionsTestCase(unittest.TestCase):
             Initialize the dissector instance
         """
         self.capture = Capture(self.PCAP_FILE)
-
 
     # #################### Utilities functions #########################
 
@@ -185,6 +189,7 @@ class CaptureAndDissectionsTestCase(unittest.TestCase):
         with self.assertRaises(ReaderError):
             dis_empty_file = Capture(self.EMPTY_PCAP_FILE)
             dis = dis_empty_file.get_dissection()
+
 
 # #################### Main run the tests #########################
 if __name__ == '__main__':
