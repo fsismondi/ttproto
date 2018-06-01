@@ -59,7 +59,7 @@ from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDat
 COMPONENT_ID = NotImplementedError
 
 ALLOWED_EXTENSIONS = set(['pcap'])
-ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m']
+ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m', 'lwm2m']
 
 # Directories
 DATADIR = "data"
