@@ -89,10 +89,9 @@ sequence:
         return [CoAP(type='con', code='post'), CoAP(type='con', code='get')]
 
     def run(self):
-        self.match('server', CoAP(type='con', code='post', pl=Not(b'')), opt=self.uri('/1')), 'fail')
+        self.match('server', CoAP(type='con', code='post', pl=Not(b''), opt=self.uri('/1')), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
-        
 
         self.next()
 
@@ -102,14 +101,13 @@ sequence:
 
         self.next()
 
-        self.match('server', CoAP(type='con', code='get', pl=(b'')), opt=self.uri()), 'fail')
+        self.match('server', CoAP(type='con', code='get', pl=(b''), opt=self.uri()), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
-        
 
         self.next()
 
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
-        validation = validate(str(self.coap['pl']),'1')
+        validation = validate(str(self.coap['pl']), '1')
         self.set_verdict(validation, 'payload validation')

@@ -42,14 +42,19 @@ from ttproto.core.lib.all import *
 from urllib import parse
 from ttproto.core.exceptions import Error
 
+from xml.etree import ElementTree
+import logging
+import requests
+import json
+import sys
 
 # CoAP constants
 RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
 MAX_RETRANSMIT = 4
 MAX_TIMEOUT = 10 + round(
-        (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT
-    )
+    (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2 ** MAX_RETRANSMIT
+)
 
 
 class NoStimuliFoundForTestcase(Error):
@@ -57,6 +62,7 @@ class NoStimuliFoundForTestcase(Error):
     Error raised when no stimuli was defined for the testcase
     """
     pass
+
 
 class FilterError(Error):
     """
@@ -107,8 +113,8 @@ class CoAPTestCase(TestCase):
 
     @typecheck
     def preprocess(
-        self,
-        capture: Capture
+            self,
+            capture: Capture
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Preprocess and filter the frames of the capture into test case related
@@ -217,8 +223,8 @@ class CoAPTestCase(TestCase):
 
         # While there is one and that it's an ack, pass it
         while all((
-            self._frame is not None,
-            self._frame[CoAP] in CoAP(type='ack', code=0)
+                    self._frame is not None,
+                    self._frame[CoAP] in CoAP(type='ack', code=0)
         )):
             self.next(optional)
 
@@ -503,7 +509,7 @@ class Link(list):
                             error("attribute value for %r is empty" % name)
 
                         # Consume the read part
-                        s = s[i+1:]
+                        s = s[i + 1:]
 
                     # If it doesn't begin with a quote, it's a token
                     else:
@@ -545,9 +551,9 @@ class Link(list):
 
         @typecheck
         def get(
-            self,
-            par_name: str,
-            testcase: optional(CoAPTestCase) = None
+                self,
+                par_name: str,
+                testcase: optional(CoAPTestCase) = None
         ) -> optional(str):
             """
             Get the value of a link value from its parameter name
@@ -592,6 +598,48 @@ class Link(list):
 
             # Return the value if one found, if none found just return None
             return result
+
+
+def validate(jsond, objectid):
+    logging.info("ObjectID: " + objectid)
+    jsondata = jsond[2:]
+    jsondata = jsondata[:-1]
+    jsondata = json.loads(jsondata)
+    # logging.info json.dumps(jsondata, sort_keys=True,indent=4, separators=(',', ': '))
+
+    url = 'http://www.openmobilealliance.org/api/lwm2m/v1/Object?ObjectID=' + objectid;
+    logging.info("Registry url: " + url)
+    r = requests.get(url)
+    # logging.info json.dumps(r.json(), sort_keys=True,indent=4, separators=(',', ': '))
+    j = r.json()
+    logging.info("ObjectLink: " + j[0]["ObjectLink"])
+    r2 = requests.get(j[0]["ObjectLink"])
+    # logging.info r2.content
+    root = ElementTree.fromstring(r2.content)
+
+    validation = "pass"
+    for item in root.iter('Item'):
+        for child in item:
+            if (child.text == "Mandatory"):
+                if (item.find("Operations").text != "E"):
+                    logging.info("ResourceID: " + item.get("ID"))
+                    logging.info("Name: " + str(item.find("Name").text))
+                    logging.info("Type: " + str(item.find("Type").text))
+                    logging.info("Operations: " + str(item.find("Operations").text))
+                    logging.info("MultipleInstances: " + str(item.find("MultipleInstances").text))
+                    for attrs in jsondata['e']:
+                        itemuri = item.get("ID");
+                        if (item.find("MultipleInstances").text == "Multiple"):
+                            itemuri = itemuri + "/0";
+                        if attrs['n'] == itemuri:
+                            n = attrs['n']
+                            logging.info("Found!")
+                            break
+                    else:
+                        validation = "fail"
+                        logging.info('Not found!')
+    logging.info("Validation: " + validation)
+    return validation
 
 
 if __name__ == "__main__":
