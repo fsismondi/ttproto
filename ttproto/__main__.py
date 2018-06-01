@@ -7,7 +7,7 @@ import os
 import logging
 import argparse
 from ttproto import LOG_LEVEL
-from ttproto.tat_services import dissect_capture, analyze_capture, get_protocols_list
+from ttproto.tat_services import dissect_capture, analyze_capture, get_protocols_list, ALLOWED_PROTOCOLS_FOR_ANALYSIS
 from multiprocessing import Process
 
 # TTPROTO CONSTANTS
@@ -73,11 +73,11 @@ class TTProtoCLI():
             usage=diss_help
         )
         parser.add_argument('file',
-                            help="Filename (complete path) to traces file (.PCAP file).",
+                            help="Filename (complete path) to traces file (.pcap file).",
                             )
         parser.add_argument("-p", "--protocol",
                             choices=[i.lower() for i in get_protocols_list()],
-                            help="Choose the protocol to be analyzed by the TAT.",
+                            help="Choose a filter protocol",
                             )
         parser.add_argument("-o", "--output",
                             help="Output file name",
@@ -110,10 +110,10 @@ class TTProtoCLI():
         )
 
         parser.add_argument('file',
-                            help="Filename (complete path) to traces file (.PCAP file).",
+                            help="Filename (complete path) to traces file (.pcap file).",
                             )
         parser.add_argument("-p", "--protocol",
-                            choices=["coap", "6lowpan", 'onem2m'],
+                            choices=ALLOWED_PROTOCOLS_FOR_ANALYSIS,
                             help="Choose the protocol to be analyzed by the TAT.",
                             default='coap',
                             )
@@ -171,7 +171,7 @@ class TTProtoCLI():
         parser = argparse.ArgumentParser(description='Launches TTProto as an AMQP service.')
 
         parser.add_argument("-p", "--protocol",
-                            choices=["coap", "6lowpan", 'onem2m'],
+                            choices=ALLOWED_PROTOCOLS_FOR_ANALYSIS,
                             help="Choose the protocol to be analyzed by the TAT.",
                             default='coap',
                             )

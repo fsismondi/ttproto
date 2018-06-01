@@ -13,10 +13,7 @@ from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Capture, get_dissectable_protocols
 from ttproto.core.typecheck import typecheck, optional, either
 
-COMPONENT_ID = NotImplementedError
-
-ALLOWED_EXTENSIONS = set(['pcap'])
-ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m']
+ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m', 'lwm2m']
 
 # Directories
 DATADIR = "data"
@@ -94,7 +91,7 @@ def dissect_capture(filename, proto_filter=None, output_file=None):
     logger.info('PCAP dissected')
     if output_file and type(output_file) is str:
         # save dissection response
-        _dump_json_to_file(json.dumps(dissection_as_dicts),  output_file)
+        _dump_json_to_file(json.dumps(dissection_as_dicts), output_file)
 
     return dissection_as_dicts, dissection_as_text
 
@@ -204,7 +201,7 @@ def base64_to_pcap_file(filename, pcap_file_base64):
     :return:
     """
     # save to file
-    with open( filename, "wb") as pcap_file:
+    with open(filename, "wb") as pcap_file:
         nb = pcap_file.write(base64.b64decode(pcap_file_base64))
 
         return nb
