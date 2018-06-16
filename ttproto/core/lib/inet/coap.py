@@ -646,6 +646,8 @@ _content_format_description = {
     42:	"application/octet-stream",
     47:	"application/exi",
     50:	"application/json",
+    11542 : "application/vnd.oma.lwm2m+tlv",
+    11543 : "application/vnd.oma.lwm2m+json",
 }
 
 _ResponseStutusCode_format_description = {
