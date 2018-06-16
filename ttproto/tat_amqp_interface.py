@@ -239,8 +239,8 @@ class AmqpInterface:
                 token=None,
                 frames=dissection_structured_text,
                 frames_simple_text=dissection_simple_text,
-                testcase_id='unknown',
-                testcase_ref='unknown'
+                testcase_id=None,
+                testcase_ref=None,
             )
             _publish_message(ch, event_diss)
             self.logger.info("Auto dissection message sent.. ")
@@ -518,7 +518,7 @@ def _auto_dissect_service():
                         frames=dissection_structured_text,
                         frames_simple_text=dissection_simple_text,
                         testcase_id=filename.strip('.pcap'),  # dirty solution but less coding :)
-                        testcase_ref='unknown'  # not really needed
+                        testcase_ref=None,
                     )
                     _publish_message(channel, m)
 
