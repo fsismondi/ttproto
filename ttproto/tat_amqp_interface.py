@@ -237,9 +237,9 @@ class AmqpInterface:
             event_diss = messages.MsgDissectionAutoDissect(
                 token=None,
                 frames=dissection_structured_text,
-                frames_simple_text = dissection_simple_text,
-                testcase_id='unknown',
-                testcase_ref='unknown'
+                frames_simple_text=dissection_simple_text,
+                testcase_id=None,
+                testcase_ref=None,
             )
             _publish_message(ch, event_diss)
             self.logger.info("Auto dissection message sent.. ")
@@ -419,7 +419,7 @@ class AmqpInterface:
                 service_request,
                 token=operation_token,
                 frames=dissection_structured_text,
-                frames_simple_text= dissection_simple_text
+                frames_simple_text=dissection_simple_text
             )
             _publish_message(ch, response)
             return
@@ -626,7 +626,7 @@ def _auto_dissect_service():
                         frames=dissection_structured_text,
                         frames_simple_text=dissection_simple_text,
                         testcase_id=filename.strip('.pcap'),  # dirty solution but less coding :)
-                        testcase_ref='unknown'  # not really needed
+                        testcase_ref=None,
                     )
                     _publish_message(channel, m)
 
