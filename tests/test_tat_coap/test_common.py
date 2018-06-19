@@ -229,7 +229,7 @@ class TestCommon(unittest.TestCase):
             "expected 2 conversations , but got %s " % len(conversations_tc_04)
 
         self.__check_conv_is_tc_04(conversations_tc_04[0])
-        assert len(conversations_tc_04[1]) == 2,\
+        assert len(conversations_tc_04[0]) == 2,\
             "expected 2 frames , but got %s " % len(conversations_tc_04[0])
 
         self.__check_conv_is_tc_04(conversations_tc_04[1])
@@ -238,7 +238,7 @@ class TestCommon(unittest.TestCase):
 
     @classmethod
     @typecheck
-    def __check_conv_is_tc_09(self, conv:Conversation):
+    def __check_conv_is_tc_09(self, conv: Conversation):
         token = conv[0][CoAP]['tok']
         assert conv[0][CoAP]['code'] == 1
         assert conv[0][CoAP]["opt"][CoAPOptionUriPath]['val'] == 'separate'
@@ -265,19 +265,19 @@ class TestCommon(unittest.TestCase):
         assert conv[1][UDP]['sport'] == 5683
         assert conv[1][CoAP]['tok'] == token
         assert conv[1][CoAP]['type'] == 2
-        assert conv[1][CoAP]['code'] == 65 # 2.01 Created
+        assert conv[1][CoAP]['code'] == 65  # 2.01 Created
         assert conv[1][CoAP]["opt"][0]['val'] == 'location1'
         assert conv[1][CoAP]["opt"][1]['val'] == 'location2'
         assert conv[1][CoAP]["opt"][2]['val'] == 'location3'
 
     @classmethod
     @typecheck
-    def __pprint_coap_conversation(cls, conv:Conversation):
+    def __pprint_coap_conversation(cls, conv: Conversation):
         cls.__pprint_conversation(conv, 5683)
 
     @classmethod
     @typecheck
-    def __pprint_conversation(cls, conv:Conversation, server_port_number:int):
+    def __pprint_conversation(cls, conv: Conversation, server_port_number: int):
         """
         print the given conversation with more detail about the presence of
         several differents sub-conversations contained inside (e.g several clients)

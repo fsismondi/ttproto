@@ -33,13 +33,12 @@
 
 import re
 from collections import OrderedDict
-from .templates import *
+from .templates import list_of, Value, optional, Opt
 from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
 from ttproto.core.dissector import Frame
-from ttproto.core.templates import All, Not, Any, Length
-from ttproto.core.typecheck import *
+from ttproto.core.templates import All
+from ttproto.core.typecheck import typecheck
 from ttproto.core.lib.all import *
-from urllib import parse
 from ttproto.core.exceptions import Error
 
 
@@ -134,8 +133,10 @@ class CoAPTestCase(TestCase):
 
     @classmethod
     @typecheck
-    def correlate(cls, conversations:list_of(Conversation),
-                expected_frames_pattern:list_of(Value))->list_of(Conversation):
+    def correlate(cls,
+                  conversations: list_of(Conversation),
+                  expected_frames_pattern: list_of(Value)
+                  )->list_of(Conversation):
         """
         WIP
         Correlate different related conversations.
@@ -280,7 +281,7 @@ class CoAPTestCase(TestCase):
     @typecheck
     def __merge_all_conversations_to_merge(
             cls,
-            conversations_to_merge:list_of(list_of(Conversation))
+            conversations_to_merge: list_of(list_of(Conversation))
     )->list_of(Conversation):
         """
         A list of list of conversation that must be merged together.
@@ -335,8 +336,8 @@ class CoAPTestCase(TestCase):
     @typecheck
     def __get_all_matching_conversations(
                                         cls,
-                                        conversations:list_of(Conversation),
-                                        expected_frames_pattern:list_of(Value)
+                                        conversations: list_of(Conversation),
+                                        expected_frames_pattern: list_of(Value)
                                         )->list_of(Conversation):
         """
 
@@ -367,9 +368,9 @@ class CoAPTestCase(TestCase):
     @typecheck
     def __get_conversation_to_merge(
                                     cls,
-                                    conversations:list_of(Conversation),
-                                    expected_frames_pattern: list_of(Value))\
-                                    ->list_of(list_of(Conversation)):
+                                    conversations: list_of(Conversation),
+                                    expected_frames_pattern: list_of(Value)
+                                    )->list_of(list_of(Conversation)):
         """
         Retrieve a list 'outer' of list 'inter' with each conversations inside
         those inter lists having to be merged together. That is, conversations
@@ -406,8 +407,8 @@ class CoAPTestCase(TestCase):
     @typecheck
     def extract_all_coap_conversations(
                                     cls,
-                                    capture: Capture)\
-                                    ->(list_of(Conversation), list_of(Frame)):
+                                    capture: Capture
+                                    )->(list_of(Conversation), list_of(Frame)):
         protocol = cls.get_protocol()
         nodes = cls.get_nodes_identification_templates()
 
@@ -444,7 +445,7 @@ class CoAPTestCase(TestCase):
 
             if frame[CoAP]["type"] == 2 or frame[CoAP]["type"] == 3:
                 if CMID in acknowledged_CMID:
-                    #A duplicated ACK or RST
+                    # A duplicated ACK or RST
                     ignored.append(frame)
                     continue
                 else:
@@ -457,7 +458,7 @@ class CoAPTestCase(TestCase):
             else:
                 if CTOK in tkn_to_conv:
                     tkn_to_conv[CTOK].append(frame)
-                else: # First time we encounter the token "CTOK".
+                else:  # First time we encounter the token "CTOK".
                     conv = Conversation(nodes)
                     conv.append(frame)
                     tkn_to_conv[CTOK] = conv
