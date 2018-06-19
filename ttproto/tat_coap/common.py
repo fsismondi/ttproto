@@ -42,14 +42,13 @@ from ttproto.core.lib.all import *
 from urllib import parse
 from ttproto.core.exceptions import Error
 
-
 # CoAP constants
 RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
 MAX_RETRANSMIT = 4
 MAX_TIMEOUT = 10 + round(
-        (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT
-    )
+    (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2 ** MAX_RETRANSMIT
+)
 
 
 class NoStimuliFoundForTestcase(Error):
@@ -57,6 +56,7 @@ class NoStimuliFoundForTestcase(Error):
     Error raised when no stimuli was defined for the testcase
     """
     pass
+
 
 class FilterError(Error):
     """
@@ -110,7 +110,7 @@ class CoAPTestCase(TestCase):
     def preprocess(
             cls,
             capture: Capture,
-            expected_frames_pattern:list_of(Value)
+            expected_frames_pattern: list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Preprocess and filter the frames of the capture into test case related
@@ -121,20 +121,20 @@ class CoAPTestCase(TestCase):
         :param Capture: The capture which will be filtered/preprocessed
         :return: list of conversations and list of ignored frames
         """
-        conversations = []
+
         # If there is no stimuli at all
         if not expected_frames_pattern or len(expected_frames_pattern) == 0:
             raise NoStimuliFoundForTestcase(
                 'Expected stimuli declaration from the test case'
             )
-        frames, ignored = cls.extract_all_coap_conversations(capture)
-        conversations = cls.correlate(frames, expected_frames_pattern)
-        return conversations, ignored
+        conversations_created_by_token, ignored = cls.extract_all_coap_conversations(capture)
+        conversations_correlated_for_testcases = cls.correlate(conversations_created_by_token, expected_frames_pattern)
+        return conversations_correlated_for_testcases, ignored
 
     @classmethod
     @typecheck
-    def correlate(cls, conversations:list_of(Conversation),
-                expected_frames_pattern:list_of(Value))->list_of(Conversation):
+    def correlate(cls, conversations: list_of(Conversation),
+                  expected_frames_pattern: list_of(Value)) -> list_of(Conversation):
         """
         WIP
         Correlate different related conversations.
@@ -265,22 +265,21 @@ class CoAPTestCase(TestCase):
         """
         # TODO Adding an example in the documentation above.
         conversations_matching_stimulis = cls.__get_all_matching_conversations(
-                                            conversations,
-                                            expected_frames_pattern
-                                            )
+            conversations,
+            expected_frames_pattern
+        )
         conversations_to_merge = cls.__get_conversation_to_merge(
-                                    conversations_matching_stimulis,
-                                    expected_frames_pattern
-                                    )
+            conversations_matching_stimulis,
+            expected_frames_pattern
+        )
         return cls.__merge_all_conversations_to_merge(conversations_to_merge)
-
 
     @classmethod
     @typecheck
     def __merge_all_conversations_to_merge(
             cls,
-            conversations_to_merge:list_of(list_of(Conversation))
-    )->list_of(Conversation):
+            conversations_to_merge: list_of(list_of(Conversation))
+    ) -> list_of(Conversation):
         """
         A list of list of conversation that must be merged together.
         That is, we merge all conversations of in the same "inner list" into one,
@@ -290,7 +289,7 @@ class CoAPTestCase(TestCase):
 
         for list_of_related_conversations in conversations_to_merge:
             merged_conversation = cls.__merge_conversations(
-                                                list_of_related_conversations)
+                list_of_related_conversations)
             all_merged_conversations.append(merged_conversation)
 
         return all_merged_conversations
@@ -298,9 +297,9 @@ class CoAPTestCase(TestCase):
     @classmethod
     @typecheck
     def __merge_conversations(
-                            cls,
-                            conversations_to_merge: list_of(Conversation)
-                            ) ->Conversation:
+            cls,
+            conversations_to_merge: list_of(Conversation)
+    ) -> Conversation:
         """
         Merge the given conversations into a single one.
         The given conversation should be belong to the same instance of the same TC.
@@ -314,14 +313,14 @@ class CoAPTestCase(TestCase):
 
         for conv in conversations_to_merge:
             if conv in added_in_merged_conv:
-                continue # Already treated
+                continue  # Already treated
             for frame in conv:
                 for other_conv in conversations_to_merge:
-                    if other_conv is not conv\
-                    and other_conv[0].timestamp < frame.timestamp\
-                    and other_conv not in added_in_merged_conv:
-                    # We check at the first frame of other conversation to see
-                    # if there is any correlation.
+                    if other_conv is not conv \
+                            and other_conv[0].timestamp < frame.timestamp \
+                            and other_conv not in added_in_merged_conv:
+                        # We check at the first frame of other conversation to see
+                        # if there is any correlation.
                         for other_frame in other_conv:
                             merged_conversation.append(other_frame)
                             added_in_merged_conv.append(other_conv)
@@ -333,10 +332,10 @@ class CoAPTestCase(TestCase):
     @classmethod
     @typecheck
     def __get_all_matching_conversations(
-                                        cls,
-                                        conversations:list_of(Conversation),
-                                        expected_frames_pattern:list_of(Value)
-                                        )->list_of(Conversation):
+            cls,
+            conversations: list_of(Conversation),
+            expected_frames_pattern: list_of(Value)
+    ) -> list_of(Conversation):
         """
 
         Retrieve a list of all conversations that correspond to any stimulis
@@ -365,10 +364,10 @@ class CoAPTestCase(TestCase):
     @classmethod
     @typecheck
     def __get_conversation_to_merge(
-                                    cls,
-                                    conversations:list_of(Conversation),
-                                    expected_frames_pattern: list_of(Value))\
-                                    ->list_of(list_of(Conversation)):
+            cls,
+            conversations: list_of(Conversation),
+            expected_frames_pattern: list_of(Value)) \
+            -> list_of(list_of(Conversation)):
         """
         Retrieve a list 'outer' of list 'inter' with each conversations inside
         those inter lists having to be merged together. That is, conversations
@@ -386,7 +385,7 @@ class CoAPTestCase(TestCase):
         current_convs_to_merge = []
 
         for conv in conversations_maching_a_stimulis:
-            if conv[0][CoAP] in expected_frames_pattern[0]\
+            if conv[0][CoAP] in expected_frames_pattern[0] \
                     and len(current_convs_to_merge) == 0:
                 current_convs_to_merge.append(conv)
             elif conv[0][CoAP] in expected_frames_pattern[0]:
@@ -397,16 +396,16 @@ class CoAPTestCase(TestCase):
                 current_convs_to_merge.append(conv)
 
         if current_convs_to_merge not in all_convs_to_merge:
-                all_convs_to_merge.append(current_convs_to_merge)
+            all_convs_to_merge.append(current_convs_to_merge)
 
         return all_convs_to_merge
 
     @classmethod
     @typecheck
     def extract_all_coap_conversations(
-                                    cls,
-                                    capture: Capture)\
-                                    ->(list_of(Conversation), list_of(Frame)):
+            cls,
+            capture: Capture) -> (list_of(Conversation), list_of(Frame)):
+
         protocol = cls.get_protocol()
         nodes = cls.get_nodes_identification_templates()
 
@@ -443,7 +442,7 @@ class CoAPTestCase(TestCase):
 
             if frame[CoAP]["type"] == 2 or frame[CoAP]["type"] == 3:
                 if CMID in acknowledged_CMID:
-                    #A duplicated ACK or RST
+                    # A duplicated ACK or RST
                     ignored.append(frame)
                     continue
                 else:
@@ -456,7 +455,7 @@ class CoAPTestCase(TestCase):
             else:
                 if CTOK in tkn_to_conv:
                     tkn_to_conv[CTOK].append(frame)
-                else: # First time we encounter the token "CTOK".
+                else:  # First time we encounter the token "CTOK".
                     conv = Conversation(nodes)
                     conv.append(frame)
                     tkn_to_conv[CTOK] = conv
@@ -479,10 +478,9 @@ class CoAPTestCase(TestCase):
 
         # While there is one and that it's an ack, pass it
         while all((
-            self._frame is not None,
-            self._frame[CoAP] in CoAP(type='ack', code=0)
+                    self._frame is not None,
+                    self._frame[CoAP] in CoAP(type='ack', code=0)
         )):
-
             self.next(optional)
 
     @property
@@ -766,7 +764,7 @@ class Link(list):
                             error("attribute value for %r is empty" % name)
 
                         # Consume the read part
-                        s = s[i+1:]
+                        s = s[i + 1:]
 
                     # If it doesn't begin with a quote, it's a token
                     else:
@@ -808,9 +806,9 @@ class Link(list):
 
         @typecheck
         def get(
-            self,
-            par_name: str,
-            testcase: optional(CoAPTestCase) = None
+                self,
+                par_name: str,
+                testcase: optional(CoAPTestCase) = None
         ) -> optional(str):
             """
             Get the value of a link value from its parameter name

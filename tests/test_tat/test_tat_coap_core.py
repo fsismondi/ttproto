@@ -1,5 +1,6 @@
-from tests.test_tat import TestAnalysisInteropTestCase
 import os
+
+from tests.test_tat.test_tat import TestAnalysisInteropTestCase
 
 
 class TestAnalysisInteropCoreTestCase(TestAnalysisInteropTestCase):
