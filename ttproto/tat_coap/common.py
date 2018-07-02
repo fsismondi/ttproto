@@ -90,15 +90,13 @@ class CoAPTestCase(TestCase):
     @typecheck
     def get_nodes_identification_templates(cls) -> list_of(Node):
         """
-        Get the nodes of this test case. This has to be be implemented into
-        each test cases class.
+        Get the nodes of CoAP test case.
 
-        :return: The nodes of this TC
+        :return: The nodes involved in the CoAP test case
         :rtype: [Node]
 
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
+        .. note:: For CoAP it is simple so we can define general behaviour for all CoAP test cases,
+                  for other protocols this may have to be defined in subclasses (specific test case scenario).
         """
         return [
             Node('client', UDP(dport=5683)),
@@ -113,19 +111,19 @@ class CoAPTestCase(TestCase):
             expected_frames_pattern: list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
-        Preprocess and filter the frames of the capture into test case related
+        Pre-processes and filters the frames of the capture into test case related
         conversations.
+
         This method depends on the protocol features, so it cannot be
-        implemented in a generic way.
+        implemented in a generic way (in super class TestCase)
 
         :param Capture: The capture which will be filtered/preprocessed
         :return: list of conversations and list of ignored frames
         """
 
-        # If there is no stimuli at all
-        if not expected_frames_pattern or len(expected_frames_pattern) == 0:
+        if not expected_frames_pattern:  # If there is no stimuli at all
             raise NoStimuliFoundForTestcase(
-                'Expected stimuli declaration from the test case'
+                'Expected stimuli declaration from the test case for running pre-process and filtering of frames'
             )
         conversations_created_by_token, ignored = cls.extract_all_coap_conversations(capture)
         conversations_correlated_for_testcases = cls.correlate(conversations_created_by_token, expected_frames_pattern)
@@ -136,9 +134,8 @@ class CoAPTestCase(TestCase):
     def correlate(cls, conversations: list_of(Conversation),
                   expected_frames_pattern: list_of(Value)) -> list_of(Conversation):
         """
-        WIP
-        Correlate different related conversations.
-        Conversations related to the same instance of a test case, having several
+        Correlates related conversations.
+        Conversations related to a test case, having several
         stimulis, are merged into one.
         This method relies on the given stimulis as frames pattern to determine which
         conversations are related for the test case.
@@ -156,6 +153,25 @@ class CoAPTestCase(TestCase):
         I.e CoAP(type='con', code='post', opt=Opt(CoAPOptionUriPath("test")).
 
         Let's say we have a 4 conversations in the given list of conversations:
+
+        # python3 -i console.py
+        >>> from pprint import pprint
+        >>> c = Capture('tests/test_dumps/analysis/preprocess/coap/Two_tc_two_times_each_with_overlap.pcap')
+        >>> pprint(c.frames)
+        [<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 19207] GET /separate, tok 00 00 5f 6a >,
+         <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 19207] Empty >,
+         <Frame   3: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 56421] 2.05 Content , tok 00 00 5f 6a >,
+         <Frame   4: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 56421] Empty >,
+         <Frame   5: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 4146] POST /test, tok 28 6b 05 55 ca 09 29 ae >,
+         <Frame   6: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 4146] 2.01 Created /location1/location2/location3, tok 28 6b 05 55 ca 09 29 ae >,
+         <Frame   7: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 10512] GET /separate, tok 00 00 5b e1 >,
+         <Frame   8: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 10512] Empty >,
+         <Frame   9: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 58373] POST /test, tok e4 d8 1e c4 96 6e f9 20 >,
+         <Frame  10: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 58373] 2.01 Created /location1/location2/location3, tok e4 d8 1e c4 96 6e f9 20 >,
+         <Frame  11: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 56422] 2.05 Content , tok 00 00 5b e1 >,
+         <Frame  12: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 56422] Empty >]
+
+
 
         conversations[0] = [
             < [Client 1 -> Server] CoAP [CON 19207] GET /separate >

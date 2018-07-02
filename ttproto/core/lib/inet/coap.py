@@ -83,7 +83,7 @@ __all__ = [
     'CoAPOptionUriPort',
     'CoAPOptionUriQuery',
     'CoAPOptionOneM2MFrom',
-    'CoAPOptionOneM2MRequestIdentifier', 
+    'CoAPOptionOneM2MRequestIdentifier',
     'CoAPOptionOneM2MName',
     'CoAPOptionOneM2MNotificationURI',
     'CoAPOptionOneM2MResponseStatusCode',
@@ -386,7 +386,6 @@ class _CoAPCodeDescription:
         'Server Error',
     )
 
-
     def __getitem__ (self, item):
         try:
             return self.__known_codes[item]
@@ -400,6 +399,7 @@ class _CoAPCodeDescription:
             else:
                 return "Reserved"
 
+
 class CoAPType (UInt2):
     __values = "CON", "NON", "ACK", "RST"
 
@@ -411,6 +411,7 @@ class CoAPType (UInt2):
                 raise Exception ("Invalid CoAP message type")
 
         return super().__new__(cls, value)
+
 
 class CoAPCode (UInt8):
     __values = "Empty", "GET", "POST", "PUT", "DELETE"
@@ -429,6 +430,7 @@ class CoAPCode (UInt8):
             value = major*32 + minor
 
         return super().__new__(cls, value)
+
 
 class _CoAPPayloadTag (PacketValue.Tag):
     def build_message (self, value, ctx = None):
@@ -460,6 +462,7 @@ class _CoAPPayloadTag (PacketValue.Tag):
    |1 1 1 1 1 1 1 1|    Payload (if any) ...
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 """
+
 class CoAP (
     metaclass = InetPacketClass,
     fields    = [
@@ -493,43 +496,56 @@ class CoAP (
     def is_response (self: is_flat_value):
         return self["code"] >= 32
 
-    def get_uri (self, location = False):
-        assert is_flat_value (self)
+    def get_uri(self, location=False):
+        assert is_flat_value(self)
         host = ""
         port = ""
         path = ""
-        query= ""
+        query = ""
         for opt in self["opt"]:
             if not location:
-                if isinstance (opt, CoAPOptionUriHost):
+                if isinstance(opt, CoAPOptionUriHost):
                     host = opt["val"]
-                elif isinstance (opt, CoAPOptionUriPort):
-                    port = str (opt["val"])
-                elif isinstance (opt, CoAPOptionUriPath):
-                    path += "/" + quote_plus (opt["val"])
-                elif isinstance (opt, CoAPOptionUriQuery):
-                    query += ("&" if query else "?") + quote_plus (opt["val"], safe = "=")
+                elif isinstance(opt, CoAPOptionUriPort):
+                    port = str(opt["val"])
+                elif isinstance(opt, CoAPOptionUriPath):
+                    path += "/" + quote_plus(opt["val"])
+                elif isinstance(opt, CoAPOptionUriQuery):
+                    query += ("&" if query else "?") + quote_plus(opt["val"], safe="=")
             else:
-                if isinstance (opt, CoAPOptionLocationPath):
-                    path += "/" + quote_plus (opt["val"])
-                elif isinstance (opt, CoAPOptionLocationQuery):
-                    query += ("&" if query else "?") + quote_plus (opt["val"], safe = "=")
+                if isinstance(opt, CoAPOptionLocationPath):
+                    path += "/" + quote_plus(opt["val"])
+                elif isinstance(opt, CoAPOptionLocationQuery):
+                    query += ("&" if query else "?") + quote_plus(opt["val"], safe="=")
 
         if not path and not location:
             path = "/"
 
-        return "".join ((host, (":" if host or port else ""), port, path, query))
+        return "".join((host, (":" if host or port else ""), port, path, query))
 
-    def describe (self, desc):
-        t = self.get_description ("type")
+    def describe(self, desc):
+        t = self.get_description("type")
+
         if self["mid"]:
-            t += " %d" % self["mid"]
+            t += " mid %d" % self["mid"]
 
         desc.info = "CoAP [%s] %s %s" % (
             t,
-            self.get_description ("code"),
-            self.get_uri (self["code"] >= 32) if self["code"] else "",
+            self.get_description("code"),
+            self.get_uri(self["code"] >= 32) if self["code"] else "",
         )
+
+        if self['code'] != 0:
+            tok = ''
+            if self["tok"]:
+                token_as_str = self["tok"].hex()
+                for i in range(0, len(token_as_str), 2):
+                    tok += "%s " % token_as_str[i:i + 2]
+            else:
+                tok = 'None'
+
+            desc.info += ', tok %s' % tok
+
         return True
 
 #############################
@@ -547,12 +563,14 @@ class CoAPOptionUInt (
     ]):
     pass
 
+
 class CoAPOptionEmpty (
     metaclass	= InetPacketClass,
     variant_of	= CoAPOption,
     prune		= -1,
     ):
     pass
+
 
 class CoAPOptionString (
     metaclass	= InetPacketClass,
@@ -562,6 +580,7 @@ class CoAPOptionString (
         ("Value",	"val",	str),
     ]):
     pass
+
 
 class CoAPOptionBlock (
     metaclass	= InetPacketClass,
@@ -631,6 +650,7 @@ class CoAPOptionBlock (
 
         return bin_slice
 
+
 class CoAPOptionEnd (
     metaclass	= InetPacketClass,
     variant_of	= CoAPOptionEmpty,
@@ -669,7 +689,7 @@ _TY_format_description = {
     "group": "9",
     "pollingChannel": "15",
     "flexContainer" : "28",
-    "mgmtCmd": "12",   
+    "mgmtCmd": "12",
 }
 def _max_age_description (v):
 
