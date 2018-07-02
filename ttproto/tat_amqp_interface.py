@@ -59,8 +59,8 @@ from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDat
 COMPONENT_ID = NotImplementedError
 
 # Directories
-DATADIR = "data"
-TMPDIR = "tmp"
+DATADIR = "data"  # used mostly as output methods files dir
+TMPDIR = "tmp"  # used mostly as input methods files dir
 LOGDIR = "log"
 AUTO_DISSECT_OUTPUT_FILE = os.path.join(DATADIR, 'auto_dissection')
 
@@ -239,8 +239,8 @@ class AmqpInterface:
                 token=None,
                 frames=dissection_structured_text,
                 frames_simple_text=dissection_simple_text,
-                testcase_id='unknown',
-                testcase_ref='unknown'
+                testcase_id=None,
+                testcase_ref=None,
             )
             _publish_message(ch, event_diss)
             self.logger.info("Auto dissection message sent.. ")
@@ -289,14 +289,15 @@ class AmqpInterface:
                     self.logger.warning("Empty PCAP received")
                     return
                 else:
-                    self.logger.info("Pcap correctly saved %d B at %s" % (nb, TMPDIR))
+                    self.logger.info("Pcap correctly saved %d B at %s" % (nb, os.path.join(TMPDIR, filename)))
 
                 # run the analysis
-                analysis_results = analyze_capture(filename=os.path.join(DATADIR, filename),
-                                                   testcase_id=testcase_id,
-                                                   protocol=protocol,
-                                                   output_file=operation_token
-                                                   )
+                analysis_results = analyze_capture(
+                    filename=os.path.join(TMPDIR, filename),
+                    testcase_id=testcase_id,
+                    protocol=protocol,
+                    output_file=os.path.join(DATADIR, operation_token),
+                )
 
             except Exception as e:
                 _publish_message(
@@ -390,9 +391,9 @@ class AmqpInterface:
             try:
                 operation_token = _get_token()
                 dissection_structured_text, dissection_simple_text = dissect_capture(
-                    filename=filename,
+                    filename=os.path.join(TMPDIR, filename),
                     proto_filter=proto_filter,
-                    output_file=os.path.join(DATADIR, operation_token)
+                    output_file=os.path.join(DATADIR, operation_token),
                 )
             except (TypeError, pure_pcapy.PcapError) as e:
                 _publish_message(
@@ -500,7 +501,7 @@ def _auto_dissect_service():
                     try:
                         operation_token = _get_token()
                         dissection_structured_text, dissection_simple_text = dissect_capture(
-                            filename=filename,
+                            filename=os.path.join(TMPDIR, filename),
                             proto_filter=proto_filter,
                             output_file=os.path.join(DATADIR, operation_token)
                         )
@@ -517,7 +518,7 @@ def _auto_dissect_service():
                         frames=dissection_structured_text,
                         frames_simple_text=dissection_simple_text,
                         testcase_id=filename.strip('.pcap'),  # dirty solution but less coding :)
-                        testcase_ref='unknown'  # not really needed
+                        testcase_ref=None,
                     )
                     _publish_message(channel, m)
 

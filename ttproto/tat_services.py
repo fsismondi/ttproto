@@ -48,12 +48,13 @@ def analyze_capture(filename, protocol, testcase_id, output_file):
         raise NotImplementedError('Protocol %s not among the allowed analysis test suites' % protocol)
 
     analysis_results = Analyzer('tat_' + protocol.lower()).analyse(filename, testcase_id)
-    logger.info('analysis result: %s' % str(analysis_results))
-    logger.debug('PCAP analysed')
+    logger.info('PCAP file analysed: %s' % filename)
+    logger.info('Analysis result: %s' % str(analysis_results))
 
     if output_file and type(output_file) is str:
         # save analysis response
         _dump_json_to_file(json.dumps(analysis_results), output_file)
+        logger.info('Results saved at: %s' % output_file)
 
     return analysis_results
 
@@ -88,7 +89,9 @@ def dissect_capture(filename, proto_filter=None, output_file=None):
         dissection_as_dicts = cap.get_dissection()
         dissection_as_text = cap.get_dissection_simple_format()
 
-    logger.info('PCAP dissected')
+    logger.info('PCAP file dissected: %s' % filename)
+    logger.info('Dissected result: %s' % dissection_as_text)
+
     if output_file and type(output_file) is str:
         # save dissection response
         _dump_json_to_file(json.dumps(dissection_as_dicts), output_file)

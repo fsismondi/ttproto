@@ -62,12 +62,9 @@ sequence:
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
-<<<<<<< HEAD
         validation = validate(str(self.coap['pl']),'3306')
-        self.set_verdict(validation, 'Object ID = 3306 payload validation against OMA LwM2M Object and Resource Registry')
-=======
-        
->>>>>>> fire4light
+        self.set_verdict(validation, 'payload validation')
+
 
 
      

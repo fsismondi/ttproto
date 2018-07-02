@@ -184,7 +184,7 @@ sequence:
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
         validation = validate(str(self.coap['pl']),'1')
-        self.set_verdict(validation, 'Object ID = 1 payload validation against OMA LwM2M Object and Resource Registry')
+        self.set_verdict(validation, 'payload validation')
 
         self.next()
 
@@ -210,5 +210,5 @@ sequence:
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
         validation = validate(str(self.coap['pl']),'1')
-        self.set_verdict(validation, 'Object ID = 1 payload validation against OMA LwM2M Object and Resource Registry')
+        self.set_verdict(validation, 'payload validation')
 
