@@ -63,7 +63,7 @@ sequence:
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
         validation = validate(str(self.coap['pl']),'3306')
-        self.set_verdict(validation, 'payload validation')
+        self.set_verdict(validation[0], validation[1])
 
 
 
