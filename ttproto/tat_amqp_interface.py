@@ -69,6 +69,8 @@ HASH_PREFIX = 'tt'
 HASH_SUFFIX = 'proto'
 TOKEN_LENGTH = 28
 
+# states
+previous_frames_count = 0
 
 #####################
 
@@ -187,6 +189,7 @@ class AmqpInterface:
         sys.exit(0)
 
     def on_data_received(self, ch, method, props, body):
+        global previous_frames_count
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
@@ -198,12 +201,10 @@ class AmqpInterface:
         if isinstance(event_received, messages.MsgPacketSniffedRaw):
 
             try:
-
                 if 'serial' in event_received.interface_name:
                     pcap_to_dissect = os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
                                                    AmqpDataPacketDumper.DEFAULT_802154_DUMP_FILENAME
                                                    )
-
                 elif 'tun' in event_received.interface_name:
                     pcap_to_dissect = os.path.join(AmqpDataPacketDumper.DEFAULT_DUMP_DIR,
                                                    AmqpDataPacketDumper.DEFAULT_RAWIP_DUMP_FILENAME
@@ -224,7 +225,9 @@ class AmqpInterface:
                     filename=pcap_to_dissect,
                     proto_filter=None,
                     output_file=AUTO_DISSECT_OUTPUT_FILE,
+                    number_of_frames_to_skip = previous_frames_count
                 )
+                previous_frames_count += len(dissection_structured_text)
 
             except (TypeError, pure_pcapy.PcapError) as e:
                 self.logger.error("Error processing PCAP: %s" % e)
@@ -243,7 +246,7 @@ class AmqpInterface:
                 testcase_ref=None,
             )
             _publish_message(ch, event_diss)
-            self.logger.info("Auto dissection message sent.. ")
+            self.logger.info("Auto dissection message sent (%s frames).. " % len(dissection_structured_text))
 
             return
 
@@ -283,6 +286,7 @@ class AmqpInterface:
                         messages.MsgErrorReply(
                             service_request,
                             ok=False,
+                            error_code=400,
                             error_message='Empty PCAP file received'
                         )
                     )
@@ -378,6 +382,7 @@ class AmqpInterface:
                     ch,
                     messages.MsgErrorReply(
                         service_request,
+                        error_code=400,
                         error_message='Empty PCAP file received'
                     )
                 )
@@ -472,9 +477,7 @@ def _auto_dissect_service():
                     repr(request)
                 )
             )
-
         else:
-
             if last_polled_pcap and last_polled_pcap == response.value:
                 logger.debug('No new sniffed packets to dissect')
             else:

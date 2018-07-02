@@ -31,12 +31,13 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+from pprint import pprint
 from ttproto.utils.pure_pcapy import DLT_IEEE802_15_4
 from ttproto.core.lib.all import Ieee802154
-from ttproto.utils.pcap_filter import remove_first_bytes, openwsn_profile_filter, finterop_tun_profile_filter
+from ttproto.utils.pcap_filter import remove_first_bytes, openwsn_profile_filter, finterop_tun_profile_filter, \
+    remove_first_frames
 
 if __name__ == '__main__':
-
     # from ttproto.core.dissector import Dissector
     #
     # #filename = 'tests/test_dumps/6lowpan/echo_req_and_reply_and_other_packets_with_openmote_sniffer.pcap'
@@ -54,21 +55,32 @@ if __name__ == '__main__':
     # for s in dissector.summary(protocol = Ieee802154):
     #     print(s)
 
-    from ttproto.core.dissector import Dissector
+    from ttproto.core.dissector import Capture, Dissector
 
-    #filename = 'tmp/ipv6_loopback_icmp6.pcap'
-    #filename = 'tmp/loopback_1e00_ipv6.pcap'
-    #filename = 'tmp/tun_sniffed_coap_switch_endiannes.pcap'
-    #filename = 'tmp/tun_sniffed_coap.pcap'
-    filename = '/Users/fsismondi/TD_COAP_CORE_01.pcap'
+    # filename = '/Users/fsismondi/TD_COAP_CORE_01.pcap'
+    # # dissect with no modifs
+    # dissector = Dissector(filename)
+    #
+    # # dissect with filter
+    # finterop_tun_profile_filter(filename)
+    # #dissector = Dissector('tmp/temp.pcap')
+    # print(dissector.summary())
+    # print('#####')
+    # print(dissector.dissect())
 
+    filename1 = 'tmp/DLT_RAW_1.pcap'
     # dissect with no modifs
-    dissector = Dissector(filename)
+    c1 = Capture(filename1)
 
     # dissect with filter
-    finterop_tun_profile_filter(filename)
-    #dissector = Dissector('tmp/temp.pcap')
-    print(dissector.summary())
-    print('#####')
-    print(dissector.dissect())
+    remove_first_frames(
+        number_of_frames_to_skip=2,
+        pcap_filename=filename1,
+        new_pcap_filename='tmp/temp.pcap',
+    )
+    c2 = Capture('tmp/temp.pcap')
 
+    print('#####')
+    pprint(c1.summary())
+    print('#####')
+    pprint(c2.summary())

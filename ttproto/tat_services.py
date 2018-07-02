@@ -12,6 +12,7 @@ from ttproto.core.lib.all import *
 from ttproto.core.analyzer import Analyzer
 from ttproto.core.dissector import Capture, get_dissectable_protocols
 from ttproto.core.typecheck import typecheck, optional, either
+from ttproto.utils.pcap_filter import remove_first_frames
 
 ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m', 'lwm2m']
 
@@ -59,7 +60,7 @@ def analyze_capture(filename, protocol, testcase_id, output_file):
     return analysis_results
 
 
-def dissect_capture(filename, proto_filter=None, output_file=None):
+def dissect_capture(filename, proto_filter=None, output_file=None, number_of_frames_to_skip=None):
     """
     Dissects (decodes and converts to string representation) network traces (.pcap file).
     """
@@ -68,7 +69,7 @@ def dissect_capture(filename, proto_filter=None, output_file=None):
     if os.path.isfile(filename) is False and os.path.isfile(os.path.join(TMPDIR, filename)):
         filename = os.path.join(TMPDIR, filename)
 
-    logger.info("Dissecting PCAP file %s" % filename)
+    logger.info("PCAP file dissection starts. Filename: %s" % filename)
 
     proto_matched = None
 
@@ -78,6 +79,15 @@ def dissect_capture(filename, proto_filter=None, output_file=None):
         if proto_matched is None:
             raise Exception('Unknown protocol %s' % proto_filter)
 
+    if number_of_frames_to_skip:
+        filename_pcap_filtered = os.path.join(TMPDIR, 'pcap_without_some_skipped_frames.pcap')
+        remove_first_frames(
+            pcap_filename=filename,
+            new_pcap_filename=filename_pcap_filtered,
+            number_of_frames_to_skip=number_of_frames_to_skip
+        )
+        filename = filename_pcap_filtered
+
     cap = Capture(filename)
 
     if proto_matched and len(proto_matched) == 1:
@@ -85,12 +95,19 @@ def dissect_capture(filename, proto_filter=None, output_file=None):
         proto = eval(proto_matched[0]['name'])
         dissection_as_dicts = cap.get_dissection(proto)
         dissection_as_text = cap.get_dissection_simple_format(proto)
+        frames_summary = cap.frames
     else:
         dissection_as_dicts = cap.get_dissection()
         dissection_as_text = cap.get_dissection_simple_format()
+        frames_summary = cap.frames
 
-    logger.info('PCAP file dissected: %s' % filename)
-    logger.info('Dissected result: %s' % dissection_as_text)
+    if frames_summary:
+        logger.info('PCAP file dissected (filename: %s). Frames summary:\n%s' % (
+            filename,
+            json.dumps(([repr(c) for c in frames_summary]), indent=4)
+        ))
+    else:
+        logger.info('PCAP file dissected (filename: %s). No frames found.')
 
     if output_file and type(output_file) is str:
         # save dissection response
