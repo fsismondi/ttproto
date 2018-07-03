@@ -215,17 +215,14 @@ class AmqpInterface:
 
                 self.logger.info("Data plane activity")
 
-                # this acts as a filter, to lower the load of the dissections per seconds
-                # we gather all the packets sent on X seconds
-                # note : the sniffing and pcap generation is not done here but by the generic packet dumper component
-                time.sleep(0.1)
+                # note : the sniffing and pcap generation is handled by another process (packet dumper component)
                 ch.queue_purge(queue=self.data_queue_name)
 
                 dissection_structured_text, dissection_simple_text = dissect_capture(
                     filename=pcap_to_dissect,
                     proto_filter=None,
                     output_file=AUTO_DISSECT_OUTPUT_FILE,
-                    number_of_frames_to_skip = previous_frames_count
+                    number_of_frames_to_skip=previous_frames_count
                 )
                 previous_frames_count += len(dissection_structured_text)
 
