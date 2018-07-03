@@ -647,7 +647,7 @@ def validate(jsond, objectid):
     result.append(validation)
     result.append(message)
     logging.info("Validation: " + result[0])
-    return resultat
+    return result
 
 
 if __name__ == "__main__":
