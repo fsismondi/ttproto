@@ -215,10 +215,10 @@ class AmqpInterface:
 
                 self.logger.info("Data plane activity")
 
-                # this acts as a filter, we dont want a dissection message per packet sent on the bus
-                # we gather all the packets sent on a second since the first packet was seen on the bus, then we dissect
+                # this acts as a filter, to lower the load of the dissections per seconds
+                # we gather all the packets sent on X seconds
                 # note : the sniffing and pcap generation is not done here but by the generic packet dumper component
-                time.sleep(1)
+                time.sleep(0.1)
                 ch.queue_purge(queue=self.data_queue_name)
 
                 dissection_structured_text, dissection_simple_text = dissect_capture(
