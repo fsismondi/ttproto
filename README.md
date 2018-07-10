@@ -1,16 +1,14 @@
-# TTProto ( Testing Tool Prototype)
--------------------------
+TTProto ( Testing Tool Prototype)
+-----------------------------------
 
 ttproto is an experimental tool for implementing testing tools, for conformance and interoperability testing.
 It was first implemented to explore new features and concepts for the TTCN-3 standard, but we also used it to implement a passive interoperability test suite we provided for the CoAP interoperability event held in Paris in March 2012.
+
 ttproto is now being used for the purpose of developing testing tools (for interoperability and conformance testing) for the [f-interop european project](http://www.f-interop.eu/)
 This tool is implemented in python3 and its design was influenced mainly by TTCN-3 (abstract model, templates, snapshots, behavior trees, communication ports, logging) and by Scapy (syntax, flexibility, customizability)
 Its purpose is to facilitate rapid prototyping and experimentation (rather than production use). We chose to maximize its modularity and readability rather than performances and real-time considerations.
 
-# Using high level TTProto API
-------------------------------
-
-Check out CLI help command:
+# Using TTProto from CLI
 
 ```
 >>> python3 -m ttproto --help
@@ -27,7 +25,7 @@ TTProto CLI accepts the following commands:
 Also, you can get help for each subcomand:
 
 ```
-tproto dissect --help
+>>> python3 -m ttproto dissect --help
 usage:  ttproto dissect file [<options>]
 
 Dissection usage examples:
@@ -39,6 +37,7 @@ Dissection usage examples:
 ```
 
 ## Example:
+
 ```
 python3 -m ttproto dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap
 
@@ -114,8 +113,8 @@ Encoded as:
 (...)
 ```
 
-# Examples of use of TTProto core API
--------------------------------------
+# Using TTProto core API
+
 Here some examples on how to the TTproto API used for pcap analysis:
 
 Using the ttproto console:
@@ -222,10 +221,14 @@ For running an analysis of a PCAP, interop testcase post-mortem analysis, for (e
     ]
 ```
 
-for more info on how to write a testcase for CoAP or any other protocol see CONTRIBUTING.rst document..
+# see more
+
+- on the detailed feature set of the library check: [ttproto features](https://www.irisa.fr/tipi/wiki/doku.php/testing_tool_prototype:features)
+- on how to write a testcase for CoAP or any other protocol see [CONTRIBUTING.rst document](https://gitlab.f-interop.eu/fsismondi/ttproto/blob/master/CONTRIBUTING.rst)
+- on the source code [gitlab repo](https://gitlab.f-interop.eu/fsismondi/ttproto)
+
 
 # The git repository contains the following testing tools:
-----------------------------------------------------------
 
 ## TAT_COAP - Test Analysis Tool
 

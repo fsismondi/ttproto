@@ -6,7 +6,6 @@ from setuptools import setup, find_packages
 
 PACKAGE = 'ttproto'
 LICENSE = 'CeCILL'
-#SCRIPTS = ['ttproto']
 
 # Read version without importing for coverage issues
 def get_version(package):
@@ -23,6 +22,25 @@ def get_version(package):
                 return eval(line.split('=')[-1])  # pylint:disable=eval-used
 
 
+CLASSIFIERS = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS"
+]
+
+with open('README.md', 'r') as fh:
+    long_description = fh.read()
+
 setup(
     name=PACKAGE,
     version=get_version(PACKAGE),
@@ -33,9 +51,14 @@ setup(
     description=('ttproto is an experimental tool for implementing testing'
                  'tools, for conformance and interoperability testing mainly.'),
     license=LICENSE,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=find_packages(),
-    #scripts=SCRIPTS,
-    classifiers=['Development Status :: 2 - Pre-Alpha',
-                 'Programming Language :: Python :: 2'],
-    install_requires=['pyyaml','requests'],
+    classifiers=CLASSIFIERS,
+    install_requires=[
+        'pyyaml',
+        'requests',
+        'pika',
+    ],
+
 )

@@ -1,7 +1,9 @@
 # -*- coding:utf-8 -*-
-import os, errno, logging
+import os
+import errno
+import logging
 
-__version__ = '0.1.1'
+__version__ = '0.1.4'
 
 # Directories
 DATADIR = "data"
