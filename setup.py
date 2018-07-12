@@ -7,6 +7,7 @@ from setuptools import setup, find_packages
 PACKAGE = 'ttproto'
 LICENSE = 'CeCILL'
 
+
 # Read version without importing for coverage issues
 def get_version(package):
     """ Extract package version without importing file
@@ -55,6 +56,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     classifiers=CLASSIFIERS,
+    include_package_data=True,  # see MANIFEST.in
     install_requires=[
         'pyyaml',
         'requests',

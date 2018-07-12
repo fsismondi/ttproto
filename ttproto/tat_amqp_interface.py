@@ -47,6 +47,11 @@ import logging
 from collections import OrderedDict
 from multiprocessing import Process
 
+# Directories
+from ttproto import DATADIR
+from ttproto import TMPDIR
+from ttproto import LOGDIR
+
 from ttproto import LOG_LEVEL
 from ttproto.tat_services import analyze_capture, dissect_capture, get_test_cases, base64_to_pcap_file
 
@@ -58,10 +63,6 @@ from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDat
 
 COMPONENT_ID = NotImplementedError
 
-# Directories
-DATADIR = "data"  # used mostly as output methods files dir
-TMPDIR = "tmp"  # used mostly as input methods files dir
-LOGDIR = "log"
 AUTO_DISSECT_OUTPUT_FILE = os.path.join(DATADIR, 'auto_dissection')
 
 # Prefix and suffix for the hashes

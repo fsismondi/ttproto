@@ -17,9 +17,9 @@ from ttproto.utils.pcap_filter import remove_first_frames
 ALLOWED_PROTOCOLS_FOR_ANALYSIS = ['coap', '6lowpan', 'onem2m', 'lwm2m']
 
 # Directories
-DATADIR = "data"
-TMPDIR = "tmp"
-LOGDIR = "log"
+from ttproto import DATADIR
+from ttproto import TMPDIR
+from ttproto import LOGDIR
 
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'
@@ -43,14 +43,13 @@ def analyze_capture(filename, protocol, testcase_id, output_file):
     if os.path.isfile(filename) is False and os.path.isfile(os.path.join(TMPDIR, filename)):
         filename = os.path.join(TMPDIR, filename)
 
-    logger.info("Analyzing PCAP file %s" % filename)
+    logger.info("Analyzing PCAP file %s, for testcase: %s" % (filename, testcase_id))
 
     if protocol.lower() not in ALLOWED_PROTOCOLS_FOR_ANALYSIS:
         raise NotImplementedError('Protocol %s not among the allowed analysis test suites' % protocol)
 
     analysis_results = Analyzer('tat_' + protocol.lower()).analyse(filename, testcase_id)
-    logger.info('PCAP file analysed: %s' % filename)
-    logger.info('Analysis result: %s' % str(analysis_results))
+    logger.info('Analysis finished, result:\n%s' % str(analysis_results))
 
     if output_file and type(output_file) is str:
         # save analysis response

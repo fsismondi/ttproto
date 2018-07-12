@@ -214,7 +214,6 @@ class CoAPTestcase(object):
             # end of conversation
             self.setverdict(verdict, "expected %s from the %s" % (template, sender))
             self.failed_frames.add(self.frame.id)
-            self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
             return False
 
         # check the sender
@@ -224,14 +223,12 @@ class CoAPTestcase(object):
                 if verdict is not None:
                     self.setverdict(verdict, "expected %s from the client" % template)
                 self.failed_frames.add(self.frame.id)
-                self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
                 return False
         elif sender == "server":
             if src != self.conversation.server:
                 if verdict is not None:
                     self.setverdict(verdict, "expected %s from the server" % template)
                 self.failed_frames.add(self.frame.id)
-                self.log('ENCONTRE FFAILED FRAME! : ' + self.frame.id)
                 return False
         else:
             assert sender is None

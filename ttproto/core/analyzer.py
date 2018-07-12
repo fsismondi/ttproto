@@ -44,6 +44,7 @@ import traceback
 from os import path
 from importlib import import_module
 
+from ttproto import PACKAGE_DIR
 from ttproto.core.data import Data, DifferenceList, Value
 from ttproto.core.dissector import (Frame, Capture, is_protocol,
                                     ProtocolNotFound)
@@ -61,7 +62,6 @@ __all__ = [
 ]
 
 TESTCASES_SUBDIR = 'testcases'
-TTPROTO_DIR = 'ttproto'
 TC_FILE_EXTENSION = '.py'
 EVERY_TC_WILDCARD = 'td_*' + TC_FILE_EXTENSION
 
@@ -715,7 +715,7 @@ class Analyzer:
 
         # Check the test_env passed
         test_dir = path.join(
-            TTPROTO_DIR,
+            PACKAGE_DIR,
             test_env,
             TESTCASES_SUBDIR
         )
@@ -743,7 +743,7 @@ class Analyzer:
 
         # Build the search query
         search_query = path.join(
-            TTPROTO_DIR,
+            PACKAGE_DIR,
             self.__test_env,
             TESTCASES_SUBDIR,
             search
@@ -772,7 +772,7 @@ class Analyzer:
 
             # Build the module relative name
             mod_rel_name = '.'.join([
-                TTPROTO_DIR,
+                'ttproto',
                 self.__test_env,
                 TESTCASES_SUBDIR,
                 modname
@@ -925,7 +925,6 @@ class Analyzer:
         with Data.disable_name_resolution():
             # Get the capture from the file
             capture = Capture(filename)
-
             # Initialize the TC with the list of conversations
             test_case = test_case_class(capture)
             verdict, rev_frames, log, partial_verdicts, exceptions = test_case.run_test_case()

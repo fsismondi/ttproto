@@ -31,14 +31,13 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+from ttproto import TMPDIR
 from ttproto.utils.pure_pcapy import *
 from ttproto.core.typecheck import *
 
 # TODO extend to other types of profiles which involve sth different that removing the first X bytes of each frame
 # TODO filter first X layers of pcap
 # TODO protocol filter: ex: filter anything that's not IEE802.15.4? dissect()  already does this
-
-TMPDIR = "tmp"
 
 
 # #################### Filter Functions #########################
