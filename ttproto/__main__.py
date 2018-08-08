@@ -28,8 +28,8 @@ cli_help = '''ttproto <command> [<args>]
 TTProto CLI accepts the following commands:
     dissect         Dissects network traces (.pcap file).
     analyze         Analyses network traces (.pcap file).
-    service_amqp    Launches TTProto as a HTTP service (WIP).
-    service_http    Launches TTProto as an AMQP service.
+    service_amqp    Launches TTProto as an AMQP service.
+    service_http    Launches TTProto as a HTTP service (WIP).
 '''
 diss_help = ''' ttproto dissect file [<options>]
 
