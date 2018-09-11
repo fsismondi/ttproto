@@ -34,7 +34,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
       stage("unittesting component"){
         gitlabCommitStatus("unittesting component"){
             sh '''
-            python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py -vvv
+            python3 -m pytest -p no:cacheprovider tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py -vvv
             '''
         }
       }
