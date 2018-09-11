@@ -5,6 +5,7 @@ import unittest
 
 from tests.test_tools.struct_validator import StructureValidator
 
+from ttproto import TMPDIR
 from ttproto.core.packet import PacketValue
 from ttproto.core.lib.inet.coap import CoAP
 from ttproto.core.dissector import Capture, get_dissectable_protocols
@@ -22,7 +23,6 @@ class DissectPcapTestCase(unittest.TestCase):
     PCAP_FILES_DISSECTION_DIRS = ['tests/test_dumps/dissection/coap/']
 
     PROTO_CLASS_FILTER = CoAP
-    TMP_DIR = 'tmp/'
 
     # Create a struct checker object
     struct_validator = StructureValidator()
@@ -44,14 +44,14 @@ class DissectPcapTestCase(unittest.TestCase):
 
                     # case open wsn profile of pcap
                     if "openwsn_captures" in dirname:
-                        self.pcap_for_test.append(openwsn_profile_filter(complete_filename, self.TMP_DIR +
-                                                                         "filtered_%s" % filename))
+                        self.pcap_for_test.append(
+                            openwsn_profile_filter(complete_filename, os.path.join(TMPDIR, "filtered_%s" % filename))
+                        )
                     # stack completely dissectable by ttproto
                     elif filename.endswith('.pcap'):
                         self.pcap_for_test.append(complete_filename)
                     else:
-                        logging.warning(
-                            '[dissector unittests] file ignored for dissection: %s' % complete_filename)
+                        logging.warning('[dissector unittests] file ignored for dissection: %s' % complete_filename)
 
     def test_get_implemented_protocols(self):
         # Get implemented protocols and check their values
