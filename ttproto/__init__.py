@@ -3,7 +3,7 @@ import os
 import errno
 import logging
 
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 # Directories
@@ -18,7 +18,7 @@ logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 # lower versbosity of pika's logs
 logging.getLogger('pika').setLevel(logging.WARNING)
 
-logging.info("ttproto base dir : %s "%PACKAGE_DIR)
+logging.info("ttproto base dir : %s " % PACKAGE_DIR)
 
 for d in TMPDIR, DATADIR, LOGDIR:
     logging.info("Creating %s directory." % d)
