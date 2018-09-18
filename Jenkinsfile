@@ -67,21 +67,16 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
         }
       }
 
-
-    /* run only some coap test cases?
-        python3 -m pytest tests/ \\
+      stage("unittesting component"){
+        gitlabCommitStatus("unittesting component"){
+            sh '''
+            python3 -m pytest -p no:cacheprovider -vvv tests/ \\
             --ignore=$TEST_FILE_TAT_COAP_COMMON \\
             --ignore=$TEST_FILE_TAT_COAP_CORE \\
             --ignore=$TEST_FILE_TAT_COAP_OBSERVE \\
             --ignore=$TEST_FILE_TAT_COAP_BLOCK \\
             --ignore=tests/test_webserver/tests.py \\
-            --ignore=tests/test_tat_coap/test_webserver.py -vvv
-             */
-
-      stage("unittesting component"){
-        gitlabCommitStatus("unittesting component"){
-            sh '''
-            python3 -m pytest -p no:cacheprovider tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py -vvv
+            --ignore=tests/test_tat_coap/test_webserver.py
             '''
         }
       }
