@@ -563,7 +563,16 @@ class TestCase(object):
         """
 
         # Pre-process / filter conversations corresponding to the TC
-        self._conversations, self._ignored = self.preprocess(self._capture)
+
+        try:
+            self._conversations, self._ignored = self.preprocess(self._capture)
+        except Exception:  # TODO be more selective
+
+            self.set_verdict(
+                'inconclusive',
+                'Capture doesnt match expected pattern: \n\tgot %s, \n\texpected %s' %
+                (str(self._capture.frames), str(self.get_stimulis()))
+            )
 
         # print("----conversations----")
         # print(self._conversations)
@@ -594,7 +603,6 @@ class TestCase(object):
                     self.set_verdict('none', 'no match')
 
             except Exception:
-
                 # Get the execution information, it's a tuple with
                 #     - The type of the exception being handled
                 #     - The exception instance
