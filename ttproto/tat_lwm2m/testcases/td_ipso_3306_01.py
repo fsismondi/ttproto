@@ -62,12 +62,9 @@ sequence:
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
 
-<<<<<<< HEAD
         validation = validate(str(self.coap['pl']),'3306')
-        self.set_verdict(validation, 'payload validation')
-=======
-        
->>>>>>> fire4light
+        self.set_verdict(validation[0], validation[1])
+
 
 
      

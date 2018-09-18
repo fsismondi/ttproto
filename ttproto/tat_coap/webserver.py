@@ -54,11 +54,10 @@ from ttproto.core.typecheck import typecheck,optional,either,list_of
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
 
-
 # Directories
-DATADIR = "data"
-TMPDIR = "tmp"
-LOGDIR = "log"
+from ttproto import DATADIR
+from ttproto import TMPDIR
+from ttproto import LOGDIR
 
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'

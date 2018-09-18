@@ -56,6 +56,10 @@ from ttproto.utils import pure_pcapy
 from ttproto.core.lib.inet import coap
 from ttproto.core.xmlgen import XHTML10Generator, XMLGeneratorControl
 
+# Directories
+from ttproto import DATADIR
+from ttproto import TMPDIR
+from ttproto import LOGDIR
 
 # List to generate the changelog page
 CHANGELOG = []
@@ -63,10 +67,6 @@ CHANGELOG_FIRST_COMMIT = "iot2-beta"
 
 
 # ########################## ttproto API ########################### #
-# Directories
-DATADIR = "data"
-TMPDIR = "tmp"
-LOGDIR = "log"
 
 # Prefix and suffix for the hashes
 HASH_PREFIX = 'tt'

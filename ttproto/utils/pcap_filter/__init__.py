@@ -31,6 +31,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+from ttproto import TMPDIR
 from ttproto.utils.pure_pcapy import *
 from ttproto.core.typecheck import *
 
@@ -38,13 +39,12 @@ from ttproto.core.typecheck import *
 # TODO filter first X layers of pcap
 # TODO protocol filter: ex: filter anything that's not IEE802.15.4? dissect()  already does this
 
-TMPDIR = "tmp"
 
 # #################### Filter Functions #########################
 
 @typecheck
-def remove_first_bytes( number_of_bytes: int, new_snaplen: int, new_network, pcap_filename : str, new_pcap_filename: str = TMPDIR+"/temp.pcap"  ):
-
+def remove_first_bytes(number_of_bytes: int, new_snaplen: int, new_network, pcap_filename: str,
+                       new_pcap_filename: str = TMPDIR + "/temp.pcap"):
     reader = open_offline(pcap_filename)
     dumper = Dumper(new_pcap_filename, new_snaplen, new_network)
 
@@ -57,20 +57,48 @@ def remove_first_bytes( number_of_bytes: int, new_snaplen: int, new_network, pca
             count += 1
             new_header.incl_len = new_header.incl_len - number_of_bytes
             new_header.orig_len = new_header.incl_len
-            new_data = new_data[number_of_bytes:] # take from jumplength bytes to the end of the data
-            dumper.dump(new_header , new_data)
-            new_header , new_data =  reader.next()
+            new_data = new_data[number_of_bytes:]  # take from jumplength bytes to the end of the data
+            dumper.dump(new_header, new_data)
+            new_header, new_data = reader.next()
             if not new_header:
                 stop_iter = True
-        except PcapError:
-            print('the filtering has reached the end of the file :D, pakcet count %d'% count)
+                print('The filtering has reached the end of the file :D, packet count %d' % count)
+        except PcapError as e:
+            print(e)
+            break
+
+@typecheck
+def remove_first_frames(number_of_frames_to_skip: int,
+                        pcap_filename: str,
+                        new_pcap_filename: str = TMPDIR + "/temp.pcap"):
+
+    reader = open_offline(pcap_filename)
+    dumper = Dumper(new_pcap_filename, reader.snaplen, reader.network)
+
+    count = 0
+    stop_iter = False
+
+    for _ in range(0, number_of_frames_to_skip):
+        reader.next()
+
+    while not stop_iter:
+        try:
+            new_header, new_data = reader.next()
+            count += 1
+            new_data = new_data
+            dumper.dump(new_header, new_data)
+            if not new_header:
+                print('The filtering has reached the end of the file :D, packet count %d' % count)
+                break
+        except PcapError as e:
+            print(e)
             break
 
 
 # #################### Filter Profiles #########################
 
 @typecheck
-def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR +'/temp.pcap') -> str:
+def openwsn_profile_filter(pcap_filename: str, new_pcap_filename: str = TMPDIR + '/temp.pcap') -> str:
     """
     This filter is usded to filter the extra layers added by openwsn openvisualizer when sniffing ieee802.15.4
     and forwarding to the tun/tap interface
@@ -81,11 +109,12 @@ def openwsn_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR 
     :return: filename of new pcap file
     """
     JUMP_LENGTH = 16 * 5  # en bytes
-    remove_first_bytes(JUMP_LENGTH, 200, DLT_IEEE802_15_4, pcap_filename, new_pcap_filename )
+    remove_first_bytes(JUMP_LENGTH, 200, DLT_IEEE802_15_4, pcap_filename, new_pcap_filename)
     return new_pcap_filename
 
+
 @typecheck
-def finterop_tun_profile_filter(pcap_filename : str, new_pcap_filename: str = TMPDIR +'/temp.pcap') -> str:
+def finterop_tun_profile_filter(pcap_filename: str, new_pcap_filename: str = TMPDIR + '/temp.pcap') -> str:
     """
     For rewriting link type on f-interop captures
     :param pcap_filename:
@@ -93,7 +122,5 @@ def finterop_tun_profile_filter(pcap_filename : str, new_pcap_filename: str = TM
     :return: filename of new pcap file
     """
     JUMP_LENGTH = 0  # en bytes
-    remove_first_bytes(JUMP_LENGTH, 200, DLT_RAW, pcap_filename, new_pcap_filename )
+    remove_first_bytes(JUMP_LENGTH, 200, DLT_RAW, pcap_filename, new_pcap_filename)
     return new_pcap_filename
-
-

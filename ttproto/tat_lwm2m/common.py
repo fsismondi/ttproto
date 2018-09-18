@@ -616,8 +616,10 @@ def validate(jsond, objectid):
     r2 = requests.get(j[0]["ObjectLink"])
     # logging.info r2.content
     root = ElementTree.fromstring(r2.content)
-
+    
+    result = []
     validation = "pass"
+    message = "["
     for item in root.iter('Item'):
         for child in item:
             if (child.text == "Mandatory"):
@@ -634,12 +636,18 @@ def validate(jsond, objectid):
                         if attrs['n'] == itemuri:
                             n = attrs['n']
                             logging.info("Found!")
+                            message+="{"+str(item.find("Name").text)+" : validated}"
                             break
                     else:
                         validation = "fail"
                         logging.info('Not found!')
-    logging.info("Validation: " + validation)
-    return validation
+                        message+="{"+str(item.find("Name").text)+" : not validated}"
+    
+    message+="]"
+    result.append(validation)
+    result.append(message)
+    logging.info("Validation: " + result[0])
+    return result
 
 
 if __name__ == "__main__":

@@ -64,7 +64,7 @@ class YamlReader:
     @typecheck
     def __process_dict(self) -> dict:
         """
-        Process the dictionnary value of this yaml object
+        Process the dictionary value of this yaml object
 
         :return: The python dict representation of this yaml object
         :rtype: dict
@@ -91,7 +91,7 @@ class YamlReader:
     @property
     def as_dict(self):
         """
-        Singleton method to process the dictionnary value of this yaml object
+        Singleton method to process the dictionary value of this yaml object
 
         :return: The python dict representation of this yaml object
         :rtype: dict
