@@ -159,13 +159,13 @@ sequence:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        return [CoAP(type='con', code='post'), CoAP(type='con', code='get'), CoAP(type='con', code='put')]
+        return [CoAP(type='con', code='put'), CoAP(type='con', code='get'), CoAP(type='con', code='put')]
 
     def run(self):
         self.match('server', CoAP(type='con', code='put', opt=self.uri('/1/0')), 'fail')
         self.match('server', CoAP(pl=Not(b'')), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
         
         self.next()
 
@@ -191,7 +191,7 @@ sequence:
         self.match('server', CoAP(type='con', code='put', opt=self.uri('/1/0')), 'fail')
         self.match('server', CoAP(pl=Not(b'')), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionAccept('11543'))), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat('11543'))), 'fail')
         
         self.next()
 

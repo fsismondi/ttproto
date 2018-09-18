@@ -98,25 +98,23 @@ sequence:
     def run(self):
         self.match('server', CoAP(type='con', code='post', opt=self.uri('/3/0/4')), 'fail')
         self.match('server', CoAP(pl=(b'')), 'fail')
-        
+
         self.next()
 
-        self.match('client', CoAP(code=Any(65, 68), 'fail')
+        self.match('client', CoAP(code=Any(65, 68)), 'fail')
 
         self.next()
 
         self.match('client', CoAP(type='con', code='post', opt=self.uri('/rd')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionAccept('40'))), 'fail')
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.frame.coap["opt"]))
-        if len (opts) < 1:
-            self.setverdict ("inconclusive", "expect at least one UriQuery option")
+        opts = list(filter((lambda o: isinstance(o, CoAPOptionUriQuery)), self.frame.coap["opt"]))
+        if len(opts) < 1:
+            self.setverdict("inconclusive", "expect at least one UriQuery option")
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')
-
 
         self.next()
 
         self.match('server', CoAP(code=2.01, pl=Not(b'')), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')
         self.match('server', CoAP(opt=Opt(CoAPOptionLocationPath())), 'fail')
-    

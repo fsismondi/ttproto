@@ -68,6 +68,3 @@ sequence:
 
         self.match('client', CoAP(code=Any(65, 68), pl=(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionLocationPath())), 'fail')
-
-                
-        

@@ -4,7 +4,7 @@ from ..common import *
 class TD_IPSO_3300_02(CoAPTestCase):
     """
 ---
---- !testcase
+
 testcase_id: TD_IPSO_3300_02
 uri : http://openmobilealliance.org/iot/lightweight-m2m-lwm2m
 configuration: LWM2M_CFG_01

@@ -627,19 +627,38 @@ class TestCase(object):
         """
         Get the purpose of this test case
 
+        Supports old formats of test description in yaml and new one introduced by ioppytest
+
+        - Old test case description format goes like this (nested):
+            {'TD_COAP_CORE_01': {'cfg': 'CoAP_CFG_BASIC', 'obj': 'Perform GET transaction(CON mode)', 'pre': ...}}
+        - New test case description format (used by ioppytest), goes like this (flat):
+            {'testcase_id': 'TD_LWM2M_1.0_INT_203', 'configuration': 'LWM2M_CFG_01', 'objective': ....}}
+
+
+        >>> from ttproto.tat_lwm2m.testcases.td_lwm2m_1_int_203 import TD_LWM2M_1_INT_203
+        >>> TD_LWM2M_1_INT_203.get_test_purpose()
+        "['Quering the Resources values of Device Object (ID:3) on the Client in TLV format', ['Manufacturer Name (id:0)', 'Model number (ID:1)', 'Serial number (ID:2)', 'Firware Version (ID:3)', 'Error Code (ID:11)', 'Supported Binding and Modes (ID:16)']]"
+
+        >>> from ttproto.tat_coap.testcases.td_coap_core_01 import TD_COAP_CORE_01
+        >>> TD_COAP_CORE_01.get_test_purpose()
+        'Perform GET transaction(CON mode)'
+
         :return: The purpose of this test case
         :rtype: str
         """
         if cls.__doc__:
+
             # Get the Yaml reader
             yaml_reader = YamlReader(cls.__doc__, raw_text=True)
 
-            # Then get the dictionnary representation of the tc documentation
+            # Then get the dictionary representation of the tc documentation
             doc_as_dict = yaml_reader.as_dict
 
             # Into this dict, get the test objective
-            assert len(doc_as_dict) == 1
-            return doc_as_dict[cls.__name__]['obj']
+            if len(doc_as_dict) == 1:  # nested format
+                return str(doc_as_dict[cls.__name__]['obj'])
+            else:  # flat format
+                return str(doc_as_dict['objective'])
 
         return ''
 
@@ -652,6 +671,11 @@ class TestCase(object):
 
         This protocol's layer will be the one on which we will do the matching
         so it should be the lowest one that we are testing.
+
+
+        >>> from ttproto.tat_coap.testcases.td_coap_core_01 import TD_COAP_CORE_01
+        >>> TD_COAP_CORE_01.get_protocol()
+        <class 'ttproto.core.lib.inet.coap.CoAP'>
 
         :return: The protocol on which this TC will occur
         :rtype: Value

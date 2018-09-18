@@ -4,7 +4,7 @@ from ..common import *
 class TD_IPSO_3300_01(CoAPTestCase):
     """
 ---
---- !testcase
+
 testcase_id: TD_IPSO_3300_01
 uri : http://openmobilealliance.org/iot/lightweight-m2m-lwm2m
 configuration: LWM2M_CFG_01
@@ -103,6 +103,3 @@ sequence:
 
         self.match('client', CoAP(code=2.05, pl=Not(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionContentFormat('40'))), 'fail')
-
-
-     
