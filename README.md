@@ -270,4 +270,4 @@ Conformance testing tool for testing 6LoWPAN ND
 
 # Running unit tests
 
-python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py
+python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat/test_webserver.py
