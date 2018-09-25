@@ -4310,6 +4310,7 @@ udp_port_descriptions = {
     5680:   "auriga-router",
     5681:   "ncxcp",
     5682:   "brightcore",
+    5683:   "coap",
     5688:   "ggz",
     5689:   "qmvideo",
     5713:   "proshareaudio",

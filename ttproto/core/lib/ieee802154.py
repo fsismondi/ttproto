@@ -296,47 +296,15 @@ class Ieee802154 (
 
             try:
                 bin_slice = decode_field ("pl", bin_slice, SixLowpan)
-            except Exception as e:
+            except IndexError as e:
                 # TODO: report this in a smarter way
-                # (this is ugly in the passive test tool)
-                import traceback
-                log.warning(traceback.print_exc())
-                log.warning("Warning: unable to decode IEEE 802.15.4 payload as SixLowpan (%s)" % \
-                       DecodeError (bin_slice.as_binary(), SixLowpan, e))
-                bin_slice = decode_field ("pl", bin_slice)
+                log.warning("Warning: unable to decode IEEE 802.15.4 payload as SixLowpan, ma "
+                            "entering fallback mechanism")
+                bin_slice = decode_field ("pl", bin_slice[:-2],SixLowpan)
 
         # let's make an educated guess and assume there's FCS if left bin_slice == 2
         if len(bin_slice) == 2:
             bin_slice = decode_FCS(bin_slice)
-
-
-
-
-
-        #     # FIXME: The FCS field throw an IndexError for the non ICMPv6 packs
-        #     #        Here is the traceback given:
-        #     """
-        #     Traceback (most recent call last):
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/ieee802154.py", line 426, in _decode_message
-        #     bin_slice = decode_field ('fcs', bin_slice, HexUInt16)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/ieee802154.py", line 368, in decode_field
-        #     v, sl = f.tag.decode_message (t if t else f.type, sl, None)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/packet.py", line 302, in decode_message
-        #     return type_.decode_message(bin_slice)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
-        #     result = method(*args, **kwargs)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/lib/inet/meta.py", line 98, in decode_message
-        #     sl = bin_slice[:nb]
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
-        #     result = method(*args, **kwargs)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/data.py", line 699, in __getitem__
-        #     right_bits=self.__compute_offset(index.stop, None, True)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/typecheck3000.py", line 387, in typecheck_invocation_proxy
-        #     result = method(*args, **kwargs)
-        #     File "/home/tandriam/Workspace/ttproto/ttproto/core/data.py", line 659, in __compute_offset
-        #     raise IndexError()
-        #     """
-        #     pass
 
         return cls (*values), bin_slice
 
