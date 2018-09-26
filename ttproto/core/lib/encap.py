@@ -92,7 +92,8 @@ class NullLoopback(
         fields=[
             ("AddressFamily", "AF", UInt8, InetType(encap_type_bidict, "Payload")),
             ("ProtocolFamily", "PF", UInt24),
-            ("Payload", "pl", Value), ],
+            ("Payload", "pl", Value),
+        ],
         descriptions={
             "AddressFamily": {
                 2: "BSD INET",
