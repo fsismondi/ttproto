@@ -16,7 +16,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
                 sudo apt-get update
                 sudo apt-get upgrade -y
                 sudo apt-get install --fix-missing -y python3-dev python3-pip python3-setuptools
-                sudo -H pip3 install --upgrade pip
+                sudo -H pip3 install --user --upgrade pip
                 '''
 
             /* Show deployed code */
@@ -28,7 +28,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
         gitlabCommitStatus("install venv & ttproto requirements"){
             withEnv(["DEBIAN_FRONTEND=noninteractive"]){
             sh '''
-            sudo -H pip3 install virtualenv
+            sudo -H pip3 install --user virtualenv
             virtualenv -p python3 venv
             . .venv/bin/activate
             pip3 install pytest --ignore-installed
