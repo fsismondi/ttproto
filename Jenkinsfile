@@ -16,20 +16,23 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
                 sudo apt-get update
                 sudo apt-get upgrade -y
                 sudo apt-get install --fix-missing -y python3-dev python3-pip python3-setuptools
-                sudo -H python3 -m pip install --upgrade pip
-                sudo -H python3 -m pip install pytest --ignore-installed
+                sudo -H pip3 install --upgrade pip
                 '''
 
             /* Show deployed code */
-            sh "tree ."
+            /* sh "tree ." */
           }
       }
 
-      stage("ttproto requirements"){
-        gitlabCommitStatus("ttproto requirements"){
+      stage("install venv & ttproto requirements"){
+        gitlabCommitStatus("install venv & ttproto requirements"){
             withEnv(["DEBIAN_FRONTEND=noninteractive"]){
             sh '''
-            sudo -H pip3 install -r requirements.txt --upgrade
+            sudo -H pip3 install virtualenv
+            virtualenv -p python3 venv
+            . .venv/bin/activate
+            pip3 install pytest --ignore-installed
+            pip3 install -r requirements.txt --upgrade
 
             '''
             }
@@ -39,6 +42,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
       stage("CoAP preprocessing unit tests"){
         gitlabCommitStatus("CoAP preprocessing unit tests"){
             sh '''
+            . .venv/bin/activate
             python3 -m unittest $TEST_FILE_TAT_COAP_COMMON -vvv
             '''
         }
@@ -47,6 +51,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
       stage("CoAP core TC unit test"){
         gitlabCommitStatus("CoAP core TC unit tests"){
             sh '''
+            . .venv/bin/activate
             python3 -m pytest $TEST_FILE_TAT_COAP_CORE -vvv
             '''
         }
@@ -55,6 +60,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
       stage("CoAP observe TC unit test"){
         gitlabCommitStatus("CoAP observe TC unit tests"){
             sh '''
+            . .venv/bin/activate
             python3 -m pytest $TEST_FILE_TAT_COAP_OBSERVE -vvv
             '''
         }
@@ -63,6 +69,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
       stage("CoAP block TC unit test"){
         gitlabCommitStatus("CoAP block TC unit tests"){
             sh '''
+            . .venv/bin/activate
             python3 -m pytest $TEST_FILE_TAT_COAP_BLOCK -vvv
             '''
         }
@@ -71,6 +78,7 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
       stage("unittesting component"){
         gitlabCommitStatus("unittesting component"){
             sh '''
+            . .venv/bin/activate
             python3 -m pytest -p no:cacheprovider -vvv tests/ \\
             --ignore=$TEST_FILE_TAT_COAP_COMMON \\
             --ignore=$TEST_FILE_TAT_COAP_CORE \\
