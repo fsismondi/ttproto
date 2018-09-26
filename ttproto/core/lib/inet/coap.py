@@ -759,7 +759,7 @@ for i, n, t, l, d in (
         # OneM2M binding
         (256, "OneM2MFrom" , "String" , (0, 255) , None),
         (257, "OneM2MRequestIdentifier" , "String" , (0, 255) , None),
-	(258, "OneM2MName" , "String" , (0, 255) , None),
+        (258, "OneM2MName" , "String" , (0, 255) , None),
         (263, "OneM2MNotificationURI" , "String" , (0, 255) , None),
         (265, "OneM2MResponseStatusCode" , "UInt" , (0, 2) , _ResponseStutusCode_format_description),
         (266, "OneM2MGroupRequestIdentifier" , "String" , (0, 255) , None),
@@ -794,4 +794,30 @@ class CoAPOption%s (
 # tell the udp module on which udp ports coap runs
 for port in (5683,) + tuple (range (61616, 61632)):
     ttproto.core.lib.inet.udp.udp_port_map[port] = CoAP
+
+
+
+from ttproto.core.lib.ieee802154 import Ieee802154
+
+class ZigBeeEncapsulationProtocol (
+    metaclass = InetPacketClass,
+    fields    = [
+        ("Protocol ID string", 		"pid",		Hex(UInt16  ),		0),
+        ("Version", 		"ver",		UInt8,		3),
+        ("Type",		"type",		UInt8,	0),
+        ("Channel",		"ch",		UInt8,		0),
+        ("Device ID",		"did",		UInt16,		0),
+        ("LQI/CRC Mode",		"mode",		UInt8,		0),
+        ("LQI Value",		"lqi",		UInt8,		0),
+        ("NTP timestamp (s)",		"nts",		Hex(UInt32),		0),
+        ("NTP timestamp fraction (ms)",		"nts_frac",		Hex(UInt32),		0),
+        ("Sequence number",		"seq",		UInt32,		0),
+        ("stuff",		"stuff",		Hex(UInt80),		0),
+        ("Length",		"len",		UInt8,		0),
+        ("Payload", 		"pl",	 	Ieee802154),
+    ]):
+    pass
+
+ttproto.core.lib.inet.udp.udp_port_map[17754] = ZigBeeEncapsulationProtocol
+
 

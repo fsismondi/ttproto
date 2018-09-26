@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-#   (c) 2012  Universite de Rennes 1
+#   (c) 2018  Universite de Rennes 1
 #
 # Contact address: <t3devkit@irisa.fr>
 #
@@ -30,18 +30,37 @@
 #
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
+#
 
-from ttproto.core.lib.inet.basics import *
-from ttproto.core.lib.inet.zigbee import *
-from ttproto.core.lib.inet.coap import *
-from ttproto.core.lib.inet.coap_link_format import *
-from ttproto.core.lib.inet.icmpv6 import *
-from ttproto.core.lib.inet.ip import *
-from ttproto.core.lib.inet.ipv4 import *
-from ttproto.core.lib.inet.ipv6 import *
+
+from ttproto.core.lib.ieee802154 import Ieee802154
 from ttproto.core.lib.inet.meta import *
-from ttproto.core.lib.inet.sixlowpan import *
-from ttproto.core.lib.inet.sixlowpan_hc import *
-from ttproto.core.lib.inet.sixlowpan_nd import *
-from ttproto.core.lib.inet.sixlowpan_port import *
-from ttproto.core.lib.inet.udp import *
+from ttproto.core.lib.inet.basics import *
+from ttproto.core.lib.inet.sixlowpan import SixLowpan
+
+import ttproto.core.lib.inet.udp
+
+__all__ = [
+    'ZigBeeEncapsulationProtocol'
+]
+
+class ZigBeeEncapsulationProtocol(
+    metaclass=InetPacketClass,
+    fields=[
+        ("Protocol ID string", "pid", Hex(UInt16)),
+        ("Version", "ver", UInt8),
+        ("Type", "type", UInt8),
+        ("Channel", "ch", UInt8),
+        ("Device ID", "did", UInt16),
+        ("LQI/CRC Mode", "mode", UInt8),
+        ("LQI Value", "lqi", UInt8),
+        ("NTP timestamp (s)", "nts", Hex(UInt32)),
+        ("NTP timestamp fraction (ms)", "nts_frac", Hex(UInt32)),
+        ("Sequence number", "seq", UInt32),
+        ("future", "fut", Hex(UInt80)),
+        ("Length", "len", UInt8),
+        ("Payload", "pl", Ieee802154),
+    ]):
+    pass
+
+ttproto.core.lib.inet.udp.udp_port_map[17754] = ZigBeeEncapsulationProtocol
