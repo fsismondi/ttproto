@@ -571,62 +571,68 @@ class TestCase(object):
         TestCase.get_nodes_identification_templates = self.get_nodes_identification_templates
 
         # Pre-process / filter conversations corresponding to the TC
-        try:
-            self._conversations, self._ignored = self.preprocess(self._capture)
-        except Exception:  # TODO be more selective
 
-            self.set_verdict(
-                'inconclusive',
-                'Capture doesnt match expected pattern: \n\tgot %s, \n\texpected %s' %
-                (str(self._capture.frames), str(self.get_stimulis()))
-            )
+        self._conversations, self._ignored = self.preprocess(
+            capture=self._capture,
+            expected_frames_pattern=self.get_stimulis()
+        )
 
         # print("----conversations----")
         # print(self._conversations)
         # print("----ignored----")
         # print(self._ignored)
 
-        # Run the test case for every conversations
-        for conv in self._conversations:
+        if self._conversations == [[]] or self._conversations == []:
+            self.set_verdict(
+                'inconclusive',
+                'Capture doesnt match expected pattern: \n\tgot %s, \n\texpected %s' %
+                (str(self._capture.frames), str(self.get_stimulis()))
+            )
 
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                for frame in conv:logger.debug(frame)
-            try:
-                # Get an iterator on the current conversation frames
-                # and its list of nodes
-                self._iter = iter(conv)
-                self._nodes = conv.nodes
-                self.next()
+        else:
+            # Run the test case for every conversations
+            for conv in self._conversations:
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    for frame in conv: logger.debug(frame)
+                try:
+                    # Get an iterator on the current conversation frames
+                    # and its list of nodes
+                    self._iter = iter(conv)
+                    self._nodes = conv.nodes
+                    self.next()
 
-                # Run the test case
-                self.run()
+                    # Run the test case
+                    self.run()
 
-            except self.Stop:
-                # Ignore this testcase result if the first frame gives an
-                # inconclusive verdict
-                if all((
-                            self._verdict.get_value() == 'inconclusive',
-                            self._frame == conv[0]
-                )):
-                    self.set_verdict('none', 'no match')
+                except self.Stop:
+                    # Ignore this testcase result if the first frame gives an
+                    # inconclusive verdict
+                    if all((
+                                self._verdict.get_value() == 'inconclusive',
+                                self._frame == conv[0]
+                    )):
+                        self.set_verdict('none', 'no match')
 
-            except Exception:
-                # Get the execution information, it's a tuple with
-                #     - The type of the exception being handled
-                #     - The exception instance
-                #     - The traceback object
-                _exception_type, _exception_value, _exception_traceback = sys.exc_info()
+                except Exception as e:
+                    # Get the execution information, it's a tuple with
+                    #     - The type of the exception being handled
+                    #     - The exception instance
+                    #     - The traceback object
+                    _exception_type, _exception_value, _exception_traceback = sys.exc_info()
 
-                # Add those exception information to the list
-                self._exceptions.append((
-                    _exception_type,
-                    _exception_value,
-                    _exception_traceback
-                ))
+                    logger.error(e)
+                    traceback.print_exc(file=sys.stdout)
 
-                # Put the verdict and log the exception
-                self.set_verdict('error', 'unhandled exception')
-                self.log(_exception_value)
+                    # Add those exception information to the list
+                    self._exceptions.append((
+                        _exception_type,
+                        _exception_value,
+                        _exception_traceback
+                    ))
+
+                    # Put the verdict and log the exception
+                    self.set_verdict('error', 'unhandled exception')
+                    self.log(_exception_value)
 
         # Return the results
         return (
@@ -703,7 +709,7 @@ class TestCase(object):
     def preprocess(
             cls,
             capture: Capture,
-            expected_frames_pattern:list_of(Value)
+            expected_frames_pattern: list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Pre-process and filter the frames of the capture into test case related
@@ -976,12 +982,12 @@ class Analyzer:
             test_case = test_case_class(capture)
             verdict, rev_frames, log, partial_verdicts, exceptions = test_case.run_test_case()
 
-            # print('##### Ignored')
-            # print(ignored)
+            # print('##### capture')
+            # print(capture)
             # print('#####')
-
-            # Here we execute the test case and return the result
-
+            #
+            # # Here we execute the test case and return the result
+            #
             # print('##### Verdict given')
             # print(verdict)
             # print('#####')
@@ -989,13 +995,11 @@ class Analyzer:
             # print(rev_frames)
             # print('#####')
             # print('##### Text')
-            # print(extra)
+            # print(log, partial_verdicts)
             # print('#####')
             # print('##### Exceptions')
             # print(exceptions)
             # print('#####')
-
-            # Return the result
 
             return tc_id, verdict, rev_frames, log, partial_verdicts, exceptions
 
