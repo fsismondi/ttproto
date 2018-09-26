@@ -974,13 +974,13 @@ class Analyzer:
         assert len(test_case_class) == 1
         test_case_class = test_case_class[0]
 
-        # Disable name resolution for performance improvment
+        # Disable name resolution for performance improvements
         with Data.disable_name_resolution():
             # Get the capture from the file
             capture = Capture(filename)
             # Initialize the TC with the list of conversations
             test_case = test_case_class(capture)
-            verdict, rev_frames, log, partial_verdicts, exceptions = test_case.run_test_case()
+            verdict, rev_frames, log, partial_verdicts, exceps = test_case.run_test_case()
 
             # print('##### capture')
             # print(capture)
@@ -1001,7 +1001,7 @@ class Analyzer:
             # print(exceptions)
             # print('#####')
 
-            return tc_id, verdict, rev_frames, log, partial_verdicts, exceptions
+            return tc_id, verdict, rev_frames, log, partial_verdicts, exceps
 
 
 if __name__ == "__main__":
