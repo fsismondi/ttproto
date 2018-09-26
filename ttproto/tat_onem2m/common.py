@@ -129,7 +129,7 @@ class CoAPTestCase(TestCase):
         # TODO what happens if no protocol declared on the test case?
         if not nodes or len(nodes) < 2:
             raise ValueError(
-                'Expected at leaset two nodes declaration from the test case'
+                'Expected at least two nodes declaration from the test case'
             )
         if not protocol:
             raise ValueError(
