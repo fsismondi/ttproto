@@ -4,9 +4,9 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
     node('docker'){
 
         env.TEST_FILE_TAT_COAP_COMMON="tests/test_tat/test_common.py"
-        env.TEST_FILE_TAT_COAP_CORE="tests/test_tat/test_tat_core.py"
-        env.TEST_FILE_TAT_COAP_OBSERVE="tests/test_tat/test_tat_observe.py"
-        env.TEST_FILE_TAT_COAP_BLOCK="tests/test_tat/test_tat_block.py"
+        env.TEST_FILE_TAT_COAP_CORE="tests/test_tat/test_tat_coap_core.py"
+        env.TEST_FILE_TAT_COAP_OBSERVE="tests/test_tat/test_tat_coap_observe.py"
+        env.TEST_FILE_TAT_COAP_BLOCK="tests/test_tat/test_tat_coap_block.py"
         stage ("Setup dependencies"){
             checkout scm
             sh 'git submodule update --init'
