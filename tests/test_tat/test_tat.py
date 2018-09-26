@@ -3,18 +3,20 @@ from ttproto.core.templates import Length, Regex, All, Range, Any, AnyValue
 import unittest
 import os
 import logging
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 # Change logging level here.
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.INFO))
 default_expected_verdict_if_none_specified = "pass"
 
+
 class TestAnalysisInteropTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.pcap_dir_path = os.path.dirname(os.path.abspath( __file__ ))
-        self.pcap_dir_path = os.path.join(self.pcap_dir_path, 'test_dumps/analysis')
+        self.pcap_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../test_dumps/analysis')
         self.pcap_path_list = os.listdir(self.pcap_dir_path)
+        logger.info(self.pcap_path_list)
 
     def get_pcaps(self):
         for entry in self.pcap_path_list:
@@ -50,16 +52,12 @@ class TestAnalysisInteropTestCase(unittest.TestCase):
 
             test_case = self.__get_test_case_from_full_path(pcap_name)
             if test_case is None:
-                # TODO May change the behaviour in futur or add specific unit test
-                # method for those pcap ?
-                logging.info("Ignored file " + pcap_name + " because we couldn't\
-determine the relevant test case.")
+                logging.info("Ignored file " + pcap_name + " because we couldn't determine the relevant test case.")
                 continue
 
             logging.info("Testing " + test_case + "\n With file " + pcap_name)
 
-            tc_name,verdict, rev_frames,log, partial_verdicts, exception_info\
-            = analyzer.analyse(pcap_name, test_case)
+            tc_name, verdict, rev_frames, log, partial_verdicts, exception_info = analyzer.analyse(pcap_name, test_case)
             assert verdict == expected_verdict, log
 
             logging.info(test_case + " PASSED.")
