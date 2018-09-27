@@ -41,17 +41,21 @@ import inspect
 import sys
 import traceback
 
-from os import path
+from os import path, environ
 from importlib import import_module
+import logging
 
 from ttproto import PACKAGE_DIR
 from ttproto.core.data import Data, DifferenceList, Value
-from ttproto.core.dissector import (Frame, Capture, is_protocol,
-                                    ProtocolNotFound)
+from ttproto.core.dissector import Frame, Capture, is_protocol, ProtocolNotFound
 from ttproto.core.exceptions import Error
 from ttproto.core.typecheck import typecheck, tuple_of, optional, anything, list_of
 from ttproto.core.lib.all import *
 from ttproto.core.lib.readers.yaml import YamlReader
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(environ.get('LOG_LEVEL', logging.DEBUG))
 
 __all__ = [
     'Verdict',
@@ -562,56 +566,73 @@ class TestCase(object):
                  - A list of typles representing the exceptions that occurred
         :rtype: (str, [int], str,[(str,str)], [(type, Exception, traceback)])
         """
+        # Next line is before for 6lowpan TC, where nodes_identification_templates
+        # is not generic.
+        TestCase.get_nodes_identification_templates = self.get_nodes_identification_templates
 
         # Pre-process / filter conversations corresponding to the TC
-        self._conversations, self._ignored = self.preprocess(self._capture)
+
+        self._conversations, self._ignored = self.preprocess(
+            capture=self._capture,
+            expected_frames_pattern=self.get_stimulis()
+        )
 
         # print("----conversations----")
         # print(self._conversations)
         # print("----ignored----")
         # print(self._ignored)
 
-        # Run the test case for every conversations
-        for conv in self._conversations:
+        if self._conversations == [[]] or self._conversations == []:
+            self.set_verdict(
+                'inconclusive',
+                'Capture doesnt match expected pattern: \n\tgot %s, \n\texpected %s' %
+                (str(self._capture.frames), str(self.get_stimulis()))
+            )
 
-            try:
+        else:
+            # Run the test case for every conversations
+            for conv in self._conversations:
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    for frame in conv: logger.debug(frame)
+                try:
+                    # Get an iterator on the current conversation frames
+                    # and its list of nodes
+                    self._iter = iter(conv)
+                    self._nodes = conv.nodes
+                    self.next()
 
-                # Get an iterator on the current conversation frames
-                # and its list of nodes
-                self._iter = iter(conv)
-                self._nodes = conv.nodes
-                self.next()
+                    # Run the test case
+                    self.run()
 
-                # Run the test case
-                self.run()
+                except self.Stop:
+                    # Ignore this testcase result if the first frame gives an
+                    # inconclusive verdict
+                    if all((
+                                self._verdict.get_value() == 'inconclusive',
+                                self._frame == conv[0]
+                    )):
+                        self.set_verdict('none', 'no match')
 
-            except self.Stop:
-                # Ignore this testcase result if the first frame gives an
-                # inconclusive verdict
-                if all((
-                            self._verdict.get_value() == 'inconclusive',
-                            self._frame == conv[0]
-                )):
-                    self.set_verdict('none', 'no match')
+                except Exception as e:
+                    # Get the execution information, it's a tuple with
+                    #     - The type of the exception being handled
+                    #     - The exception instance
+                    #     - The traceback object
+                    _exception_type, _exception_value, _exception_traceback = sys.exc_info()
 
-            except Exception:
+                    logger.error(e)
+                    traceback.print_exc(file=sys.stdout)
 
-                # Get the execution information, it's a tuple with
-                #     - The type of the exception being handled
-                #     - The exception instance
-                #     - The traceback object
-                _exception_type, _exception_value, _exception_traceback = sys.exc_info()
+                    # Add those exception information to the list
+                    self._exceptions.append((
+                        _exception_type,
+                        _exception_value,
+                        _exception_traceback
+                    ))
 
-                # Add those exception information to the list
-                self._exceptions.append((
-                    _exception_type,
-                    _exception_value,
-                    _exception_traceback
-                ))
-
-                # Put the verdict and log the exception
-                self.set_verdict('error', 'unhandled exception')
-                self.log(_exception_value)
+                    # Put the verdict and log the exception
+                    self.set_verdict('error', 'unhandled exception')
+                    self.log(_exception_value)
 
         # Return the results
         return (
@@ -628,19 +649,38 @@ class TestCase(object):
         """
         Get the purpose of this test case
 
+        Supports old formats of test description in yaml and new one introduced by ioppytest
+
+        - Old test case description format goes like this (nested):
+            {'TD_COAP_CORE_01': {'cfg': 'CoAP_CFG_BASIC', 'obj': 'Perform GET transaction(CON mode)', 'pre': ...}}
+        - New test case description format (used by ioppytest), goes like this (flat):
+            {'testcase_id': 'TD_LWM2M_1.0_INT_203', 'configuration': 'LWM2M_CFG_01', 'objective': ....}}
+
+
+        >>> from ttproto.tat_lwm2m.testcases.td_lwm2m_1_int_203 import TD_LWM2M_1_INT_203
+        >>> TD_LWM2M_1_INT_203.get_test_purpose()
+        "['Quering the Resources values of Device Object (ID:3) on the Client in TLV format', ['Manufacturer Name (id:0)', 'Model number (ID:1)', 'Serial number (ID:2)', 'Firware Version (ID:3)', 'Error Code (ID:11)', 'Supported Binding and Modes (ID:16)']]"
+
+        >>> from ttproto.tat_coap.testcases.td_coap_core_01 import TD_COAP_CORE_01
+        >>> TD_COAP_CORE_01.get_test_purpose()
+        'Perform GET transaction(CON mode)'
+
         :return: The purpose of this test case
         :rtype: str
         """
         if cls.__doc__:
+
             # Get the Yaml reader
             yaml_reader = YamlReader(cls.__doc__, raw_text=True)
 
-            # Then get the dictionnary representation of the tc documentation
+            # Then get the dictionary representation of the tc documentation
             doc_as_dict = yaml_reader.as_dict
 
             # Into this dict, get the test objective
-            assert len(doc_as_dict) == 1
-            return doc_as_dict[cls.__name__]['obj']
+            if len(doc_as_dict) == 1:  # nested format
+                return str(doc_as_dict[cls.__name__]['obj'])
+            else:  # flat format
+                return str(doc_as_dict['objective'])
 
         return ''
 
@@ -654,20 +694,29 @@ class TestCase(object):
         This protocol's layer will be the one on which we will do the matching
         so it should be the lowest one that we are testing.
 
+
+        >>> from ttproto.tat_coap.testcases.td_coap_core_01 import TD_COAP_CORE_01
+        >>> TD_COAP_CORE_01.get_protocol()
+        <class 'ttproto.core.lib.inet.coap.CoAP'>
+
         :return: The protocol on which this TC will occur
         :rtype: Value
         """
         raise NotImplementedError()
 
+    @classmethod
     @typecheck
     def preprocess(
-            self,
-            capture: Capture
+            cls,
+            capture: Capture,
+            expected_frames_pattern: list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
         Pre-process and filter the frames of the capture into test case related
         conversations. This has to be implemented into the protocol's common
         test case class.
+        This method depends on the protocol features, so it cannot be
+        implemented in a generic way.
         """
         raise NotImplementedError()
 
@@ -698,41 +747,69 @@ class TestCase(object):
 
 class Analyzer:
     """
-        Class for the analyzer tool
+        Class for the analyzer tool.
+
+        Basically this objects allow you to
+        1. import all/certain testcases
+        2. get testcases objects
+        3. analyze pcaps files with network traces against testcases
+
     """
 
     @typecheck
-    def __init__(self, test_env: str):
+    def __init__(self, test_env: str = 'tat_*'):
         """
         Initialization function for the analyzer, just fetch the test env
         in which we will get the test description's implementation
 
-        :param test_env: The test environment which is the package name
+        :param test_env: The test environment which is the TAT package name
         :type test_env: str
 
         :raises NotADirectoryError: If the test environemnt isn't found
         """
 
-        # Check the test_env passed
-        test_dir = path.join(
+        self.testcases_dir = path.join(
             PACKAGE_DIR,
             test_env,
             TESTCASES_SUBDIR
         )
-        if not path.isdir(test_dir):
-            raise NotADirectoryError(
-                "The test cases dir %s wasn't found"
-                %
-                test_dir
-            )
 
-        # LoggedObject.__init__(self)
-        self.__test_env = test_env
+        # if test_env provided then it should be a valid one
+        if test_env != 'tat_*' and not path.isdir(self.testcases_dir):
+            raise NotADirectoryError("Not a valid test environment: %s" % test_env)
 
     @typecheck
-    def __fetch_from_pathname(self, testcases: list_of(type), search: str):
+    def __get_testcase_object_from_pathname(self, testcase_path: str):
+        if len(testcase_path.split(path.sep)) < 3:
+            raise FileNotFoundError('Impossible to get testcase object from %s' % testcase_path)
+
+        # we need to build a ttproto.tat_coap.testcases.td_coap_core_01 from ttproto/tat_coap/testcases/td_coap_core_01
+
+        # Get the name of the file
+        filename = testcase_path.split(path.sep)[-1]
+        superdir = testcase_path.split(path.sep)[-2]
+        test_environment = testcase_path.split(path.sep)[-3]
+
+        # Get the name of the module
+        modname = filename[:(-1 * len(TC_FILE_EXTENSION))]
+
+        # Build the module relative name
+        mod_rel_name = '.'.join([
+            'ttproto',
+            test_environment,
+            superdir,
+            modname
+        ])
+
+        # Note that the module is always lower case and the plugin (class)
+        # is upper case (ETSI naming convention)
+
+        return getattr(import_module(mod_rel_name), modname.upper())
+
+    @typecheck
+    def __get_testcases_from_pathname(self, search: str):
         """
-        Fetch test cases from the test suite plugin
+        Get list of test cases objects from the right test suite search
 
         :param testcases: List in which we will add the test cases
         :param search: The research query, can be a single TC or the wildcard
@@ -740,12 +817,11 @@ class Analyzer:
         :type testcases: [type]
         :type search: str
         """
+        testcases = []
 
         # Build the search query
         search_query = path.join(
-            PACKAGE_DIR,
-            self.__test_env,
-            TESTCASES_SUBDIR,
+            self.testcases_dir,
             search
         )
 
@@ -764,48 +840,26 @@ class Analyzer:
 
         # For every file found
         for filepath in result:
-            # Get the name of the file
-            filename = path.basename(filepath)
+            tc = self.__get_testcase_object_from_pathname(filepath)
+            if tc:
+                testcases.append(tc)
 
-            # Get the name of the module
-            modname = filename[:(-1 * len(TC_FILE_EXTENSION))]
-
-            # Build the module relative name
-            mod_rel_name = '.'.join([
-                'ttproto',
-                self.__test_env,
-                TESTCASES_SUBDIR,
-                modname
-            ])
-
-            # Note that the module is always lower case and the plugin (class)
-            # is upper case (ETSI naming convention)
-            tc_class = getattr(
-                import_module(mod_rel_name),
-                modname.upper()
-            )
-            testcases.append(tc_class)
+        return testcases
 
     @typecheck
-    def import_test_cases(
-            self,
-            testcases: optional(list_of(str)) = None
-    ) -> list:
+    def import_test_cases(self, testcases: optional(list_of(str)) = None) -> list:
         """
         Imports test cases classes from TESTCASES_DIR
 
         :param testcases: The wanted test cases as a list of string
-        :type testcase_id: optional([str])
 
         :return: List of test cases class in the same order than the param list
-        :rtype: [TestCase]
 
         :raises FileNotFoundError: If no test case was found
 
         .. note::
             Assumptions are the following:
-                - Test cases are defined inside a file, each file contains
-                  only one test case
+                - Test cases are defined inside a .py file, each file contains only one test case
                 - All test cases must be named td_*
                 - All test cases are contained into ttproto/[env]/testcases
                 - Filenames corresponds to the TC id in lower case
@@ -817,15 +871,14 @@ class Analyzer:
 
         # If no TCs provided, fetch all the test cases found
         if not testcases:
-            self.__fetch_from_pathname(tc_fetched, EVERY_TC_WILDCARD)
+            tc_fetched = self.__get_testcases_from_pathname(EVERY_TC_WILDCARD)
 
         # If testcases list are provided, fetch those
         else:
-
             # For every test case given
             for test_case_name in testcases:
                 tc_name_query = test_case_name.lower() + TC_FILE_EXTENSION
-                self.__fetch_from_pathname(tc_fetched, tc_name_query)
+                tc_fetched += self.__get_testcases_from_pathname(tc_name_query)
 
         # Return the test cases classes
         return tc_fetched
@@ -921,20 +974,20 @@ class Analyzer:
         assert len(test_case_class) == 1
         test_case_class = test_case_class[0]
 
-        # Disable name resolution for performance improvment
+        # Disable name resolution for performance improvements
         with Data.disable_name_resolution():
             # Get the capture from the file
             capture = Capture(filename)
             # Initialize the TC with the list of conversations
             test_case = test_case_class(capture)
-            verdict, rev_frames, log, partial_verdicts, exceptions = test_case.run_test_case()
+            verdict, rev_frames, log, partial_verdicts, exceps = test_case.run_test_case()
 
-            # print('##### Ignored')
-            # print(ignored)
+            # print('##### capture')
+            # print(capture)
             # print('#####')
-
-            # Here we execute the test case and return the result
-
+            #
+            # # Here we execute the test case and return the result
+            #
             # print('##### Verdict given')
             # print(verdict)
             # print('#####')
@@ -942,15 +995,13 @@ class Analyzer:
             # print(rev_frames)
             # print('#####')
             # print('##### Text')
-            # print(extra)
+            # print(log, partial_verdicts)
             # print('#####')
             # print('##### Exceptions')
             # print(exceptions)
             # print('#####')
 
-            # Return the result
-
-            return tc_id, verdict, rev_frames, log, partial_verdicts, exceptions
+            return tc_id, verdict, rev_frames, log, partial_verdicts, exceps
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ TD_COAP_CORE_01:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        return [CoAP(code='get')]
+        return [CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("test")))]
 
     def run(self):
         self.match('client', CoAP(type='con', code='get', opt=self.uri('/test')))

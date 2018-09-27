@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-
 from ..common import *
 
 
-class TD_COAP_CORE_05 (CoAPTestCase):
+class TD_COAP_CORE_05(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_05:
@@ -43,23 +42,20 @@ TD_COAP_CORE_05:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        # TODO client message w/ no content format -> fail?
-        return [CoAP(type='non', code='get')]
+        return [CoAP(type='non', code='get', opt=Opt(CoAPOptionUriPath("test")))]
 
     def run (self):
-        self.match ("client", CoAP (type="non", code="get",
-                        opt = self.uri ("/test")))
+        self.match("client", CoAP(type="non", code="get",
+                        opt = self.uri("/test")))
         CTOK = self.coap["tok"]
 
         self.next()
 
-        if self.match ("server", CoAP (
+        if self.match("server", CoAP(
                         type = "non",
                         code = 2.05,
                         tok = CTOK,
                 )):
-            self.match ("server", CoAP (
-                        opt = Opt (CoAPOptionContentFormat())
+            self.match ("server", CoAP(
+                        opt = Opt(CoAPOptionContentFormat())
                 ), "fail")
-
-

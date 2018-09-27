@@ -153,6 +153,16 @@ class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
 
 
+class LwM2MPRO_AnalyzerTestCase(CoAPAnalyzerTestCase):
+    # #################### Tests parameters #########################
+    TEST_ENV = 'tat_lwm2m'
+    TEST_DIR = './tests/test_dumps/analysis/lwm2m_pro/'
+    UNKNOWN_TEST_ENV = 'unknown'
+    TEST_CASE_ID = 'TD_LWM2M_1_INT_204'
+    UNKNOWN_TEST_CASE_ID = 'asdasd'
+    TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
+
+
 # #################### Main run the tests #########################
 if __name__ == '__main__':
     unittest.main()

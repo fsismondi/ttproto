@@ -30,7 +30,7 @@ TD_COAP_CORE_21:
             -   - Code = 2.05 (Content)
                 - Message ID = CMID, Token = CTOK
                 - "Option type = ETag, value = a value chosen by the server\
-                    \ (\u2794 ETAG1)"
+                  (\u2794 ETAG1)"
                 - Non-empty Payload
         -   v: 'Client displays the response '
         -   n: Verifying client cache entry is still valid
@@ -42,7 +42,7 @@ TD_COAP_CORE_21:
                 - Code = 1 (GET)
                 - "Another client-generated Message ID \u2260 CMID (\u2794 CMID2)"
                 - "Client-generated Token which may or may not be \u2260 CTOK\
-                    \ (\u2794 CTOK2)"
+                   (\u2794 CTOK2)"
                 - Uri-Path option "validate"
                 - Option Type = ETag, value = ETAG1 (the ETag value received
                     in step 3)
@@ -55,8 +55,8 @@ TD_COAP_CORE_21:
         -   v: 'Client displays the response '
         -   n: Verifying that client cache entry is no longer valid
         -   s: "Update the content of the server\u2019s resource from a CoAP\
-                \ client (either another client, or the testing client in a\
-                \ separate transaction)"
+                client (either another client, or the testing client in a\
+                separate transaction)"
         -   s: "Client is requested to send a confirmable GET request to server\
                 \u2019s resource so as to check if the resource was updated"
         -   c:
@@ -64,9 +64,9 @@ TD_COAP_CORE_21:
             -   - Type = 0 (CON)
                 - Code = 1 (GET)
                 - "Another client-generated Message ID \u2260 CMID and \u2260\
-                    \ CMID2 (\u2794 CMID3)"
+                   CMID2 (\u2794 CMID3)"
                 - "Client-generated Token which may or may not be \u2260 CTOK\
-                    \ or CTOK2 (\u2794 CTOK3)"
+                   or CTOK2 (\u2794 CTOK3)"
                 - Uri-Path option "validate"
                 - Option Type = ETag, value = ETAG1 (the ETag value received
                     in step 3)
@@ -94,10 +94,10 @@ TD_COAP_CORE_21:
             Check the number/value of the uri query options or not?
         """
         return [
-            CoAP(type='con', code='get'),  # Step 1
-            CoAP(type='con', code='get'),  # Step 5
-            CoAP(type='con', code='put'),  # Step 9
-            CoAP(type='con', code='get')   # Step 10
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 1
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 5
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 9
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("validate")))   # Step 10
         ]
 
 
