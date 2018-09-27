@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_18(CoAPTestCase):
     """
----
+
 TD_M2M_NH_18:
     cfg: M2M_CFG_01
     obj: AE discovers all accessible ressources from registrar CSE

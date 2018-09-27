@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_01(CoAPTestCase):
     """
----
+
 TD_M2M_NH_01:
     cfg: M2M_CFG_01
     obj: AE retrieves the CSEBase resource

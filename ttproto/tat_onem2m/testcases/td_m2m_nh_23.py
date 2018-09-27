@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_23(CoAPTestCase):
     """
----
+
 TD_M2M_NH_23:
     cfg: M2M_CFG_01
     obj: AE retrieves subscription resource from Registrar CSE.

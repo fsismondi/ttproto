@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_07(CoAPTestCase):
     """
----
+
 TD_M2M_NH_07:
     cfg: M2M_CFG_01
     obj: AE retrieves <AE> resource via an AE Retieve Request

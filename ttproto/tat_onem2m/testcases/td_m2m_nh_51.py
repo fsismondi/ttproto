@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_51(CoAPTestCase):
     """
----
+
 TD_M2M_NH_51:
     cfg: M2M_CFG_01
     obj: AE sends a <contentInstance> CREATE request to a <container> which contains attribute currentNrOfInstances whose value equals to that of maxNrOfInstances and Registrar CSE deletes

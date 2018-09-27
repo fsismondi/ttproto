@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_20(CoAPTestCase):
     """
----
+
 TD_M2M_NH_20:
     cfg: M2M_CFG_01
     obj: AE discovers accessible resources residing in Registrar CSE limiting the number of matching resources to the specified value.

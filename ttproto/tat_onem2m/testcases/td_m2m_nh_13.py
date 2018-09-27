@@ -1,9 +1,9 @@
 from ..common import *
 
 
-class TD_m2m_nh_13 (CoAPTestCase):
+class TD_M2M_NH_13(CoAPTestCase):
     """
----
+
 TD_M2M_NH_13:
     cfg: M2M_CFG_01
     obj: AE deletes a specific container resource via a container DELETE Request

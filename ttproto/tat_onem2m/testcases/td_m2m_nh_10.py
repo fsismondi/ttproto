@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_10(CoAPTestCase):
     """
----
+
 TD_M2M_NH_10:
     cfg: M2M_CFG_01
     obj: AE creates a container resource in registrar CSE via a container Create Request.

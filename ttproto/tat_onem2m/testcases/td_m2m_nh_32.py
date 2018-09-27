@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_32(CoAPTestCase):
     """
----
+
 TD_M2M_NH_32:
     cfg: M2M_CFG_01
     obj: AE retrieves group resource.
