@@ -66,8 +66,8 @@ TD_COAP_CORE_20:
         :rtype: [Value]
         """
         return [
-            CoAP(type='con', code='get'),  # Step 1
-            CoAP(type='con', code='get')   # Step 5
+            # Step 1 and Step 5 are the same stimulis.
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("multi-format")))
         ]
 
     def run(self):

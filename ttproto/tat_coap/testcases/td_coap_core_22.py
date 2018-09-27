@@ -138,11 +138,11 @@ TD_COAP_CORE_22:
             Check the number/value of the uri query options or not?
         """
         return [
-            CoAP(type='con', code='get'),  # Step 1
-            CoAP(type='con', code='put'),  # Step 4
-            CoAP(type='con', code='get'),  # Step 8
-            CoAP(type='con', code='put'),  # Step 12
-            CoAP(type='con', code='put')   # Step 13
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 1
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 4
+            CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 8
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 12
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate")))   # Step 13
         ]
 
     def run(self):

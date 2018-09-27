@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-
 from ..common import *
 
 
-class TD_COAP_CORE_18 (CoAPTestCase):
+class TD_COAP_CORE_18(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_18:
@@ -49,7 +48,7 @@ TD_COAP_CORE_18:
             Check the number/value of the uri query options or not?
         """
         return [
-            CoAP(type='con', code='post')
+            CoAP(type='con', code='post', opt=Opt(CoAPOptionUriPath("test")))
         ]
 
     request_uri = "/test"
@@ -71,4 +70,3 @@ TD_COAP_CORE_18:
                 )))
 
         self.next_skip_ack (optional = True)
-

@@ -36,11 +36,13 @@ import atexit
 import os
 import sys
 import json
+from pprint import pprint
 
 from ttproto.core.lib.all import *
 from ttproto.core.data import *
 from ttproto.core.dissector import *
 from ttproto.core.analyzer import *
+from ttproto.tat_coap.common import *
 
 readline.parse_and_bind('tab: complete')
 

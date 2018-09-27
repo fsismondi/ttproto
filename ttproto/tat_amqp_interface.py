@@ -222,7 +222,7 @@ class AmqpInterface:
                 dissection_structured_text, dissection_simple_text = dissect_capture(
                     filename=pcap_to_dissect,
                     proto_filter=None,
-                    output_file=AUTO_DISSECT_OUTPUT_FILE,
+                    output_filename=AUTO_DISSECT_OUTPUT_FILE,
                     number_of_frames_to_skip=previous_frames_count
                 )
                 previous_frames_count += len(dissection_structured_text)
@@ -298,7 +298,7 @@ class AmqpInterface:
                     filename=os.path.join(TMPDIR, filename),
                     testcase_id=testcase_id,
                     protocol=protocol,
-                    output_file=os.path.join(DATADIR, operation_token),
+                    output_filename=os.path.join(DATADIR, operation_token),
                 )
 
             except Exception as e:
@@ -396,7 +396,7 @@ class AmqpInterface:
                 dissection_structured_text, dissection_simple_text = dissect_capture(
                     filename=os.path.join(TMPDIR, filename),
                     proto_filter=proto_filter,
-                    output_file=os.path.join(DATADIR, operation_token),
+                    output_filename=os.path.join(DATADIR, operation_token),
                 )
             except (TypeError, pure_pcapy.PcapError) as e:
                 _publish_message(
@@ -504,7 +504,7 @@ def _auto_dissect_service():
                         dissection_structured_text, dissection_simple_text = dissect_capture(
                             filename=os.path.join(TMPDIR, filename),
                             proto_filter=proto_filter,
-                            output_file=os.path.join(DATADIR, operation_token)
+                            output_filename=os.path.join(DATADIR, operation_token)
                         )
                     except (TypeError, pure_pcapy.PcapError) as e:
                         logger.error("Error processing PCAP. More: %s" % str(e))

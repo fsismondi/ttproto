@@ -110,8 +110,13 @@ class CoapPrivacyTestCase(TestCase):
                     ret += line
         return ''
 
+    @classmethod
     @typecheck
-    def preprocess(self, capture: Capture) -> (list_of(Conversation), list_of(Frame)):
+    def preprocess(
+            cls,
+            capture: Capture,
+            expected_frames_pattern:list_of(Value)
+    ) -> (list_of(Conversation), list_of(Frame)):
         """
         Preprocess and filter the frames of the capture into test case related conversations.
 
@@ -120,8 +125,8 @@ class CoapPrivacyTestCase(TestCase):
         """
 
         # Get informations from the test case
-        protocol = self.get_protocol()
-        nodes = self.get_nodes_identification_templates()
+        protocol = CoapPrivacyTestCase.get_protocol()
+        nodes = CoapPrivacyTestCase.get_nodes_identification_templates()
 
         conversations = []
         ignored = []
@@ -141,5 +146,3 @@ class CoapPrivacyTestCase(TestCase):
         conversations.append(c)
 
         return conversations, ignored
-
-

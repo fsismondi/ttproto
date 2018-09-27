@@ -94,7 +94,7 @@ class TTProtoCLI():
         _, disects_as_list_of_text = dissect_capture(
             filename=args.file,
             proto_filter=args.protocol,
-            output_file=args.output
+            output_filename=args.output
         )
 
         if disects_as_list_of_text:
@@ -135,7 +135,7 @@ class TTProtoCLI():
             filename=args.file,
             protocol=args.protocol,
             testcase_id=args.test_case,
-            output_file=args.output
+            output_filename=args.output
         )
 
         if analysis_results:

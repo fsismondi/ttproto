@@ -41,7 +41,8 @@ TD_COAP_CORE_06:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        return [CoAP(type='non', code='delete')]
+        return [CoAP(type='non', code='delete',
+                opt=Opt(CoAPOptionUriPath("test")))]
 
     def run(self):
         self.match("client", CoAP(type="non", code="delete",

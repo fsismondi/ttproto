@@ -32,24 +32,23 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 import re
-
+from collections import OrderedDict
 from .templates import *
 from ttproto.core.analyzer import TestCase, is_protocol, Node, Conversation, Capture
 from ttproto.core.dissector import Frame
-from ttproto.core.templates import All, Not, Any, Length
-from ttproto.core.typecheck import *
+from ttproto.core.templates import *
+from ttproto.core.typecheck import typecheck
 from ttproto.core.lib.all import *
 from urllib import parse
 from ttproto.core.exceptions import Error
-
 
 # CoAP constants
 RESPONSE_TIMEOUT = 2
 RESPONSE_RANDOM_FACTOR = 1.5
 MAX_RETRANSMIT = 4
 MAX_TIMEOUT = 10 + round(
-        (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2**MAX_RETRANSMIT
-    )
+    (RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR) * 2 ** MAX_RETRANSMIT
+)
 
 
 class NoStimuliFoundForTestcase(Error):
@@ -57,6 +56,7 @@ class NoStimuliFoundForTestcase(Error):
     Error raised when no stimuli was defined for the testcase
     """
     pass
+
 
 class FilterError(Error):
     """
@@ -90,43 +90,340 @@ class CoAPTestCase(TestCase):
     @typecheck
     def get_nodes_identification_templates(cls) -> list_of(Node):
         """
-        Get the nodes of this test case. This has to be be implemented into
-        each test cases class.
+        Get the nodes of CoAP test case.
 
-        :return: The nodes of this TC
+        :return: The nodes involved in the CoAP test case
         :rtype: [Node]
 
-        .. note:: For CoAP it is simpler so we can define this function in this
-                  class but for other protocols it can happend that we have to
-                  define this inside each TC
+        .. note:: For CoAP it is simple so we can define general behaviour for all CoAP test cases,
+                  for other protocols this may have to be defined in subclasses (specific test case scenario).
         """
         return [
             Node('client', UDP(dport=5683)),
             Node('server', UDP(sport=5683))
         ]
 
+    @classmethod
     @typecheck
     def preprocess(
-        self,
-        capture: Capture
+            cls,
+            capture: Capture,
+            expected_frames_pattern: list_of(Value)
     ) -> (list_of(Conversation), list_of(Frame)):
         """
-        Preprocess and filter the frames of the capture into test case related
+        Pre-processes and filters the frames of the capture into test case related
         conversations.
+
+        This method depends on the protocol features, so it cannot be
+        implemented in a generic way (in super class TestCase)
 
         :param Capture: The capture which will be filtered/preprocessed
         :return: list of conversations and list of ignored frames
         """
 
-        # TODO assert is subclass of TesCase?
+        if not expected_frames_pattern:  # If there is no stimuli at all
+            raise NoStimuliFoundForTestcase(
+                'Expected stimuli declaration from the test case for running pre-process and filtering of frames'
+            )
+        conversations_created_by_token, ignored = cls.extract_all_coap_conversations(capture)
+        conversations_correlated_for_testcases = cls.correlate(conversations_created_by_token, expected_frames_pattern)
+        return conversations_correlated_for_testcases, ignored
 
-        # Get informations from the test case
-        # TODO: Get attrbutes stimuli , protocol under test, nodes patterns
-        #       directly from child's atrib?
+    @classmethod
+    @typecheck
+    def correlate(cls, conversations: list_of(Conversation),
+                  expected_frames_pattern: list_of(Value)) -> list_of(Conversation):
+        """
+        Correlates related conversations.
+        Conversations related to a test case, having several
+        stimulis, are merged into one.
+        This method relies on the given stimulis as frames pattern to determine which
+        conversations are related for the test case.
 
-        stimulis = self.get_stimulis()
-        protocol = self.get_protocol()
-        nodes = self.get_nodes_identification_templates()
+        When having several stimulis, we rely on timestamp to have the wanted order.
+        A whole related conversation will be fully inserted BEFORE
+        the first frame of the base conversation having a timestamp
+        greater than the timestamp of the related one.
+
+        Simple example with only one stimulis :
+
+        Here is a simple example with a single stimulis for TD_COAP_CORE_04.
+        The stimulis for this TC is a confirmable POST request on resource /test
+        with empty or non-empty payload.
+        I.e CoAP(type='con', code='post', opt=Opt(CoAPOptionUriPath("test")).
+
+        Let's say we have a 4 conversations in the given list of conversations:
+
+        # python3 -i console.py
+        >>> from pprint import pprint
+        >>> c = Capture('tests/test_dumps/analysis/preprocess/coap/Two_tc_two_times_each_with_overlap.pcap')
+        >>> pprint(c.frames)
+        [<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 19207] GET /separate, tok 00 00 5f 6a >,
+         <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 19207] Empty >,
+         <Frame   3: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 56421] 2.05 Content , tok 00 00 5f 6a >,
+         <Frame   4: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 56421] Empty >,
+         <Frame   5: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 4146] POST /test, tok 28 6b 05 55 ca 09 29 ae >,
+         <Frame   6: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 4146] 2.01 Created /location1/location2/location3, tok 28 6b 05 55 ca 09 29 ae >,
+         <Frame   7: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 10512] GET /separate, tok 00 00 5b e1 >,
+         <Frame   8: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 10512] Empty >,
+         <Frame   9: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 58373] POST /test, tok e4 d8 1e c4 96 6e f9 20 >,
+         <Frame  10: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 58373] 2.01 Created /location1/location2/location3, tok e4 d8 1e c4 96 6e f9 20 >,
+         <Frame  11: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 56422] 2.05 Content , tok 00 00 5b e1 >,
+         <Frame  12: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 56422] Empty >]
+
+
+
+        conversations[0] = [
+            < [Client 1 -> Server] CoAP [CON 19207] GET /separate >
+            < [Server -> Client 1] CoAP [ACK 19207] Empty >
+            < [Server -> Client 1] CoAP [CON 56421] 2.05 Content >
+            < [Client 1 -> Server] CoAP [ACK 56421] Empty >
+        ]
+
+        conversations[1] = [
+            < [Client 1 -> Server] CoAP [CON 4146] POST /test>
+            < [Server -> Client 1] CoAP [ACK 4146] 2.01 Created>
+        ]
+
+        conversations[2] = [
+            < [Client 1 -> Server] CoAP [CON 10512] GET /separate>
+            < [Server -> Client 1] CoAP [ACK 10512] Empty >
+            < [Server -> Client 1] CoAP [CON 56422] 2.05 Content >
+            < [Client 1 -> Server] CoAP [ACK 56422] Empty >
+        ]
+
+        conversations[3] = [
+            < [Client 1 -> Server] CoAP [CON 58373] POST /test>
+            < [Server -> Client 1] CoAP [ACK 58373] 2.01 Created>
+        ]
+
+        From a list of those conversations and the stimulis of TD_COAP_CORE_04
+        as argument, this method will return a new list of conversations
+        containing only the second (i.e conversations[1]) and the fourth
+        conversations (conversations[3]) because only those correspond to the
+        stimulis.
+
+        The two others conversations are ignored.
+        Of course if the expected_frames_pattern argument would be the
+        stimulis of TD_COAP_CORE_09 instead of CORE_04, we would return a list
+        contaings conversations[0] and conversations[2] because those matches
+        with the stimulis of TD_COAP_CORE_09.
+        This stimulis is a GET request on /separate,
+        i.e CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("separate")).
+
+        If we would pass both stimulis of TD_COAP_CORE_09 and TD_COAP_CORE_04,
+        all conversations would be returned.
+
+        Simple example with several stimulis :
+
+        Here is a simple example with a single stimulis for TD_COAP_CORE_07.
+        The first stimulis for this TC is a client sending a GET request with
+        observe option to receive notification from the server, on resource /obs.
+
+        The second stimulis is another CoAP client doing a DELETE request on the
+        same resource.
+
+        Let's say we extracted 5 conversations in the given pcap.
+
+        conversations[0] = [
+            <Frame   1: [Client 1 -> Server] CoAP [CON 45525] GET /obs>
+            <Frame   2: [Server -> Client 1] CoAP [ACK 45525] 2.05 Content >
+            <Frame   7: [Server -> Client 1] CoAP [CON 9255] 2.05 Content >
+            <Frame   8: [Client 1 -> Server] CoAP [ACK 9255] Empty >
+            <Frame  10: [Server -> Client 1] CoAP [CON 9256] 4.04 Not Found >
+            <Frame  11: [Client 1 -> Server] CoAP [ACK 9256] Empty >
+        ]
+
+        conversations[1] = [
+            <Frame   3: [Client 1 -> Server] CoAP [CON 10074] POST /test>
+            <Frame   4: [Server -> Client 1] CoAP [ACK 10074]
+                                    2.01 Created /location1/location2/location3>
+        ]
+
+        conversations[2] = [
+            <Frame   5: [Client 1 -> Server] CoAP [CON 15501] GET /test>
+            <Frame   6: [Server -> Client 1] CoAP [ACK 15501] 2.05 Content >
+        ]
+
+        conversations[3] = [
+            <Frame   9: [Client 1 -> Server] CoAP [CON 51892] DELETE /obs>
+            <Frame  12: [Server -> Client 1] CoAP [ACK 51892] 2.02 Deleted >
+        ]
+
+        conversation[4] = [
+            <Frame  13: [Client 1 -> Server] CoAP [CON 65335] GET /test>
+            <Frame  14: [Server -> Client 1] CoAP [ACK 65335] 2.05 Content >
+        ]
+
+        The first conversations (conversations[0]) match the first stimuli.
+        The fourth conversation (conversations[3]) match the second stimuli.
+
+        The other conversation don't match any stimulis, hence are discarded if
+        the given stimulis are the stimulis is TD_COAP_OBS_07.
+
+        As those two conversations above belong to the same instance
+        of the same TC, they will be merged into a single conversation, that is:
+
+        <Frame   1: [Client 1 -> Server] CoAP [CON 45525] GET /obs>
+        <Frame   2: [Server -> Client 1] CoAP [ACK 45525] 2.05 Content >
+        <Frame   7: [Server -> Client 1] CoAP [CON 9255] 2.05 Content >
+        <Frame   8: [Client 1 -> Server] CoAP [ACK 9255] Empty >
+        <Frame   9: [Client 2 -> Server] CoAP [CON 51892] DELETE /obs>
+        <Frame  12: [Server -> Client 2] CoAP [ACK 51892] 2.02 Deleted >
+        <Frame  10: [Server -> Client 1] CoAP [CON 9256] 4.04 Not Found >
+        <Frame  11: [Client 1 -> Server] CoAP [ACK 9256] Empty >
+
+        This method return a list_of(Conversation) because a futur feature that
+        will allow to execute tests from a large pcap having several TC,
+        with single TC able to being executed several times.
+        Each different instance of the TC will have a different Conversation.
+
+        """
+        # TODO Adding an example in the documentation above.
+        conversations_matching_stimulis = cls.__get_all_matching_conversations(
+            conversations,
+            expected_frames_pattern
+        )
+        conversations_to_merge = cls.__get_conversation_to_merge(
+            conversations_matching_stimulis,
+            expected_frames_pattern
+        )
+        return cls.__merge_all_conversations_to_merge(conversations_to_merge)
+
+    @classmethod
+    @typecheck
+    def __merge_all_conversations_to_merge(
+            cls,
+            conversations_to_merge: list_of(list_of(Conversation))
+    ) -> list_of(Conversation):
+        """
+        A list of list of conversation that must be merged together.
+        That is, we merge all conversations of in the same "inner list" into one,
+        and return the list of those merged conversations.
+        """
+        all_merged_conversations = []
+
+        for list_of_related_conversations in conversations_to_merge:
+            merged_conversation = cls.__merge_conversations(
+                list_of_related_conversations)
+            all_merged_conversations.append(merged_conversation)
+
+        return all_merged_conversations
+
+    @classmethod
+    @typecheck
+    def __merge_conversations(
+            cls,
+            conversations_to_merge: list_of(Conversation)
+    ) -> Conversation:
+        """
+        Merge the given conversations into a single one.
+        The given conversation should be belong to the same instance of the same TC.
+        """
+        nodes = cls.get_nodes_identification_templates()
+        merged_conversation = Conversation(nodes)
+
+        # The list of conversations already merged,
+        # used to avoid processing two time the same one several times.
+        added_in_merged_conv = list()
+
+        for conv in conversations_to_merge:
+            if conv in added_in_merged_conv:
+                continue  # Already treated
+            for frame in conv:
+                for other_conv in conversations_to_merge:
+                    if other_conv is not conv \
+                            and other_conv[0].timestamp < frame.timestamp \
+                            and other_conv not in added_in_merged_conv:
+                        # We check at the first frame of other conversation to see
+                        # if there is any correlation.
+                        for other_frame in other_conv:
+                            merged_conversation.append(other_frame)
+                            added_in_merged_conv.append(other_conv)
+                merged_conversation.append(frame)
+            added_in_merged_conv.append(conv)
+
+        return merged_conversation
+
+    @classmethod
+    @typecheck
+    def __get_all_matching_conversations(
+            cls,
+            conversations: list_of(Conversation),
+            expected_frames_pattern: list_of(Value)
+    ) -> list_of(Conversation):
+        """
+
+        Retrieve a list of all conversations that correspond to any stimulis
+        of the test cases (see get_stimulis()).
+
+        """
+        conversations_to_merge = list()
+
+        for current_conversation in conversations:
+            for frame in current_conversation:
+                # conv_already_added is here to avoid doing useless iteration
+                # and adding several times the same conv.
+                conv_already_added = False
+                for stimulis in expected_frames_pattern:
+                    if frame[CoAP] in stimulis:
+                        # We only look at the first frame as stimulis are
+                        # Always query from client.
+                        conversations_to_merge.append(current_conversation)
+                        conv_already_added = True
+                        break
+                if conv_already_added:
+                    break
+
+        return conversations_to_merge
+
+    @classmethod
+    @typecheck
+    def __get_conversation_to_merge(
+            cls,
+            conversations: list_of(Conversation),
+            expected_frames_pattern: list_of(Value)) \
+            -> list_of(list_of(Conversation)):
+        """
+        Retrieve a list 'outer' of list 'inter' with each conversations inside
+        those inter lists having to be merged together. That is, conversations
+        must be merged together if they belong to the same instance of the same
+        TC described with expected_frames_pattern.
+
+        This method return a list of list and not a simple list,
+        because the user may execute several times the same test.
+        Also, if running passive test from a pcap, this pcap may contains
+        several conversations related to the same TC.
+        """
+        # TODO example
+        conversations_maching_a_stimulis = conversations
+        all_convs_to_merge = []
+        current_convs_to_merge = []
+
+        for conv in conversations_maching_a_stimulis:
+            if conv[0][CoAP] in expected_frames_pattern[0] \
+                    and len(current_convs_to_merge) == 0:
+                current_convs_to_merge.append(conv)
+            elif conv[0][CoAP] in expected_frames_pattern[0]:
+                all_convs_to_merge.append(current_convs_to_merge)
+                current_convs_to_merge = []
+                current_convs_to_merge.append(conv)
+            else:
+                current_convs_to_merge.append(conv)
+
+        if current_convs_to_merge not in all_convs_to_merge:
+            all_convs_to_merge.append(current_convs_to_merge)
+
+        return all_convs_to_merge
+
+    @classmethod
+    @typecheck
+    def extract_all_coap_conversations(
+            cls,
+            capture: Capture) -> (list_of(Conversation), list_of(Frame)):
+
+        protocol = cls.get_protocol()
+        nodes = cls.get_nodes_identification_templates()
 
         conversations = []
         ignored = []
@@ -140,67 +437,47 @@ class CoAPTestCase(TestCase):
             raise ValueError(
                 'Expected a protocol under test declaration from the test case'
             )
-
-        # If there is no stimuli at all
-        if not stimulis or len(stimulis) == 0:
-            raise NoStimuliFoundForTestcase(
-                'Expected stimuli declaration from the test case'
-            )
-
         # Get the frames related with the protocol under test
         frames, ignored = Frame.filter_frames(capture.frames, protocol)
 
-        # Get a counter of the current stimuli
-        sti_count = 0
-        current_conversation = None
-        nb_stimulis = len(stimulis)
+        # Map a token to the corresponding conversations.
+        tkn_to_conv = OrderedDict()
+
+        # Map a MID of a frame to it's containing token.
+        # It's allow us to know to which conversation ACK frames belongs to
+        # even though ACK do not contains token.
+        mid_to_tkn = OrderedDict()
+
+        # A set of CMID of messages for which we already saw an ACK.
+        # This set allows use to detect duplicated ACK.
+        acknowledged_CMID = set()
+
         for frame in frames:
+            CMID = frame[CoAP]["mid"]
+            CTOK = frame[CoAP]["tok"]
 
-            # If the frame matches a stimuli
-            if stimulis[sti_count].match(frame[protocol]):
-
-                # If it's the first stimuli
-                if sti_count == 0:
-
-                    # If there is already a conversation pending, save it
-                    if current_conversation:
-                        self._conversations.append(current_conversation)
-
-                    # Get the nodes as a list of nodes
-                    # TODO already done at begining. why isnde the iteeration?
-                    # nodes = testcase.get_nodes_identification_templates()
-
-                    # And create the new one
-                    current_conversation = Conversation(nodes)
-
-                # If intermediate stimulis, just increment the counter
-                sti_count = (sti_count + 1) % nb_stimulis
-
-            # If there is a current_conversation, put the frame into it
-            if current_conversation:
-                current_conversation.append(frame)
-
-            # If no conversation pending
+            if frame[CoAP]["type"] == 2 or frame[CoAP]["type"] == 3:
+                if CMID in acknowledged_CMID:
+                    # A duplicated ACK or RST
+                    ignored.append(frame)
+                    continue
+                else:
+                    acknowledged_CMID.add(CMID)
+                    if CMID not in mid_to_tkn:
+                        # An orphan ACK or RST
+                        ignored.append(frame)
+                    else:
+                        tkn_to_conv[mid_to_tkn[CMID]].append(frame)
             else:
-                ignored.append(frame)
+                if CTOK in tkn_to_conv:
+                    tkn_to_conv[CTOK].append(frame)
+                else:  # First time we encounter the token "CTOK".
+                    conv = Conversation(nodes)
+                    conv.append(frame)
+                    tkn_to_conv[CTOK] = conv
+                mid_to_tkn[CMID] = CTOK
 
-        # At the end, if there is a current conversation pending, close it
-        if current_conversation:
-
-            # If not all stimulis were consumed
-            if sti_count != 0:
-                raise FilterError(
-                    'Not all stimulis were consumed, %d left and next one should have been %s'
-                    %
-                    (
-                        nb_stimulis - sti_count,
-                        stimulis[sti_count]
-                    )
-                )
-
-            # Close the current conversation by adding it to list
-            conversations.append(current_conversation)
-
+        conversations = [tkn_to_conv[k] for k in tkn_to_conv.keys()]
         return conversations, ignored
 
     @typecheck
@@ -217,8 +494,8 @@ class CoAPTestCase(TestCase):
 
         # While there is one and that it's an ack, pass it
         while all((
-            self._frame is not None,
-            self._frame[CoAP] in CoAP(type='ack', code=0)
+                    self._frame is not None,
+                    self._frame[CoAP] in CoAP(type='ack', code=0)
         )):
             self.next(optional)
 
@@ -503,7 +780,7 @@ class Link(list):
                             error("attribute value for %r is empty" % name)
 
                         # Consume the read part
-                        s = s[i+1:]
+                        s = s[i + 1:]
 
                     # If it doesn't begin with a quote, it's a token
                     else:
@@ -545,9 +822,9 @@ class Link(list):
 
         @typecheck
         def get(
-            self,
-            par_name: str,
-            testcase: optional(CoAPTestCase) = None
+                self,
+                par_name: str,
+                testcase: optional(CoAPTestCase) = None
         ) -> optional(str):
             """
             Get the value of a link value from its parameter name
