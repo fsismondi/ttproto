@@ -9,22 +9,22 @@ from ttproto.core.lib.inet.sixlowpan import SixLowpan
 from ttproto.utils.pcap_filter import openwsn_profile_filter
 
 from tests.test_tools.struct_validator import StructureValidator
-from tests.test_core.test_dissector.test_dissect_pcaps import DissectPcapTestCase
+from tests.test_dissector.test_dissect_pcaps import DissectPcapTestCase
 
 
-class DissectorTestCase(DissectPcapTestCase):
+class DissectorTestCase_6lowpan(DissectPcapTestCase):
     """
     Test class for the dissector tool
 
-    python3 -m unittest tests.test_core.test_dissector.test_dissector_6lowpan.DissectorTestCase.test_that_it_can_dissect_all_pcaps -vvv
+    python3 -m unittest tests.test_dissector.test_dissector_6lowpan.DissectorTestCase.test_that_it_can_dissect_all_pcaps -vvv
     """
 
     # #################### Tests parameters #########################
 
     # File path
-    PCAP_FILES_DISSECTION_DIRS = ['tests/test_dumps/dissection/6lowpan',
-                                  'tests/test_dumps/analysis/6lowpan_hc',
-                                  'tests/test_dumps/analysis/6lowpan_nd']
+    PCAP_FILES_DISSECTION_DIRS = ['tests/test_dumps/6lowpan',
+                                  'tests/test_dumps/6lowpan_hc',
+                                  'tests/test_dumps/6lowpan_nd']
     PROTO_CLASS_FILTER = SixLowpan
     TMP_DIR = 'tmp/'
 
