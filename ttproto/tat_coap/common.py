@@ -156,7 +156,7 @@ class CoAPTestCase(TestCase):
 
         # python3 -i console.py
         >>> from pprint import pprint
-        >>> c = Capture('tests/test_dumps/analysis/preprocess/coap/Two_tc_two_times_each_with_overlap.pcap')
+        >>> c = Capture('tests/test_dumps/preprocess/coap/Two_tc_two_times_each_with_overlap.pcap')
         >>> pprint(c.frames)
         [<Frame   1: [127.0.0.1 -> 127.0.0.1] CoAP [CON mid 19207] GET /separate, tok 00 00 5f 6a >,
          <Frame   2: [127.0.0.1 -> 127.0.0.1] CoAP [ACK mid 19207] Empty >,

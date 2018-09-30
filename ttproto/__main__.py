@@ -34,18 +34,18 @@ TTProto CLI accepts the following commands:
 diss_help = ''' ttproto dissect file [<options>]
 
 Dissection usage examples:
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -o /tmp/dissection.json
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p sixlowpan
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p icmpv6
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p icmpv6echorequest
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -o /tmp/dissection.json
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p sixlowpan
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p icmpv6
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p icmpv6echorequest
 
 '''
 ana_help = '''ttproto analyze file [<options>]
 
 Analyze usage examples:
-    analyze ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p 6lowpan -tc TD_6LOWPAN_HC_01 
-    analyze ./tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap -p coap -tc TD_COAP_CORE_01
+    analyze ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p 6lowpan -tc TD_6LOWPAN_HC_01 
+    analyze ./tests/test_dumps/coap_core/TD_COAP_CORE_01_PASS.pcap -p coap -tc TD_COAP_CORE_01
 '''
 
 

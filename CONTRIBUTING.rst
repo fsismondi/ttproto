@@ -162,7 +162,7 @@ Matching operation examples
 
 Now let's show a couple of examples to undestand match operation behaviour:
 
-in tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap you can find an example of exchanges
+in tests/test_dumps/coap_core/TD_COAP_CORE_01_PASS.pcap you can find an example of exchanges
 expected while performing a GET transaction in CON mode, which corresponds to TD_COAP_CORE_01.
 
 basically::
@@ -178,7 +178,7 @@ and ttproto/tat_coap/TD_COAP_CORE_01.py test case.
     from os import getcwd, path
 
     analyzer = Analyzer('tat_coap')
-    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    params = './tests/test_dumps/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
     tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
     print('##### TC name')
     print(tc_name)

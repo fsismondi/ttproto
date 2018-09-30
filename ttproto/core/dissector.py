@@ -874,7 +874,7 @@ if __name__ == "__main__":
 
     cap = Capture(
         #    'tests/test_dumps/DissectorTests/coap/CoAP_plus_random_UDP_messages.pcap'
-        'tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
+        'tests/test_dumps/coap/CoAP_plus_random_UDP_messages.pcap'
         # 'tmp/frame2_onem2m.pcap'
         # 'tmp/frame1_onem2m.pcap'
     )

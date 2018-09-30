@@ -1,6 +1,7 @@
 import unittest
 import logging
 import json
+from os import path
 
 from ttproto.core.typecheck3000 import InputParameterError
 from tests.test_tools.struct_validator import StructureValidator
@@ -15,21 +16,21 @@ from ttproto.utils.pcap_filter import openwsn_profile_filter
 
 class CaptureAndDissectionsTestCase(unittest.TestCase):
     """
-    Test dissections
+    Test dissections. Unit testing methods
     """
 
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/dissection'
+    TEST_FILE_DIR = 'tests/test_dumps'
 
     # dissect CoAP pcap with other UDP messages:
-    PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
+    PCAP_FILE = path.join(TEST_FILE_DIR, 'coap', 'CoAP_plus_random_UDP_messages.pcap')
 
     # pcaps that MUST throw exceptions
-    WRONG_TEST_FILE_DIR = TEST_FILE_DIR + '/exceptions'
-    EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
-    NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
+    WRONG_TEST_FILE_DIR_NAME = 'others'
+    EMPTY_PCAP_FILE = path.join(TEST_FILE_DIR, WRONG_TEST_FILE_DIR_NAME, 'empty_pcap.pcap')
+    NOT_A_PCAP_FILE = path.join(TEST_FILE_DIR, WRONG_TEST_FILE_DIR_NAME, 'not_a_pcap_file.dia')
 
     # Create a struct checker object
     struct_validator = StructureValidator()

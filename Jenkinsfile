@@ -7,8 +7,11 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
         env.TEST_FILE_TAT_COAP_CORE="tests/test_tat/test_tat_coap_core.py"
         env.TEST_FILE_TAT_COAP_OBSERVE="tests/test_tat/test_tat_coap_observe.py"
         env.TEST_FILE_TAT_COAP_BLOCK="tests/test_tat/test_tat_coap_block.py"
-        env.TEST_FILE_DISSECTOR_TESTS="tests/test_core/test_dissector/"
-        env.TEST_FILE_ANALYZER_TESTS="tests/test_core/test_analyzer/"
+        env.TEST_FILE_DISSECTOR_TESTS="tests//test_dissector/"
+        env.TEST_FILE_DISSECTOR_TESTS_6LOWPAN="tests//test_dissector/test_dissector_pcaps_6lowpan.py"
+        env.TEST_FILE_DISSECTOR_TESTS_COAP="tests//test_dissector/test_dissector_pcaps_coap.py"
+        env.TEST_FILE_DISSECTOR_TESTS_IEEE802154="tests//test_dissector/test_dissector_pcaps_802154.py"
+        env.TEST_FILE_ANALYZER_TESTS="tests//test_analyzer/"
 
         stage ("Setup dependencies"){
             checkout scm
@@ -69,7 +72,6 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
                 . /tmp/venv/bin/activate
                 python3 -m pytest -p no:cacheprovider -vvv \\
                     $TEST_FILE_ANALYZER_TESTS \\
-                    --pastebin=all
             '''
       }
 
@@ -78,7 +80,32 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
                 . /tmp/venv/bin/activate
                 python3 -m pytest -p no:cacheprovider -vvv \\
                     $TEST_FILE_DISSECTOR_TESTS \\
-                    --pastebin=all
+                    --ignore=$TEST_FILE_DISSECTOR_TESTS_6LOWPAN \\
+                    --ignore=$TEST_FILE_DISSECTOR_TESTS_COAP \\
+                    --ignore=$TEST_FILE_DISSECTOR_TESTS_IEEE802154 \\
+            '''
+      }
+      stage("Dissector - 6LoWPAN test"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS_6LOWPAN \\
+            '''
+      }
+
+      stage("Dissector - CoAP test"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS_COAP \\
+            '''
+      }
+
+      stage("Dissector - IEEE802.15.4 test"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS_IEEE802154 \\
             '''
       }
 

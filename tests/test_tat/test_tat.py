@@ -14,7 +14,7 @@ default_expected_verdict_if_none_specified = "pass"
 class TestAnalysisInteropTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.pcap_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../test_dumps/analysis')
+        self.pcap_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../test_dumps')
         self.pcap_path_list = os.listdir(self.pcap_dir_path)
         logger.info(self.pcap_path_list)
 

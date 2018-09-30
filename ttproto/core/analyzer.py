@@ -1038,8 +1038,8 @@ if __name__ == "__main__":
     analyzer = Analyzer('tat_coap')
 
     # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
-    # params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
-    params = './tests/test_dumps/analysis/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
+    # params = './tests/test_dumps/coap_core/TD_COAP_CORE_01_pass.pcap', 'TD_COAP_CORE_01'
+    params = './tests/test_dumps/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
     # params = './tmp/TD_COAP_CORE_23_fail.pcap', 'TD_COAP_CORE_23'
     # params = './tests/test_dumps/AnalyzerTests/coap_core/TD_COAP_CORE_03_FAIL_No_CoAPOptionContentFormat.pcap', 'TD_COAP_CORE_03'
     tc_name, verdict, rev_frames, str_log, lst_log, excepts = analyzer.analyse(params[0], params[1])
