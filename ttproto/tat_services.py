@@ -301,7 +301,7 @@ if __name__ == "__main__":
     # print(str(testcases))
 
     dissection = dissect_capture(
-        filename='tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
+        filename='tests/test_dumps/coap/CoAP_plus_random_UDP_messages.pcap'
     )
     # print(dissection)
 

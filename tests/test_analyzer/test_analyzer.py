@@ -15,7 +15,7 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
 
     # Test env (only tat_coap for the moment)
     TEST_ENV = 'tat_coap'
-    TEST_DIR = './tests/test_dumps/analysis/coap_core/'
+    TEST_DIR = './tests/test_dumps/coap_core/'
     UNKNOWN_TEST_ENV = 'unknown'
     TEST_CASE_ID = 'TD_COAP_CORE_01'
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = 'TD_COAP_CORE_24'
@@ -146,7 +146,7 @@ class CoAPAnalyzerTestCase(unittest.TestCase):
 class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
     # #################### Tests parameters #########################
     TEST_ENV = 'tat_6lowpan'
-    TEST_DIR = './tests/test_dumps/analysis/6lowpan_hc/'
+    TEST_DIR = './tests/test_dumps/6lowpan_hc/'
     UNKNOWN_TEST_ENV = 'unknown'
     TEST_CASE_ID = 'TD_6LOWPAN_HC_01'
     UNKNOWN_TEST_CASE_ID = 'TD_6LOWPAN_HC_666'
@@ -156,7 +156,7 @@ class SixlowpanHcAnalyzerTestCase(CoAPAnalyzerTestCase):
 class LwM2MPRO_AnalyzerTestCase(CoAPAnalyzerTestCase):
     # #################### Tests parameters #########################
     TEST_ENV = 'tat_lwm2m'
-    TEST_DIR = './tests/test_dumps/analysis/lwm2m_pro/'
+    TEST_DIR = './tests/test_dumps/lwm2m_pro/'
     UNKNOWN_TEST_ENV = 'unknown'
     TEST_CASE_ID = 'TD_LWM2M_1_INT_204'
     UNKNOWN_TEST_CASE_ID = 'asdasd'

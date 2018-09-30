@@ -16,7 +16,7 @@ class TestCommon(unittest.TestCase):
 
     def __get_capture(self,
                       pcap_file,
-                      dir_from_test_dumps="dissection/coap/coap_observe"):
+                      dir_from_test_dumps="coap_observe"):
         pcap_dir_path = os.path.dirname(os.path.abspath(__file__))
         pcap_dir_path = os.path.join(pcap_dir_path,
                                      os.path.join('../test_dumps/'
@@ -26,7 +26,7 @@ class TestCommon(unittest.TestCase):
 
     def __get_convs(self,
                     pcap_file:str,
-                    dir_from_test_dumps='analysis/preprocess/coap'):
+                    dir_from_test_dumps='preprocess/coap'):
         capture = self.__get_capture(pcap_file, dir_from_test_dumps)
         convs, ignored = CoAPTestCase.extract_all_coap_conversations(capture)
         return convs, ignored
@@ -161,7 +161,7 @@ class TestCommon(unittest.TestCase):
 
     def test_conv_correlation_with_unrealated_conv_in_pcap(self):
         capture = self.__get_capture('OBS_07_with_other_unrelated_convs.pcap',
-                                     dir_from_test_dumps='analysis/preprocess/coap')
+                                     dir_from_test_dumps='preprocess/coap')
         convs, ignored = CoAPTestCase.extract_all_coap_conversations(capture)
 
         # We await 2 conversations : One for the observing client on /obs, one for
@@ -195,7 +195,7 @@ class TestCommon(unittest.TestCase):
 
     def test_severals_convs_for_tc_in_single_pcap(self):
         capture = self.__get_capture('Two_tc_two_times_each_with_overlap.pcap',
-                                     dir_from_test_dumps='analysis/preprocess/coap')
+                                     dir_from_test_dumps='preprocess/coap')
         conversations, ignored = CoAPTestCase.extract_all_coap_conversations(capture)
         assert len(conversations) == 4
 

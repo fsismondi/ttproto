@@ -14,15 +14,21 @@ from ttproto.utils.pcap_filter import openwsn_profile_filter
 
 class DissectPcapTestCase(unittest.TestCase):
     """
-    Test pcap dissections for particular protocols
+    Test pcap dissections using as input pcap files.
+
+    This class can be inherited, and child class may have
+    PCAP_FILES_DISSECTION_DIRS and PROTO_CLASS_FILTER
+    overriden for running test over particular protocols.
     """
 
     # #################### Tests parameters #########################
 
     # File path
-    PCAP_FILES_DISSECTION_DIRS = ['tests/test_dumps/dissection/coap/']
+    PCAP_FILES_DISSECTION_DIRS = [
+        'tests/test_dumps/lwm2m_pro',
+    ]
 
-    PROTO_CLASS_FILTER = CoAP
+    PROTO_CLASS_FILTER = CoAP  # we can override with None :)
 
     # Create a struct checker object
     struct_validator = StructureValidator()

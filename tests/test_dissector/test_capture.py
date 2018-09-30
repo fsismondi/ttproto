@@ -1,4 +1,5 @@
 import unittest
+from os import path
 
 from ttproto.core.dissector import Frame, Capture, ReaderError
 
@@ -11,11 +12,14 @@ class CaptureTestCase(unittest.TestCase):
     # #################### Tests parameters #########################
 
     # File path
-    TEST_FILE_DIR = 'tests/test_dumps/dissection'
-    PCAP_FILE = TEST_FILE_DIR + '/coap/CoAP_plus_random_UDP_messages.pcap'
-    WRONG_TEST_FILE_DIR = 'tests/test_dumps/exceptions'
-    EMPTY_PCAP_FILE = WRONG_TEST_FILE_DIR + '/empty_pcap.pcap'
-    NOT_A_PCAP_FILE = WRONG_TEST_FILE_DIR + '/not_a_pcap_file.dia'
+    TEST_FILE_DIR = 'tests/test_dumps'
+    PCAP_FILE = path.join(TEST_FILE_DIR, 'coap', 'CoAP_plus_random_UDP_messages.pcap')
+
+    # pcaps that MUST throw exceptions
+    WRONG_TEST_FILE_DIR_NAME = 'others'
+    EMPTY_PCAP_FILE = path.join(TEST_FILE_DIR, WRONG_TEST_FILE_DIR_NAME, 'empty_pcap.pcap')
+    NOT_A_PCAP_FILE = path.join(TEST_FILE_DIR, WRONG_TEST_FILE_DIR_NAME, 'not_a_pcap_file.dia')
+
     CAPTURE_LENGTH = 5
 
     # #################### Init and deinit functions #########################
@@ -61,6 +65,7 @@ class CaptureTestCase(unittest.TestCase):
     def test_set_malformed(self):
         with self.assertRaises(AttributeError):
             self.capture.malformed = []
+
 
 # #################### Main run the tests #########################
 if __name__ == '__main__':
