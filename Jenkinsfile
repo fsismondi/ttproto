@@ -7,11 +7,11 @@ if(env.JOB_NAME =~ 'ttproto-unittest/'){
         env.TEST_FILE_TAT_COAP_CORE="tests/test_tat/test_tat_coap_core.py"
         env.TEST_FILE_TAT_COAP_OBSERVE="tests/test_tat/test_tat_coap_observe.py"
         env.TEST_FILE_TAT_COAP_BLOCK="tests/test_tat/test_tat_coap_block.py"
-        env.TEST_FILE_DISSECTOR_TESTS="tests//test_dissector/"
-        env.TEST_FILE_DISSECTOR_TESTS_6LOWPAN="tests//test_dissector/test_dissector_pcaps_6lowpan.py"
-        env.TEST_FILE_DISSECTOR_TESTS_COAP="tests//test_dissector/test_dissector_pcaps_coap.py"
-        env.TEST_FILE_DISSECTOR_TESTS_IEEE802154="tests//test_dissector/test_dissector_pcaps_802154.py"
-        env.TEST_FILE_ANALYZER_TESTS="tests//test_analyzer/"
+        env.TEST_FILE_DISSECTOR_TESTS="tests/test_dissector/"
+        env.TEST_FILE_DISSECTOR_TESTS_6LOWPAN="tests/test_dissector/test_dissector_pcaps_6lowpan.py"
+        env.TEST_FILE_DISSECTOR_TESTS_COAP="tests/test_dissector/test_dissector_pcaps_coap.py"
+        env.TEST_FILE_DISSECTOR_TESTS_IEEE802154="tests/test_dissector/test_dissector_pcaps_802154.py"
+        env.TEST_FILE_ANALYZER_TESTS="tests/test_analyzer/"
 
         stage ("Setup dependencies"){
             checkout scm
