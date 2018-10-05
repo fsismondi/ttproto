@@ -45,7 +45,6 @@ import signal
 import logging
 
 from collections import OrderedDict
-from multiprocessing import Process
 
 # Directories
 from ttproto import DATADIR
@@ -60,6 +59,7 @@ from ttproto.utils import pure_pcapy
 from ttproto.utils.rmq_handler import AMQP_URL, AMQP_EXCHANGE, JsonFormatter, RabbitMQHandler
 from ttproto.utils import messages
 from ttproto.utils.packet_dumper import launch_amqp_data_to_pcap_dumper, AmqpDataPacketDumper
+from ttproto.utils import event_bus_utils
 
 COMPONENT_ID = NotImplementedError
 
@@ -72,6 +72,8 @@ TOKEN_LENGTH = 28
 
 # states
 previous_frames_count = 0
+
+logger = logging.getLogger(__name__)
 
 
 #####################
@@ -150,14 +152,14 @@ class AmqpInterface:
 
     def run(self):
         # let's send bootstrap message (analysis)
-        _publish_message(
-            self.channel,
+        event_bus_utils.publish_message(
+            self.connection,
             messages.MsgTestingToolComponentReady(component='analysis')
         )
 
         #  let's send bootstrap message (dissector)
-        _publish_message(
-            self.channel,
+        event_bus_utils.publish_message(
+            self.connection,
             messages.MsgTestingToolComponentReady(component='dissection')
         )
 
@@ -173,14 +175,14 @@ class AmqpInterface:
             self.channel = self.connection.channel()
 
         # dissection shutdown message
-        _publish_message(
-            self.channel,
+        event_bus_utils.publish_message(
+            self.connection,
             messages.MsgTestingToolComponentShutdown(component='dissection')
         )
 
         # analysis shutdown message
-        _publish_message(
-            self.channel,
+        event_bus_utils.publish_message(
+            self.connection,
             messages.MsgTestingToolComponentShutdown(component='analysis')
         )
 
@@ -244,7 +246,7 @@ class AmqpInterface:
                 testcase_id=None,
                 testcase_ref=None,
             )
-            _publish_message(ch, event_diss)
+            event_bus_utils.publish_message(self.connection, event_diss)
             self.logger.info("Auto dissection message sent (%s frames).. " % len(dissection_structured_text))
 
             return
@@ -280,8 +282,8 @@ class AmqpInterface:
 
                 # if pcap file has less than 24 bytes then its an empty pcap file
                 if (nb <= 24):
-                    _publish_message(
-                        ch,
+                    event_bus_utils.publish_message(
+                        self.connection,
                         messages.MsgErrorReply(
                             service_request,
                             ok=False,
@@ -303,8 +305,8 @@ class AmqpInterface:
                 )
 
             except Exception as e:
-                _publish_message(
-                    ch,
+                event_bus_utils.publish_message(
+                    self.connection,
                     messages.MsgErrorReply(
                         service_request,
                         error_message=str(e)
@@ -328,12 +330,12 @@ class AmqpInterface:
                     testcase_ref=testcase_ref
                 )
                 # send response
-                _publish_message(ch, response)
+                event_bus_utils.publish_message(self.connection, response)
                 self.logger.info("Analysis response sent. Got %s" % str(analysis_results[1]))
 
             except Exception as e:
-                _publish_message(
-                    ch,
+                event_bus_utils.publish_message(
+                    self.connection,
                     messages.MsgErrorReply(
                         service_request,
                         error_message=str(e)
@@ -377,8 +379,8 @@ class AmqpInterface:
 
             # if pcap file has less than 24 bytes then its an empty pcap file
             if (nb <= 24):
-                _publish_message(
-                    ch,
+                event_bus_utils.publish_message(
+                    self.connection,
                     messages.MsgErrorReply(
                         service_request,
                         error_code=400,
@@ -400,8 +402,8 @@ class AmqpInterface:
                     output_filename=os.path.join(DATADIR, operation_token),
                 )
             except (TypeError, pure_pcapy.PcapError) as e:
-                _publish_message(
-                    ch,
+                event_bus_utils.publish_message(
+                    self.connection,
                     messages.MsgErrorReply(
                         service_request,
                         error_message="Error processing PCAP. Error: %s" % str(e)
@@ -410,8 +412,8 @@ class AmqpInterface:
                 self.logger.error("Error processing PCAP: %s" % e)
                 return
             except Exception as e:
-                _publish_message(
-                    ch,
+                event_bus_utils.publish_message(
+                    self.connection,
                     messages.MsgErrorReply(
                         service_request,
                         error_message="Error found while dissecting pcap. Error: %s" % str(e)
@@ -427,7 +429,7 @@ class AmqpInterface:
                 frames=dissection_structured_text,
                 frames_simple_text=dissection_simple_text
             )
-            _publish_message(ch, response)
+            event_bus_utils.publish_message(self.connection, response)
             return
 
         else:
@@ -438,15 +440,11 @@ class AmqpInterface:
 # # # AUXILIARY FUNCTIONS # # #
 
 def _auto_dissect_service():
-    logger = logging.getLogger('ttproto|auto-dissect')
-    logger.setLevel(LOG_LEVEL)
-
     global AUTO_DISSECT_PERIOD
     last_polled_pcap = None
 
-    # setup process own connection and channel
+    # setup process own connection
     connection = pika.BlockingConnection(pika.URLParameters(AMQP_URL))
-    channel = connection.channel()
 
     while True:
         time.sleep(AUTO_DISSECT_PERIOD)
@@ -456,9 +454,9 @@ def _auto_dissect_service():
         # request to sniffing component
         try:
             request = messages.MsgSniffingGetCaptureLast()
-            response = _amqp_request(channel, request, COMPONENT_ID)
+            response = event_bus_utils.amqp_request(connection, request, COMPONENT_ID, use_message_typing=True)
 
-        except TimeoutError as amqp_err:
+        except event_bus_utils.AmqpSynchCallTimeoutError as amqp_err:
             logger.error(
                 'Sniffer didnt respond to Request: %s . Error: %s'
                 % (
@@ -522,87 +520,7 @@ def _auto_dissect_service():
                         testcase_id=filename.strip('.pcap'),  # dirty solution but less coding :)
                         testcase_ref=None,
                     )
-                    _publish_message(channel, m)
-
-
-def _amqp_request(channel, request_message: messages.Message, component_id: str):
-    # NOTE: channel must be a pika channel
-
-    # check first that sender didnt forget about reply to and corr id
-    assert request_message.reply_to
-    assert request_message.correlation_id
-
-    response = None
-
-    reply_queue_name = 'amqp_rpc_%s@%s' % (str(uuid.uuid4())[:8], component_id)
-
-    result = channel.queue_declare(queue=reply_queue_name,
-                                   auto_delete=True,
-                                   arguments={'x-max-length': 100})
-
-    callback_queue = result.method.queue
-
-    # bind and listen to reply_to topic
-    channel.queue_bind(
-        exchange=AMQP_EXCHANGE,
-        queue=callback_queue,
-        routing_key=request_message.reply_to
-    )
-
-    channel.basic_publish(
-        exchange=AMQP_EXCHANGE,
-        routing_key=request_message.routing_key,
-        properties=pika.BasicProperties(**request_message.get_properties()),
-        body=request_message.to_json(),
-    )
-
-    time.sleep(0.2)
-    retries_left = 5
-
-    while retries_left > 0:
-        time.sleep(0.5)
-        method, props, body = channel.basic_get(reply_queue_name)
-        if method:
-            channel.basic_ack(method.delivery_tag)
-            if hasattr(props, 'correlation_id') and props.correlation_id == request_message.correlation_id:
-                break
-        retries_left -= 1
-
-    if retries_left > 0:
-
-        body_dict = json.loads(body.decode('utf-8'), object_pairs_hook=OrderedDict)
-        response = messages.MsgReply(request_message, **body_dict)
-
-    else:
-        raise TimeoutError(
-            "Response timeout! rkey: %s , request type: %s" % (
-                request_message.routing_key,
-                type(request_message)
-            )
-        )
-
-    # clean up
-    channel.queue_delete(reply_queue_name)
-
-    return response
-
-
-def _publish_message(channel, message):
-    """ Published which uses message object metadata
-
-    :param channel:
-    :param message:
-    :return:
-    """
-
-    properties = pika.BasicProperties(**message.get_properties())
-
-    channel.basic_publish(
-        exchange=AMQP_EXCHANGE,
-        routing_key=message.routing_key,
-        properties=properties,
-        body=message.to_json(),
-    )
+                    event_bus_utils.publish_message(connection, m)
 
 
 @typecheck

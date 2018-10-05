@@ -1,6 +1,5 @@
-# Invokes webserver to be run at 127.0.0.1:2080 if INTERFACE is amqp,
-# else runs amqp interface
-# Should be run as: python3 -m ttproto.tat_coap
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import sys
 import os
@@ -10,13 +9,6 @@ from ttproto import LOG_LEVEL
 from ttproto.tat_services import dissect_capture, analyze_capture, get_protocols_list, ALLOWED_PROTOCOLS_FOR_ANALYSIS
 from multiprocessing import Process
 
-# TTPROTO CONSTANTS
-COMPONENT_ID = 'tat|main'
-SERVER_CONFIG = ("0.0.0.0", 2080)
-
-# default handler
-logger = logging.getLogger(COMPONENT_ID)
-logger.setLevel(LOG_LEVEL)
 
 PCAP_DUMPER_AMQP_TOPICS = [
     'fromAgent.#.packet.raw'
@@ -48,6 +40,13 @@ Analyze usage examples:
     analyze ./tests/test_dumps/coap_core/TD_COAP_CORE_01_PASS.pcap -p coap -tc TD_COAP_CORE_01
 '''
 
+# TTPROTO CONSTANTS
+COMPONENT_ID = 'tat|main'
+SERVER_CONFIG = ("0.0.0.0", 2080)
+
+# default handler
+logger = logging.getLogger(COMPONENT_ID)
+logger.setLevel(LOG_LEVEL)
 
 class TTProtoCLI():
     def __init__(self):
