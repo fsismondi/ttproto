@@ -73,6 +73,7 @@ TOKEN_LENGTH = 28
 # states
 previous_frames_count = 0
 
+
 #####################
 
 
@@ -328,7 +329,7 @@ class AmqpInterface:
                 )
                 # send response
                 _publish_message(ch, response)
-                self.logger.info("Analysis response sent: " + repr(response))
+                self.logger.info("Analysis response sent. Got %s" % str(analysis_results[1]))
 
             except Exception as e:
                 _publish_message(
