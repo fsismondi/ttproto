@@ -49,7 +49,7 @@ def analyze_capture(filename, protocol, testcase_id, output_filename):
         raise NotImplementedError('Protocol %s not among the allowed analysis test suites' % protocol)
 
     analysis_results = Analyzer('tat_' + protocol.lower()).analyse(filename, testcase_id)
-    logger.info('Analysis finished, result:\n%s' % str(analysis_results))
+    logger.info('Analysis finished. Got [%s]' % str(analysis_results[1]))
 
     if output_filename and type(output_filename) is str:
         # save analysis response

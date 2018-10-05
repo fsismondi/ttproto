@@ -331,7 +331,7 @@ class AmqpInterface:
                 )
                 # send response
                 event_bus_utils.publish_message(self.connection, response)
-                self.logger.info("Analysis response sent. Got %s" % str(analysis_results[1]))
+                self.logger.info("Analysis response sent")
 
             except Exception as e:
                 event_bus_utils.publish_message(
