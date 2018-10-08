@@ -60,11 +60,7 @@ TD_COAP_CORE_13:
         else:
             uri_path_opt = Opt(CoAPOptionUriPath(), superset=True)
 
-        self.match("client", CoAP(code="get",
-                                  type="con",
-                                  opt=uri_path_opt
-                                  )
-                    )
+        self.match("client", CoAP(code="get",type="con",opt=uri_path_opt))
 
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]

@@ -44,18 +44,11 @@ TD_COAP_CORE_05:
         """
         return [CoAP(type='non', code='get', opt=Opt(CoAPOptionUriPath("test")))]
 
-    def run (self):
-        self.match("client", CoAP(type="non", code="get",
-                        opt = self.uri("/test")))
+    def run(self):
+        self.match("client", CoAP(type="non", code="get", opt=self.uri("/test")))
         CTOK = self.coap["tok"]
 
         self.next()
 
-        if self.match("server", CoAP(
-                        type = "non",
-                        code = 2.05,
-                        tok = CTOK,
-                )):
-            self.match ("server", CoAP(
-                        opt = Opt(CoAPOptionContentFormat())
-                ), "fail")
+        if self.match("server", CoAP(type="non", code=2.05, tok=CTOK, )):
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat())), "fail")

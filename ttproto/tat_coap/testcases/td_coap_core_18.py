@@ -53,20 +53,22 @@ TD_COAP_CORE_18:
 
     request_uri = "/test"
 
-    def run (self):
-        self.match ("client", CoAP (type="con", code = "post",pl=Not(b""),
-                    opt=self.uri(
-                        self.request_uri,
-                        CoAPOptionContentFormat(),
-                    )))
+    def run(self):
+        self.match("client", CoAP(type="con",
+                                  code="post",
+                                  pl=Not(b""),
+                                  opt=self.uri(
+                                      self.request_uri,
+                                      CoAPOptionContentFormat(),
+                                  )))
 
         self.next_skip_ack()
-        #TODO: generate a fail if we have a '/' or '.' or '..' in the CoAPOptionLocationPath ? see 5.10.7
-        self.match ("server", CoAP (code=2.01,
-                        opt=Opt(
-                            CoAPOptionLocationPath ("location1"),
-                            CoAPOptionLocationPath ("location2"),
-                            CoAPOptionLocationPath ("location3"),
-                )))
+        # TODO: generate a fail if we have a '/' or '.' or '..' in the CoAPOptionLocationPath ? see 5.10.7
+        self.match("server", CoAP(code=2.01,
+                                  opt=Opt(
+                                      CoAPOptionLocationPath("location1"),
+                                      CoAPOptionLocationPath("location2"),
+                                      CoAPOptionLocationPath("location3"),
+                                  )))
 
-        self.next_skip_ack (optional = True)
+        self.next_skip_ack(optional=True)

@@ -47,20 +47,13 @@ TD_COAP_CORE_10:
                  opt=Opt(CoAPOptionUriPath("test")))
         ]
 
-    def run (self):
-        self.match ("client", CoAP (	code = "get",
-                            type = "con",
-                            tok = Not (b""),
-                            opt = self.uri ("/test")
-        ))
-        self.match ("client", CoAP (tok = Length (bytes, (1, 8))
-                ), "fail")
+    def run(self):
+        self.match("client", CoAP(code="get", type="con", tok=Not(b""), opt=self.uri("/test")))
+        self.match("client", CoAP(tok=Length(bytes, (1, 8))), "fail")
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
 
         self.next()
 
-        if self.match ("server", CoAP (	code = 2.05,
-                            pl  = Not (b"")
-                )):
-            self.match ("server", CoAP (mid= CMID,tok = CTOK,opt= Opt(CoAPOptionContentFormat())), "fail")
+        if self.match("server", CoAP(code=2.05, pl=Not(b""))):
+            self.match("server", CoAP(mid=CMID, tok=CTOK, opt=Opt(CoAPOptionContentFormat())), "fail")

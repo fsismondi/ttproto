@@ -74,8 +74,7 @@ TD_COAP_CORE_11:
         self.next()
         # FIXME: this is in a different conversation
         self.match("server", CoAP(type="con", code=2.05))
-        self.match("server", CoAP(pl=Not(b''), tok=CTOK, )
-                   , "fail")
+        self.match("server", CoAP(pl=Not(b''), tok=CTOK, ), "fail")
         SMID = self.coap["mid"]
 
         self.next()

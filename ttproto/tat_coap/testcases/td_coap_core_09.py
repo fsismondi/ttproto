@@ -63,28 +63,23 @@ TD_COAP_CORE_09:
         ]
 
     def run(self):
-        self.match ("client", CoAP (type="con", code = "get",
-                        opt = self.uri ("/separate")))
+        self.match("client", CoAP(type="con", code="get", opt=self.uri("/separate")))
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
 
         self.next()
 
-        #FIXME: may be out-of-order
-        if not self.match("server", CoAP (type="ack", code=0, mid=CMID, pl=b"")):
+        # FIXME: may be out-of-order
+        if not self.match("server", CoAP(type="ack", code=0, mid=CMID, pl=b"")):
             raise self.Stop()
 
         self.next()
 
-         # FIXME: this is in a different conversation
-        self.match ("server", CoAP (type="con", code=2.05))
-        self.match ("server", CoAP (
-                        tok=CTOK,
-                        pl = Not (b''),
-                        opt= Opt(CoAPOptionContentFormat())
-                ), "fail")
+        # FIXME: this is in a different conversation
+        self.match("server", CoAP(type="con", code=2.05))
+        self.match("server", CoAP(tok=CTOK, pl=Not(b''), opt=Opt(CoAPOptionContentFormat())), "fail")
         SMID = self.coap["mid"]
 
         self.next()
 
-        self.match ("client", CoAP (type="ack", code=0, mid=SMID,pl=b""))
+        self.match("client", CoAP(type="ack", code=0, mid=SMID, pl=b""))

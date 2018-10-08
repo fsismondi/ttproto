@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_17 (CoAPTestCase):
+class TD_COAP_CORE_17(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_17:
@@ -49,24 +49,21 @@ TD_COAP_CORE_17:
             Check the number/value of the uri query options or not?
         """
         return [
-            CoAP(type='non', code='get',
+            CoAP(type='non',
+                 code='get',
                  opt=Opt(CoAPOptionUriPath("separate"))
                  )
         ]
 
-    def run (self):
-        self.match ("client", CoAP(type="non", code = "get",
-                    opt=self.uri("/separate")))
+    def run(self):
+        self.match("client", CoAP(type="non", code="get", opt=self.uri("/separate")))
 
         self.next()
 
-        #FIXME: may be out-of-order
+        # FIXME: may be out-of-order
         if self.coap in CoAP(type="ack"):
             self.set_verdict("fail", "server must no send any ack")
             self.next()
 
         if self.match("server", CoAP(type="non", code=2.05)):
-            self.match("server", CoAP(
-                        pl = Not (b''),
-                        opt= Opt(CoAPOptionContentFormat())
-                ), "fail")
+            self.match("server", CoAP(pl=Not(b''), opt=Opt(CoAPOptionContentFormat())), "fail")

@@ -55,25 +55,16 @@ TD_COAP_CORE_08:
             )
         ]
 
-    def run (self):
-        if self._frame is None: #inconclusive instead of error is no frame at all.
+    def run(self):
+        if self._frame is None:  # inconclusive instead of error is no frame at all.
             return
-        self.match("client", CoAP(type="non", code="post",
-                        opt = self.uri("/test")))
-        self.match("client", CoAP(
-                        pl  = Not(b''),
-                        opt = Opt(CoAPOptionContentFormat()),
-                ), "fail")
+        self.match("client", CoAP(type="non", code="post",opt=self.uri("/test")))
+        self.match("client", CoAP(pl=Not(b''),opt=Opt(CoAPOptionContentFormat()),), "fail")
         CTOK = self.coap["tok"]
 
         self.next()
 
-        self.match("server", CoAP(
-                        type = "non",
-                        code = Any (65, 68),
-                        tok = CTOK,
-                ))
-        if self.match("server", CoAP(pl = Not(b"")),None):
-            self.match("server", CoAP(
-                        opt = Opt(CoAPOptionContentFormat()),
-                ), "fail")
+        self.match("server", CoAP(type="non",code=Any(65, 68),tok=CTOK,))
+
+        if self.match("server", CoAP(pl=Not(b""))):
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")

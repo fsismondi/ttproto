@@ -56,5 +56,6 @@ TD_COAP_CORE_04:
         self.next()
 
         self.match("server", CoAP(code=Any(65, 68), mid=CMID, tok=CTOK, ))
+
         if self.match("server", CoAP(pl=Not(b"")), None):
             self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")

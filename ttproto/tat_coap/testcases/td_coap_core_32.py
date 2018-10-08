@@ -6,6 +6,8 @@ class TD_COAP_CORE_32(CoAPTestCase):
     @typecheck
     def get_stimulis(cls) -> list_of(Value):
         """
+        This is just a dummy test case used for testing stuff.
+
         Get the stimulis of this test case. This has to be be implemented into
         each test cases class.
 

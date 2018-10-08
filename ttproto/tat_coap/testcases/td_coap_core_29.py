@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_29 (CoAPTestCase):
+class TD_COAP_CORE_29(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_29:
@@ -46,17 +46,17 @@ TD_COAP_CORE_29:
     def run(self):
         # Step 2
         self.match("client", CoAP(type="con", code="get",
-                                       opt=All(
-                                           Opt(CoAPOptionUriPath("validate")),
-                                           NoOpt(CoAPOptionETag()),
-                                       )))
+                                  opt=All(
+                                      Opt(CoAPOptionUriPath("validate")),
+                                      NoOpt(CoAPOptionETag()),
+                                  )))
 
         self.next_skip_ack()
 
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                              code=2.05,
-                                              opt=Opt(CoAPOptionETag(), CoAPOptionMaxAge()),
-                                              pl=Not(b""))):
+                                         code=2.05,
+                                         opt=Opt(CoAPOptionETag(), CoAPOptionMaxAge()),
+                                         pl=Not(b""))):
             raise self.Stop()
 
         maxage = self.coap["opt"][CoAPOptionMaxAge]["val"]
@@ -71,12 +71,12 @@ TD_COAP_CORE_29:
             if interval >= maxage:
                 break
 
-            if self.match("client", CoAP(type="con", code="get",
-                                              opt=Opt(CoAPOptionUriPath("validate"))),
-                               None):
-                raise self.set_verdict("inconclusive",
-                                      "Proxy sent a new GET request after %.1f seconds whereas Max-Age is set to %d seconds" % (
-                                      interval, maxage))
+            if self.match("client",
+                          CoAP(type="con", code="get", opt=Opt(CoAPOptionUriPath("validate"))), None):
+                self.set_verdict(
+                    "inconclusive",
+                    "Proxy sent a new GET request after %.1f seconds whereas Max-Age is set to %d seconds" % (
+                        interval, maxage))
                 raise self.Stop()
 
             while self.next(optional=True):

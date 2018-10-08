@@ -3,7 +3,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_31 (CoAPTestCase):
+class TD_COAP_CORE_31(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_31:
@@ -48,16 +48,11 @@ TD_COAP_CORE_31:
             CoAP(type='con', code=0)  # Step 1
         ]
 
-    def run (self):
-        self.match ("client", CoAP (type="con", code = 0,tok=b"",pl=b""))
+    def run(self):
+        self.match("client", CoAP(type="con", code=0, tok=b"", pl=b""))
         CMID = self.coap["mid"]
 
         self.next_skip_ack()
 
-        if self.match ("server", CoAP (type=3)):
-            self.match ("server", CoAP (
-                        code=0,
-                        tok=b"",
-                        pl=b"",
-                    ), "fail")
-
+        if self.match("server", CoAP(type=3)):
+            self.match("server", CoAP(code=0, tok=b"", pl=b"", ), "fail")

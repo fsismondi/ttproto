@@ -74,7 +74,7 @@ TD_COAP_CORE_23:
         """
         return [
             CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("create1"))),  # Step 1
-            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("create1")))   # Step 5
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("create1")))  # Step 5
         ]
 
     request_uri = "/create1"
@@ -83,12 +83,12 @@ TD_COAP_CORE_23:
         # Part A
         # Step 2
         self.match("client", CoAP(type="con", code="put",
-                                       opt=Opt(
-                                           CoAPOptionContentFormat(),
-                                           CoAPOptionUriPath(self.request_uri[1:]),
-                                           CoAPOptionIfNoneMatch(),
-                                       ),
-                                       pl=Not(b"")))
+                                  opt=Opt(
+                                      CoAPOptionContentFormat(),
+                                      CoAPOptionUriPath(self.request_uri[1:]),
+                                      CoAPOptionIfNoneMatch(),
+                                  ),
+                                  pl=Not(b"")))
 
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
@@ -96,23 +96,24 @@ TD_COAP_CORE_23:
         self.next_skip_ack()
         # Step 3
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                              code=2.01, mid=CMID, tok=CTOK)):
+                                         code=2.01, mid=CMID, tok=CTOK)):
             raise self.Stop()
+
         if self.match("server", CoAP(pl=Not(b"")), None):
-            self.match("server", CoAP(
-                opt=Opt(CoAPOptionContentFormat()),
-            ), "fail")
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")
+
         self.next_skip_ack(optional=True)
 
         # Part B
         # Step 6
-        self.match("client", CoAP(type="con", code="put",
-                                       opt=Opt(
-                                           CoAPOptionContentFormat(),
-                                           CoAPOptionUriPath(self.request_uri[1:]),
-                                           CoAPOptionIfNoneMatch(),
-                                       ),
-                                       pl=Not(b"")))
+        self.match("client", CoAP(type="con",
+                                  code="put",
+                                  opt=Opt(
+                                      CoAPOptionContentFormat(),
+                                      CoAPOptionUriPath(self.request_uri[1:]),
+                                      CoAPOptionIfNoneMatch(),
+                                  ),
+                                  pl=Not(b"")))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
         if CMID2 != b"":
@@ -125,9 +126,9 @@ TD_COAP_CORE_23:
         self.next_skip_ack()
         # Step 7
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                              code=4.12,
-                                              mid=CMID2,
-                                              tok=CTOK2), 'fail'):
+                                         code=4.12,
+                                         mid=CMID2,
+                                         tok=CTOK2), 'fail'):
             raise self.Stop()
 
         self.next_skip_ack(optional=True)

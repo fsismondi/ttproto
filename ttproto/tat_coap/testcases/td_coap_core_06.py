@@ -42,7 +42,7 @@ TD_COAP_CORE_06:
         :rtype: [Value]
         """
         return [CoAP(type='non', code='delete',
-                opt=Opt(CoAPOptionUriPath("test")))]
+                     opt=Opt(CoAPOptionUriPath("test")))]
 
     def run(self):
         self.match("client", CoAP(type="non", code="delete",
@@ -53,7 +53,5 @@ TD_COAP_CORE_06:
         self.next()
 
         self.match("server", CoAP(type="non", code=2.02, tok=CTOK))
-        if self.match("server", CoAP(pl=Not(b"")), None):
-            self.match("server", CoAP(
-                opt=Opt(CoAPOptionContentFormat()),
-            ), "fail")
+        if self.match("server", CoAP(pl=Not(b""))):
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")

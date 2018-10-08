@@ -56,35 +56,25 @@ TD_COAP_CORE_14:
                         CoAPOptionUriPath("query"),
                         superset=True,
                         )
-                )
+            )
         ]
 
-    def run (self):
+    def run(self):
         if self.urifilter:
             uri_query_opt = self.uri("/query?first=1&second=2")
         else:
             uri_query_opt = Opt(CoAPOptionUriQuery(), superset=True)
 
-        self.match ("client", CoAP(code = "get",
-                        type = "con",
-                        opt = uri_query_opt))
+        self.match("client", CoAP(code="get", type="con", opt=uri_query_opt))
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
 
-        opts = list (filter ((lambda o: isinstance (o, CoAPOptionUriQuery)), self.coap["opt"]))
+        opts = list(filter((lambda o: isinstance(o, CoAPOptionUriQuery)), self.coap["opt"]))
 
         if len(opts) < 2:
-            self.set_verdict ("inconclusive", "expect multiple UriQuery options")
+            self.set_verdict("inconclusive", "expect multiple UriQuery options")
 
         self.next_skip_ack()
 
-
-        if self.match(
-            'server',
-            CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b''))
-        ):
-            self.match(
-                'server',
-                CoAP(opt=Opt(CoAPOptionContentFormat())),
-                'fail'
-            )
+        if self.match('server', CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b''))):
+            self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')

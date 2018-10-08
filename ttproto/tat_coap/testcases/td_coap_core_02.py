@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_02 (CoAPTestCase):
+class TD_COAP_CORE_02(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_02:
@@ -46,9 +46,9 @@ TD_COAP_CORE_02:
         verdict_if_none = "inconclusive"
 
         while self.match(
-            'client',
-            CoAP(type='con', code='delete', opt=self.uri('/test')),
-            verdict_if_none
+                'client',
+                CoAP(type='con', code='delete', opt=self.uri('/test')),
+                verdict_if_none
         ):
             CMID = self.coap['mid']
             CTOK = self.coap['tok']
@@ -56,21 +56,21 @@ TD_COAP_CORE_02:
             self.next()
 
             if self.match(
-                'server',
-                CoAP(code=2.02, mid=CMID, tok=CTOK),
+                    'server',
+                    CoAP(code=2.02, mid=CMID, tok=CTOK),
             ):
                 # Pass cases, nothing to do.
                 pass
             elif self.match(
-                'server',
-                CoAP(mid=CMID, tok=CTOK),
-            None):
+                    'server',
+                    CoAP(mid=CMID, tok=CTOK),
+                    None):
                 code = self.coap['code']
                 # Fail cases : when code is 2.01/2.03/2.04/2.05
                 if code == 65 or code == 67 or code == 68 or code == 69:
                     self.set_verdict("fail", "Server responded to a deletion\
                     request with " + str(code))
-                else : #Inconclusive cases.
+                else:  # Inconclusive cases.
                     # Other code 4.xx/5.xx, e.g various errors.
                     # We cannot trow a Fail verdic here because even if it do
                     # not correspond to a check step, it do not violate the RFC
@@ -78,7 +78,10 @@ TD_COAP_CORE_02:
                     self.set_verdict("inconclusive", "Server responded to a deletion\
                     request with " + str(code))
 
-            if self.match('server', CoAP(pl=Not(b'')), None):
+            if self.match('server',
+                          CoAP(pl=Not(b'')),
+                          on_mismatch_verdict='inconclusive',
+                          on_mismatch_msg='Test pre-coditions not met by server.'):
                 self.match(
                     'server',
                     CoAP(opt=Opt(CoAPOptionContentFormat())),

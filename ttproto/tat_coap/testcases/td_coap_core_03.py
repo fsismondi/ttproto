@@ -62,5 +62,8 @@ TD_COAP_CORE_03:
 
         self.match("server", CoAP(code=Any(65, 68), mid=CMID, tok=CTOK, ))
 
-        if self.match("server", CoAP(pl=Not(b"")), None):
+        if self.match("server",
+                      CoAP(pl=Not(b"")),
+                      on_mismatch_verdict='inconclusive',
+                      on_mismatch_msg='Test pre-coditions not met by server.'):
             self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")

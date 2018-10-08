@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_12 (CoAPTestCase):
+class TD_COAP_CORE_12(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_12:
@@ -40,19 +40,13 @@ TD_COAP_CORE_12:
         :rtype: [Value]
         """
         return [
-            CoAP(type='con', code='get', tok=b'',
-                 opt=Opt(CoAPOptionUriPath("test")))
+            CoAP(type='con', code='get', tok=b'', opt=Opt(CoAPOptionUriPath("test")))
         ]
 
     def run(self):
-        self.match("client", CoAP(type="con", code="get",
-                                       tok=b"",
-                                       opt=self.uri("/test")))
+        self.match("client", CoAP(type="con", code="get", tok=b"", opt=self.uri("/test")))
 
         self.next_skip_ack()
 
-        if self.match("server", CoAP(code=2.05,
-                                     pl=Not(b""),
-                                     opt=Opt(CoAPOptionContentFormat()),
-                                     )):
+        if self.match("server", CoAP(code=2.05, pl=Not(b""), opt=Opt(CoAPOptionContentFormat()), )):
             self.match("server", CoAP(tok=b""), "fail")

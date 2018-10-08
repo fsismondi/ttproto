@@ -58,26 +58,27 @@ TD_COAP_CORE_19:
         ]
 
     def run(self):
-        self.match("client", CoAP(type="con", code="post",
-                                       opt=self.uri(
-                                           "/location-query",
-                                           CoAPOptionContentFormat(),
-                                       )))
+        self.match("client", CoAP(type="con",
+                                  code="post",
+                                  opt=self.uri(
+                                      "/location-query",
+                                      CoAPOptionContentFormat(),
+                                  )))
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
 
         self.next_skip_ack()
-        #TODO: generate a fail if we have a '&' or '?' or '.' or '..' in the CoAPOptionLocationQuery ? see 5.10.7
+        # TODO: generate a fail if we have a '&' or '?' or '.' or '..' in the CoAPOptionLocationQuery ? see 5.10.7
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                       code=2.01,
-                                       mid=CMID,
-                                       tok=CTOK,
-                                       opt=Opt(
-                                           CoAPOptionLocationQuery("first=1"),
-                                           CoAPOptionLocationQuery("second=2"),
-                                       )))
-        if self.match("server", CoAP(pl=Not(b"")), None):
-            self.match("server", CoAP(
-                opt=Opt(CoAPOptionContentFormat()),
-            ), "fail")
+                                  code=2.01,
+                                  mid=CMID,
+                                  tok=CTOK,
+                                  opt=Opt(
+                                      CoAPOptionLocationQuery("first=1"),
+                                      CoAPOptionLocationQuery("second=2"),
+                                  )))
+
+        if self.match("server", CoAP(pl=Not(b""))):
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")
+
         self.next_skip_ack(optional=True)

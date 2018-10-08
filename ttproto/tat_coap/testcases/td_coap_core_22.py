@@ -142,17 +142,18 @@ TD_COAP_CORE_22:
             CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 4
             CoAP(type='con', code='get', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 8
             CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate"))),  # Step 12
-            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate")))   # Step 13
+            CoAP(type='con', code='put', opt=Opt(CoAPOptionUriPath("validate")))  # Step 13
         ]
 
     def run(self):
         # Preamble
         # Step 2
-        self.match("client", CoAP(type="con", code="get",
-                                       opt=All(
-                                           Opt(CoAPOptionUriPath("validate")),
-                                           NoOpt(CoAPOptionETag()),
-                                       )))
+        self.match("client", CoAP(type="con",
+                                  code="get",
+                                  opt=All(
+                                      Opt(CoAPOptionUriPath("validate")),
+                                      NoOpt(CoAPOptionETag()),
+                                  )))
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
 
@@ -160,11 +161,11 @@ TD_COAP_CORE_22:
 
         # Step 3
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                              code=2.05,
-                                              mid=CMID,
-                                              tok=CTOK,
-                                              opt=Opt(CoAPOptionETag()),
-                                              pl=Not(b""))):
+                                         code=2.05,
+                                         mid=CMID,
+                                         tok=CTOK,
+                                         opt=Opt(CoAPOptionETag()),
+                                         pl=Not(b""))):
             raise self.Stop()
 
         ETAG1 = self.coap["opt"][CoAPOptionETag]["val"]
@@ -176,13 +177,14 @@ TD_COAP_CORE_22:
 
         # Step 5
 
-        self.match("client", CoAP(type="con", code="put",
-                                       opt=Opt(
-                                           CoAPOptionContentFormat(),
-                                           CoAPOptionUriPath("validate"),
-                                           CoAPOptionIfMatch(ETAG1),
-                                       ),
-                                       pl=All(Not(b""), Not(pl_3))))
+        self.match("client", CoAP(type="con",
+                                  code="put",
+                                  opt=Opt(
+                                      CoAPOptionContentFormat(),
+                                      CoAPOptionUriPath("validate"),
+                                      CoAPOptionIfMatch(ETAG1),
+                                  ),
+                                  pl=All(Not(b""), Not(pl_3))))
         CMID2 = self.coap["mid"]
         CTOK2 = self.coap["tok"]
 
@@ -197,9 +199,9 @@ TD_COAP_CORE_22:
 
         # Step 6
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                              code=2.04,
-                                              mid=CMID2,
-                                              tok=CTOK2)):
+                                         code=2.04,
+                                         mid=CMID2,
+                                         tok=CTOK2)):
             raise self.Stop()
         if self.match("server", CoAP(pl=Not(b"")), None):
             self.match("server", CoAP(
@@ -212,8 +214,9 @@ TD_COAP_CORE_22:
 
         # Step 9
 
-        self.match("client", CoAP(type="con", code="get",
-                                       opt=Opt(CoAPOptionUriPath("validate"))))
+        self.match("client", CoAP(type="con",
+                                  code="get",
+                                  opt=Opt(CoAPOptionUriPath("validate"))))
         CMID3 = self.coap["mid"]
         CTOK3 = self.coap["tok"]
 
@@ -228,11 +231,11 @@ TD_COAP_CORE_22:
 
         # Step 10
         if not self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                              code=2.05,
-                                              mid=CMID3,
-                                              tok=CTOK3,
-                                              opt=Opt(CoAPOptionETag(Not(ETAG1))),
-                                              pl=pl_5)):
+                                         code=2.05,
+                                         mid=CMID3,
+                                         tok=CTOK3,
+                                         opt=Opt(CoAPOptionETag(Not(ETAG1))),
+                                         pl=pl_5)):
             raise self.Stop()
 
         ETAG2 = self.coap["opt"][CoAPOptionETag]["val"]
@@ -241,12 +244,13 @@ TD_COAP_CORE_22:
         self.next_skip_ack(optional=True)
 
         # Step 13
-        self.match("client", CoAP(type="con", code="put",
-                                       opt=Opt(
-                                           CoAPOptionUriPath("validate"),
-                                           CoAPOptionContentFormat(),
-                                       ),
-                                       pl=All(Not(b""), Not(pl_3), Not(pl_10))))
+        self.match("client", CoAP(type="con",
+                                  code="put",
+                                  opt=Opt(
+                                      CoAPOptionUriPath("validate"),
+                                      CoAPOptionContentFormat(),
+                                  ),
+                                  pl=All(Not(b""), Not(pl_3), Not(pl_10))))
         CMID_step13 = self.coap["mid"]
         CTOK_step13 = self.coap["tok"]
 
@@ -262,25 +266,25 @@ TD_COAP_CORE_22:
 
         # Step 13 bis
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                       code=2.04,
-                                       mid=CMID_step13,
-                                       tok=CTOK_step13, ))
+                                  code=2.04,
+                                  mid=CMID_step13,
+                                  tok=CTOK_step13, ))
+
         if self.match("server", CoAP(pl=Not(b"")), None):
-            self.match("server", CoAP(
-                opt=Opt(CoAPOptionContentFormat()),
-            ), "fail")
+            self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")
 
         self.next_skip_ack(optional=True)
 
         # Step 14
 
-        self.match("client", CoAP(type="con", code="put",
-                                       opt=Opt(
-                                           CoAPOptionContentFormat(),
-                                           CoAPOptionUriPath("validate"),
-                                           CoAPOptionIfMatch(ETAG2),
-                                       ),
-                                       pl=All(Not(b""), Not(pl_13))))
+        self.match("client", CoAP(type="con",
+                                  code="put",
+                                  opt=Opt(
+                                      CoAPOptionContentFormat(),
+                                      CoAPOptionUriPath("validate"),
+                                      CoAPOptionIfMatch(ETAG2),
+                                  ),
+                                  pl=All(Not(b""), Not(pl_13))))
         CMID4 = self.coap["mid"]
         CTOK4 = self.coap["tok"]
 
@@ -294,6 +298,6 @@ TD_COAP_CORE_22:
         self.next_skip_ack()
         # Step 15
         self.match("server", CoAP(type=Any(CoAPType("con"), "ack"),
-                                       code=4.12,
-                                       mid=CMID4,
-                                       tok=CTOK4), 'fail')
+                                  code=4.12,
+                                  mid=CMID4,
+                                  tok=CTOK4), 'fail')
