@@ -477,11 +477,12 @@ class TestCase(object):
                 if on_mismatch_msg != '':
                     partial_verdict_message = on_mismatch_msg
                 else:
-                    partial_verdict_message = ' Mismatch: %s' % template
+                    partial_verdict_message = template
 
                 # Put the verdict
-                self.set_verdict(on_mismatch_verdict, partial_verdict_message)
+                self.set_verdict(on_mismatch_verdict, "%s Mismatch: %s" %(str(self._frame),partial_verdict_message))
                 diff_list.describe(callback)
+
 
             # Add this frame's id to the failed frames
             self._failed_frames.append(self._frame['id'])

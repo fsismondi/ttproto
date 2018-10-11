@@ -49,8 +49,10 @@ TD_COAP_CORE_01:
 
         self.next()
 
+        self.match('server', template=CoAP(code=2.05, mid=CMID, tok=CTOK))
         if self.match('server',
-                      template=CoAP(code=2.05, mid=CMID, tok=CTOK, pl=Not(b'')),
-                      on_mismatch_verdict='inconclusive',
-                      on_mismatch_msg='Test pre-coditions not met by server.'):
+                   template=CoAP(pl=Not(b'')),
+                   on_mismatch_verdict='inconclusive',
+                   on_mismatch_msg = 'Test pre-conditions not met by server. Payload should not be empty'
+                   ):
             self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')

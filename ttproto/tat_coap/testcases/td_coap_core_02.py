@@ -81,7 +81,7 @@ TD_COAP_CORE_02:
             if self.match('server',
                           CoAP(pl=Not(b'')),
                           on_mismatch_verdict='inconclusive',
-                          on_mismatch_msg='Test pre-coditions not met by server.'):
+                          on_mismatch_msg='Test pre-conditions not met by server. Payload should not be empty'):
                 self.match(
                     'server',
                     CoAP(opt=Opt(CoAPOptionContentFormat())),

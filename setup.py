@@ -46,7 +46,7 @@ setup(
     name=PACKAGE,
     version=get_version(PACKAGE),
     url='https://www.irisa.fr/tipi/wiki/doku.php/testing_tool_prototype',
-    author='Universite de Rennes 1 / INRIA',
+    author='Univ Rennes / INRIA',
     maintainer='Federico Sismondi',
     maintainer_email='federico.sismondi@inria.fr',
     description=('ttproto is an experimental tool for implementing testing'
