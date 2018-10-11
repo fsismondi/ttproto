@@ -3,7 +3,7 @@ import os
 import errno
 import logging
 
-__version__ = '0.1.9'
+__version__ = '0.1.10'
 
 PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 # Directories
