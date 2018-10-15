@@ -78,7 +78,7 @@ TD_COAP_CORE_19:
                                       CoAPOptionLocationQuery("second=2"),
                                   )))
 
-        if self.match("server", CoAP(pl=Not(b""))):
+        if self.match('server', CoAP(pl=Not(b'')), None):
             self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")
 
         self.next_skip_ack(optional=True)

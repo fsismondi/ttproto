@@ -66,5 +66,5 @@ TD_COAP_CORE_08:
 
         self.match("server", CoAP(type="non",code=Any(65, 68),tok=CTOK,))
 
-        if self.match("server", CoAP(pl=Not(b""))):
+        if self.match('server', CoAP(pl=Not(b'')), None):
             self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")

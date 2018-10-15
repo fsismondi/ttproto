@@ -41,17 +41,16 @@ TD_COAP_CORE_06:
         :return: The stimulis of this TC
         :rtype: [Value]
         """
-        return [CoAP(type='non', code='delete',
-                     opt=Opt(CoAPOptionUriPath("test")))]
+        return [CoAP(type='non', code='delete',opt=Opt(CoAPOptionUriPath("test")))]
 
     def run(self):
-        self.match("client", CoAP(type="non", code="delete",
-                                  opt=self.uri("/test")))
+        self.match("client", CoAP(type="non", code="delete",opt=self.uri("/test")))
 
         CTOK = self.coap["tok"]
 
         self.next()
 
         self.match("server", CoAP(type="non", code=2.02, tok=CTOK))
-        if self.match("server", CoAP(pl=Not(b""))):
+
+        if self.match("server", CoAP(pl=Not(b"")), None):
             self.match("server", CoAP(opt=Opt(CoAPOptionContentFormat()), ), "fail")
