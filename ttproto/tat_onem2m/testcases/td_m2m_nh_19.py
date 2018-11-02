@@ -46,10 +46,9 @@ TD_M2M_NH_19:
 
     def run(self):
         
-        self.match('client', CoAP(type='con', code='get', pl=Not(b'')), 'fail')
+        self.match('client', CoAP(type='con', code='get', pl=(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionUriQuery('fu=1'))), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionUriQuery('lbl=key1'))), 'fail')
+        self.match('client', CoAP(opt=Opt(CoAPOptionUriQuery('fu=1'),CoAPOptionUriQuery('ty=3'))), 'fail')
         if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'): 
         
             CMID = self.coap['mid']
