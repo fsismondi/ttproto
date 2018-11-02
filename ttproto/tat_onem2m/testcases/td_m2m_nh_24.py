@@ -64,7 +64,7 @@ TD_M2M_NH_24:
         
             self.next()
 
-            self.match("server", CoAP(type='con', code=Any(65, 68), pl=Not(b'')), 'fail')
+            self.match("server", CoAP(code=Any(65, 68), pl=Not(b'')), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionContentFormat())), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('2004'))), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')
