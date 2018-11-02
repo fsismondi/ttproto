@@ -48,7 +48,7 @@ TD_M2M_NH_61:
         
         self.match('client', CoAP(type='con', code='get', pl=(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionUriPath())), 'fail')
+        self.match('client', CoAP(opt=self.uri('')), 'fail')
         if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'):
 
             CMID = self.coap['mid']
