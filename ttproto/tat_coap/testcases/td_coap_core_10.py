@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class TD_COAP_CORE_10 (CoAPTestCase):
+class TD_COAP_CORE_10(CoAPTestCase):
     """
 ---
 TD_COAP_CORE_10:
@@ -43,7 +43,8 @@ TD_COAP_CORE_10:
         """
         # TODO client message w/ token length = 0 -> fail?
         return [
-            CoAP(type='con', code='get', tok=Not(b''))
+            CoAP(type='con', code='get', tok=Not(b''),
+                 opt=Opt(CoAPOptionUriPath("test")))
         ]
 
     def run (self):
@@ -63,5 +64,3 @@ TD_COAP_CORE_10:
                             pl  = Not (b"")
                 )):
             self.match ("server", CoAP (mid= CMID,tok = CTOK,opt= Opt(CoAPOptionContentFormat())), "fail")
-
-

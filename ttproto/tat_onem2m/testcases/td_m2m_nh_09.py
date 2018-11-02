@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_09 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_09:
     cfg: M2M_CFG_01
     obj: AE de-registers by deleting <AE> resource via an AE DELETE Request.

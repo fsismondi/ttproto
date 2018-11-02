@@ -29,19 +29,19 @@ Also, you can get help for each subcomand:
 usage:  ttproto dissect file [<options>]
 
 Dissection usage examples:
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -o /tmp/dissection.json
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p sixlowpan
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p icmpv6
-    dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap -p icmpv6echorequest
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -o /tmp/dissection.json
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p sixlowpan
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p icmpv6
+    dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap -p icmpv6echorequest
 ```
 
 ## Example:
 
 ```
-python3 -m ttproto dissect ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap
+python3 -m ttproto dissect ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap
 
-INFO tat|ttproto_api [MainThread] Dissecting PCAP file ./tests/test_dumps/dissection/6lowpan/TD_6LOWPAN_HC_01.pcap
+INFO tat|ttproto_api [MainThread] Dissecting PCAP file ./tests/test_dumps/6lowpan_hc/TD_6LOWPAN_HC_01.pcap
 INFO tat|ttproto_api [MainThread] PCAP dissected
 INFO tat|main [MainThread] ###[ Ieee802154 ]###
   FrameType=                1 (Data Frame)
@@ -124,7 +124,7 @@ Using the ttproto console:
 
 For running a dissection of a PCAP file:
 ```
-    >>> capture = Capture('tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap')
+    >>> capture = Capture('tests/test_dumps/coap_core/TD_COAP_CORE_01_PASS.pcap')
     >>> dissection = capture.get_dissection()
     >>> print(json.dumps(dissection, indent=4))
 
@@ -192,7 +192,7 @@ For running an analysis of a PCAP, interop testcase post-mortem analysis, for (e
 
 ```
     >>> analyzer = Analyzer('tat_coap')
-    >>> analysis_result = analyzer.analyse('tests/test_dumps/analysis/coap_core/TD_COAP_CORE_01_PASS.pcap','TD_COAP_CORE_01')
+    >>> analysis_result = analyzer.analyse('tests/test_dumps/coap_core/TD_COAP_CORE_01_PASS.pcap','TD_COAP_CORE_01')
     >>> print(json.dumps(analysis_result, indent=4))
     [
         "TD_COAP_CORE_01",
@@ -270,4 +270,4 @@ Conformance testing tool for testing 6LoWPAN ND
 
 # Running unit tests
 
-python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py
+python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat/test_webserver.py

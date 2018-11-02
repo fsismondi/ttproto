@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_50 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_50:
     cfg: M2M_CFG_01
     obj: AE deletes a <oldest> resource of a <container> and the Registrar CSE points an oldest <contentInstance>

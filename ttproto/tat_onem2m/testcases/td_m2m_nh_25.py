@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_25 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_25:
     cfg: M2M_CFG_01
     obj: AE cancels subscription via an subscription DELETE Request.

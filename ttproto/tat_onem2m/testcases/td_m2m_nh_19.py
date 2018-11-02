@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_19(CoAPTestCase):
     """
----
+
 TD_M2M_NH_19:
     cfg: M2M_CFG_01
     obj: AE discovers accessible resources residing in Registrar CSE using the label filter criteria

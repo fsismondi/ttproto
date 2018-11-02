@@ -54,7 +54,7 @@ TD_COAP_CORE_19:
             Check the number/value of the uri query options or not?
         """
         return [
-            CoAP(type='con', code='post')
+            CoAP(type='con', code='post', opt=Opt(CoAPOptionUriPath("location-query")))
         ]
 
     def run(self):

@@ -32,6 +32,7 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 from ttproto.core.lib.inet.basics import *
+from ttproto.core.lib.inet.zigbee import *
 from ttproto.core.lib.inet.coap import *
 from ttproto.core.lib.inet.coap_link_format import *
 from ttproto.core.lib.inet.icmpv6 import *

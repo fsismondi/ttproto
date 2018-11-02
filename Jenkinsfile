@@ -1,44 +1,127 @@
 properties([[$class: 'GitLabConnectionProperty', gitLabConnection: 'figitlab']])
 
 if(env.JOB_NAME =~ 'ttproto-unittest/'){
-    node('sudo'){
+    node('docker'){
+
+        env.TEST_FILE_TAT_COAP_COMMON="tests/test_tat/test_common.py"
+        env.TEST_FILE_TAT_COAP_CORE="tests/test_tat/test_tat_coap_core.py"
+        env.TEST_FILE_TAT_COAP_OBSERVE="tests/test_tat/test_tat_coap_observe.py"
+        env.TEST_FILE_TAT_COAP_BLOCK="tests/test_tat/test_tat_coap_block.py"
+        env.TEST_FILE_DISSECTOR_TESTS="tests/test_dissector/"
+        env.TEST_FILE_DISSECTOR_TESTS_6LOWPAN="tests/test_dissector/test_dissector_pcaps_6lowpan.py"
+        env.TEST_FILE_DISSECTOR_TESTS_COAP="tests/test_dissector/test_dissector_pcaps_coap.py"
+        env.TEST_FILE_DISSECTOR_TESTS_IEEE802154="tests/test_dissector/test_dissector_pcaps_802154.py"
+        env.TEST_FILE_ANALYZER_TESTS="tests/test_analyzer/"
 
         stage ("Setup dependencies"){
             checkout scm
             sh 'git submodule update --init'
             withEnv(["DEBIAN_FRONTEND=noninteractive"]){
                 sh '''
-                sudo apt-get clean
-                sudo apt-get update
-                sudo apt-get upgrade -y
-                sudo apt-get install --fix-missing -y python3-dev python3-pip python3-setuptools
-                sudo -H pip3 install pytest --ignore-installed
+                    sudo apt-get clean
+                    sudo apt-get update
+                    sudo apt-get upgrade -y
+                    sudo apt-get install --fix-missing -y python3-dev python3-pip python3-setuptools
+                    sudo -H python3 -m pip install --user --upgrade pip
                 '''
 
             /* Show deployed code */
-            sh "tree ."
+            /* sh "tree ." */
           }
       }
 
-      stage("ttproto requirements"){
-        gitlabCommitStatus("ttproto requirements"){
+      stage("check python version"){
+        sh '''
+            python3 --version
+        '''
+      }
+
+      stage("virtualenv and requirements installs"){
             withEnv(["DEBIAN_FRONTEND=noninteractive"]){
-            sh '''
-            sudo -H pip3 install -r requirements.txt --upgrade
-
-            '''
+                sh '''
+                    python3 -m pip install --user virtualenv
+                    python3 -m virtualenv -p python3 /tmp/venv
+                    . /tmp/venv/bin/activate
+                    python3 -m pip install pytest --ignore-installed
+                    python3 -m pip install -r requirements.txt --upgrade
+                '''
             }
-        }
       }
 
-      stage("unittesting component"){
-        gitlabCommitStatus("unittesting component"){
+      stage("TAT frames-pre-processing unittesting"){
             sh '''
-            python3 -m pytest tests/  --ignore=tests/test_webserver/tests.py  --ignore=tests/test_tat_coap/test_webserver.py -vvv
+                . /tmp/venv/bin/activate
+                python3 -m unittest $TEST_FILE_TAT_COAP_COMMON -vvv
+            '''
+      }
+
+      stage("TAT CoAP unittesting"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_TAT_COAP_COMMON \\
+                    $TEST_FILE_TAT_COAP_CORE \\
+                    $TEST_FILE_TAT_COAP_OBSERVE \\
+                    $TEST_FILE_TAT_COAP_BLOCK \\
+                    --pastebin=all
+            '''
+      }
+
+      stage("Analyzer unittesting"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_ANALYZER_TESTS \\
+            '''
+      }
+
+      stage("Dissector unittesting"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS \\
+                    --ignore=$TEST_FILE_DISSECTOR_TESTS_6LOWPAN \\
+                    --ignore=$TEST_FILE_DISSECTOR_TESTS_COAP \\
+                    --ignore=$TEST_FILE_DISSECTOR_TESTS_IEEE802154 \\
+            '''
+      }
+      stage("Dissector - 6LoWPAN test"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS_6LOWPAN \\
+            '''
+      }
+
+      stage("Dissector - CoAP test"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS_COAP \\
+            '''
+      }
+
+      stage("Dissector - IEEE802.15.4 test"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv \\
+                    $TEST_FILE_DISSECTOR_TESTS_IEEE802154 \\
+            '''
+      }
+
+      stage("unittesting rest of component"){
+            sh '''
+                . /tmp/venv/bin/activate
+                python3 -m pytest -p no:cacheprovider -vvv tests/ \\
+                --ignore=$TEST_FILE_TAT_COAP_COMMON \\
+                --ignore=$TEST_FILE_TAT_COAP_CORE \\
+                --ignore=$TEST_FILE_TAT_COAP_OBSERVE \\
+                --ignore=$TEST_FILE_TAT_COAP_BLOCK \\
+                --ignore=tests/test_webserver/tests.py \\
+                --ignore=tests/test_tat/test_webserver.py \\
+                --ignore=$TEST_FILE_DISSECTOR_TESTS \\
+                --ignore=$TEST_FILE_ANALYZER_TESTS \\
             '''
         }
-      }
-
     }
 }
-

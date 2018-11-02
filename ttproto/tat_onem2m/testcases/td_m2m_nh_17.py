@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_17 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_17:
     cfg: M2M_CFG_01
     obj: AE deletes contentInstance resource via a contentInstance Delete Request and the Registrar

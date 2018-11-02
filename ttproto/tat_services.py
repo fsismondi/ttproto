@@ -32,7 +32,7 @@ logger = logging.getLogger('tat|ttproto_api')
 logger.setLevel(LOG_LEVEL)
 
 
-def analyze_capture(filename, protocol, testcase_id, output_file):
+def analyze_capture(filename, protocol, testcase_id, output_filename):
     """
     Analyses network traces (.pcap file) based on the test cases checks.
     """
@@ -51,15 +51,16 @@ def analyze_capture(filename, protocol, testcase_id, output_file):
     analysis_results = Analyzer('tat_' + protocol.lower()).analyse(filename, testcase_id)
     logger.info('Analysis finished, result:\n%s' % str(analysis_results))
 
-    if output_file and type(output_file) is str:
+    if output_filename and type(output_filename) is str:
         # save analysis response
-        _dump_json_to_file(json.dumps(analysis_results), output_file)
-        logger.info('Results saved at: %s' % output_file)
+        results_to_be_saved = analysis_results[:-1]  # drop the last returned value (exceptions list)
+        _dump_json_to_file(json.dumps(results_to_be_saved), output_filename)
+        logger.info('Results saved at: %s' % output_filename)
 
     return analysis_results
 
 
-def dissect_capture(filename, proto_filter=None, output_file=None, number_of_frames_to_skip=None):
+def dissect_capture(filename, proto_filter=None, output_filename=None, number_of_frames_to_skip=None):
     """
     Dissects (decodes and converts to string representation) network traces (.pcap file).
     """
@@ -108,9 +109,9 @@ def dissect_capture(filename, proto_filter=None, output_file=None, number_of_fra
     else:
         logger.info('PCAP file dissected (filename: %s). No frames found.')
 
-    if output_file and type(output_file) is str:
+    if output_filename and type(output_filename) is str:
         # save dissection response
-        _dump_json_to_file(json.dumps(dissection_as_dicts), output_file)
+        _dump_json_to_file(json.dumps(dissection_as_dicts), output_filename)
 
     return dissection_as_dicts, dissection_as_text
 
@@ -300,7 +301,7 @@ if __name__ == "__main__":
     # print(str(testcases))
 
     dissection = dissect_capture(
-        filename='tests/test_dumps/dissection/coap/CoAP_plus_random_UDP_messages.pcap'
+        filename='tests/test_dumps/coap/CoAP_plus_random_UDP_messages.pcap'
     )
     # print(dissection)
 

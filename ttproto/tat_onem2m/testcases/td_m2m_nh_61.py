@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_61(CoAPTestCase):
     """
----
+
 TD_M2M_NH_61:
     cfg: M2M_CFG_60
     obj: AE retrieves a <oldest> resource of a <container> and the Registrar CSE points an oldest <contentInstance> among the existing contentInstances to the <oldest> resource of the <container>

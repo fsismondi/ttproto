@@ -53,11 +53,13 @@ __all__ = [
 	'UInt24',
 	'UInt32',
 	'UInt64',
+	'UInt80',
 	'Bytes1',
 	'Bytes2',
 	'Bytes4',
 	'Bytes6',
 	'Bytes8',
+	'Bytes10',
 	'IPv4Address',
 	'IPv6Address',
 	'IPv6Prefix',
@@ -78,12 +80,14 @@ class UInt20 (metaclass = UnsignedBigEndianIntClass (20)):	pass
 class UInt24 (metaclass = UnsignedBigEndianIntClass (24)):	pass
 class UInt32 (metaclass = UnsignedBigEndianIntClass (32)):	pass
 class UInt64 (metaclass = UnsignedBigEndianIntClass (64)):	pass
+class UInt80 (metaclass = UnsignedBigEndianIntClass (80)):	pass
 
 class Bytes1 (metaclass = FixedLengthBytesClass (1)):	pass
 class Bytes2 (metaclass = FixedLengthBytesClass (2)):	pass
 class Bytes4 (metaclass = FixedLengthBytesClass (4)):	pass
 class Bytes6 (metaclass = FixedLengthBytesClass (6)):	pass
 class Bytes8 (metaclass = FixedLengthBytesClass (8)):	pass
+class Bytes10 (metaclass = FixedLengthBytesClass (10)):	pass
 
 class IPv4Address (metaclass = FixedLengthBytesClass (4)):
 

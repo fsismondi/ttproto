@@ -45,18 +45,26 @@ TD_COAP_CORE_13:
         :rtype: [Value]
         """
         return [
-            CoAP(type='con', code='get')
+            CoAP(type='con', code='get',
+                 opt=Opt(
+                        CoAPOptionUriPath("seg1"),
+                        CoAPOptionUriPath("seg2"),
+                        CoAPOptionUriPath("seg3")
+                         )
+                 )
         ]
 
-    def run (self):
+    def run(self):
         if self.urifilter:
-            uri_path_opt = self.uri ("/seg1/seg2/seg3")
+            uri_path_opt = self.uri("/seg1/seg2/seg3")
         else:
             uri_path_opt = Opt(CoAPOptionUriPath(), superset=True)
 
-        self.match ("client", CoAP (code = "get",
-                        type = "con",
-                        opt = uri_path_opt))
+        self.match("client", CoAP(code="get",
+                                  type="con",
+                                  opt=uri_path_opt
+                                  )
+                    )
 
         CMID = self.coap["mid"]
         CTOK = self.coap["tok"]
@@ -84,4 +92,3 @@ TD_COAP_CORE_13:
                 CoAP(opt=Opt(CoAPOptionContentFormat())),
                 'fail'
             )
-
