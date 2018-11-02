@@ -62,6 +62,6 @@ CSE.'
 
             self.next()
 
-            self.match('server', CoAP(code=4.03, mid=CMID, tok=CTOK, pl=(b'')), 'fail')
+            self.match('server', CoAP(code=4.03, mid=CMID, tok=CTOK, pl=Not(b'')), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('4103'))), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')
