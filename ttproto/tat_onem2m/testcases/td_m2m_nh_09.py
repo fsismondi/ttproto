@@ -4,7 +4,7 @@ from ..common import *
 class TD_M2M_NH_09 (CoAPTestCase):
     """
 
-TD_M2M_NH_09:
+    TD_M2M_NH_09:
     cfg: M2M_CFG_01
     obj: AE de-registers by deleting <AE> resource via an AE DELETE Request.
     pre: CSEBase resource has been created in registrar CSE with name {CSEBaseName} and
