@@ -1,45 +1,40 @@
 from ..common import *
 
 
-class TD_M2M_NH_46(CoAPTestCase):
+class TD_M2M_NH_45(CoAPTestCase):
     """
-    TD_M2M_NH_47
-    cfg: M2M_CFG_01
-    obj: AE updates an <container> resource of each member resource.
+    TD_M2M_NH_45
+    cfg:M2M_CFG_01
+    obj: AE retrieves the <container> resource from in each group member
     pre:
       - A group is created containing 2 members of type <container>
-    ref: 'TS-0001 [1], clause 10.2.7.9; TS-0004 [2], clause 7.3.14.3.3'
+    ref: 'TS-0001 [1], clause 10.2.7.8;  TS-0004 [2], clause 7.3.14.3.2'
     seq:
-     - s:
-      - 'AE is requested to send a Update Request to the fanoutPoint of <group> resource to lifetime of the resource'
-      - - Type = 0 (CON)
-        - Code = 3 (PUT)
-        - Content-format option
-        - Non-empty Payload
+    - s:
+      - 'AE is requested to send a Retrieve Request to the fanoutPoint of <group> resource'
+      - - Type = 0(CON)
+        - Code = 1(GET)
+        - Uri-Path = {CSEBaseName}/{group}/fanoutPoint
 
-     - c:
-      - 'Sent PUT request contains'
-      - - Type=0 and Code=3
+    - c:
+      - 'Sent Get request contains'
+      - - Type=0 and Code=1
         - Uri-Host = IP address or the FQDN of registrar CSE
         - Uri-Path = {CSEBaseName}/{group}/fanoutPoint
-        - content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json 
         - oneM2M-FR=AE-ID
-        - oneM2M-RQI=token-string (-> CRQI)
-        - Non-empty Payload:Serialized representation of <container> resource
+        - oneM2M-RQI=token-string (->CRQI)
+        - Empty payload
 
-    -v:
-        - 'Check if possible that both of the <container> resources have been updated in registrar CSE'
-
-    -c:
+    - c:
         - 'Registrar CSE sends response containing'
-        - - Code=2.04(changed)
-          - oneM2M-RSC=2004
+        - - Code = 2.05(Content)
+          - oneM2M-RSC=2000
           - oneM2M-RQI=CRQI
-          - Content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json
+          - content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json
           - Non-empty Payload:aggregated response
 
-    -v:
-      - 'AE indicates successful operation'
+    - v:
+        - 'AE indicates successful operation'
 
     """
 
