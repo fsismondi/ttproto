@@ -1,11 +1,11 @@
 from ..common import *
 
 
-class TD_M2M_NH_61(CoAPTestCase):
+class TD_M2M_NH_72(CoAPTestCase):
     """
 
-TD_M2M_NH_61:
-    cfg: M2M_CFG_60
+TD_M2M_NH_72:
+    cfg: M2M_CFG_01
     obj: AE retrieves a <oldest> resource of a <container> and the Registrar CSE points an oldest <contentInstance> among the existing contentInstances to the <oldest> resource of the <container>
     pre: AE has created an Application Entity resource <AE> on Registrar CSE,
          AE has created a container resource <container> on Registrar CSE,
