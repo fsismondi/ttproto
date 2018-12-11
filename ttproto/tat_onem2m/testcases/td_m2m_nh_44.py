@@ -3,7 +3,8 @@ from ..common import *
 
 class TD_M2M_NH_44(CoAPTestCase):
     """
-    TD_M2M_NH_44
+
+TD_M2M_NH_44:
     cfg: M2M_CFG_01
     obj: AE creates a <contentInstance> resource in each group member
     pre:

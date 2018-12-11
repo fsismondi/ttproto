@@ -4,7 +4,7 @@ from ..common import *
 class TD_M2M_NH_42 (CoAPTestCase):
     """
 
-    TD_M2M_NH_42
+TD_M2M_NH_42:
     cfg: M2M_CFG_01
     obj: AE deletes a pollingChannel resource via a Delete Request.
     pre:
