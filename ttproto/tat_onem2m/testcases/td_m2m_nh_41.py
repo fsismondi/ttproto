@@ -8,40 +8,38 @@ TD_M2M_NH_41:
     cfg: M2M_CFG_01
     obj: AE updates attribute in pollingChannel resource via a Update Request.
     pre:
-     - AE has created an Application Entity resource <AE> on Registrar CSE. 
-     - AE has created a container resource <container> on Registrar CSE.
-    ref 'TS-0001 [1], clause 10.2.13.4; TS-0004 [2], clause 7.3.21.2.3'
+        - AE has created an Application Entity resource <AE> on Registrar CSE. 
+        - AE has created a container resource <container> on Registrar CSE.
+    ref: 'TS-0001 [1], clause 10.2.13.4; TS-0004 [2], clause 7.3.21.2.3'
     seq:
-    - s: 
-      - 'AE is requested to send a pollingChannel Update Request to update the lifetime of the resource'
-      - - Type = 0 (CON)
-        - Code = 3 (PUT)
-        - Content-format option
-        - Non-empty Payload
+    -   s: 
+        - 'AE is requested to send a pollingChannel Update Request to update the lifetime of the resource'
+        -	- Type = 0 (CON)
+        	- Code = 3 (PUT)
+        	- Content-format option
+        	- Non-empty Payload
 
-    - c:
-      - 'Sent PUT request contains'
-      - - Type=0 and Code=3
-        - Uri-Host = IP address or the FQDN of registrar CSE
-        - Uri-Path = {CSEBaseName}/URI of <pollingChannel> resource
-        - content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json 
-        - oneM2M-FR=AE-ID
-        - oneM2M-RQI=token-string (-> CRQI)
-        - Non-empty Payload
+    - 	c:
+      	- 'Sent PUT request contains'
+      	- 	- Type=0 and Code=3
+        	- Uri-Host = IP address or the FQDN of registrar CSE
+        	- Uri-Path = {CSEBaseName}/URI of <pollingChannel> resource
+        	- content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json 
+        	- oneM2M-FR=AE-ID
+        	- oneM2M-RQI=token-string (-> CRQI)
+        	- Non-empty Payload
 
-    - v:
-        - 'Check if possible that the < pollingChannel > resource is updated in Registrar CSE'
+    - 	v: 'Check if possible that the < pollingChannel > resource is updated in Registrar CSE'
 
-    - c:
+    - 	c:
         - 'Registrar CSE sends response containing'
-        - - Code=2.04(changed)
-          - oneM2M-RSC=2004
-          - oneM2M-RQI=CRQI
-          - Content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json
-          - Non-empty Payload
+        - 	- Code=2.04(changed)
+          	- oneM2M-RSC=2004
+          	- oneM2M-RQI=CRQI
+          	- Content-format=application/vnd.oneM2M-res+xml or application/vnd.oneM2M-res+json
+          	- Non-empty Payload
 
-   - v:
-      - 'AE indicates successful operation'
+   - 	v: 'AE indicates successful operation'
 
     """
 
