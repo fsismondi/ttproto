@@ -4,7 +4,7 @@ from ..common import *
 class TD_M2M_NH_41(CoAPTestCase):
     """
 
-TD_M2M_NH_41
+TD_M2M_NH_41:
     cfg: M2M_CFG_01
     obj: AE updates attribute in pollingChannel resource via a Update Request.
     pre:

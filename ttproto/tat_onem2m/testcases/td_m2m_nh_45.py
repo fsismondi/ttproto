@@ -3,7 +3,8 @@ from ..common import *
 
 class TD_M2M_NH_45(CoAPTestCase):
     """
-TD_M2M_NH_45
+
+TD_M2M_NH_45:
     cfg:M2M_CFG_01
     obj: AE retrieves the <container> resource from in each group member
     pre:
