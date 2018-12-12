@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_40(CoAPTestCase):
     """
-    TD_M2M_NH_40
+TD_M2M_NH_40
     cfg: M2M_CFG_01
     obj: AE retrieves information of a pollingChannel resource via a Retrieve Request.
     pre:

@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_46(CoAPTestCase):
     """
-        TD_M2M_NH_46
+TD_M2M_NH_46
         cfg: M2M_CFG_01
         obj: AE updates an <container> resource of each member resource.
         pre:
