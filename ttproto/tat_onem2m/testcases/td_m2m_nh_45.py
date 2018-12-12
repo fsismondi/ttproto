@@ -5,8 +5,8 @@ class TD_M2M_NH_45(CoAPTestCase):
     """
 
 TD_M2M_NH_45:
-    cfg:M2M_CFG_01
-    obj: AE retrieves the <container> resource from in each group member
+    cfg: M2M_CFG_01
+    obj: AE retrieves the container resource from in each group member
     pre:
       - A group is created containing 2 members of type <container>
     ref: 'TS-0001 [1], clause 10.2.7.8;  TS-0004 [2], clause 7.3.14.3.2'
