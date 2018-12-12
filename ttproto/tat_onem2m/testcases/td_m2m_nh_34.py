@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_34 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_34:
     cfg: M2M_CFG_01
     obj: AE deletes group resource.

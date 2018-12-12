@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_14(CoAPTestCase):
     """
----
+
 TD_M2M_NH_14:
     cfg: M2M_CFG_01
     obj: AE adds a contentInstance resource <contentInstance> to a specific container in Registrar CSE via a contentInstance Create Request.

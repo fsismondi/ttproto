@@ -1,22 +1,22 @@
 from ..common import *
 
 
-class TD_M2M_NH_60(CoAPTestCase):
+class TD_M2M_NH_72(CoAPTestCase):
     """
----
-TD_M2M_NH_60:
-    cfg: M2M_CFG_60
-    obj: AE retrieves a <latest> resource of a <container> and the Registrar CSE points a latest <contentInstance> among the existing contentInstances to the <latest> resource of the <container>
+
+TD_M2M_NH_72:
+    cfg: M2M_CFG_01
+    obj: AE retrieves a <oldest> resource of a <container> and the Registrar CSE points an oldest <contentInstance> among the existing contentInstances to the <oldest> resource of the <container>
     pre: AE has created an Application Entity resource <AE> on Registrar CSE,
          AE has created a container resource <container> on Registrar CSE,
          and AE has created a contentInstance resource <contentInstance> as child resource of <container> resource.
-    ref: 'TS-0001, clause 10.2.22.2 ; TS-0004, clause 7.4.27.2.2'
+    ref: 'TS-0001, clause 10.2.23.1 ; TS-0004, clause 7.4.28.2.2'
     seq:
     -   s:
-        - 'AE is requested to send a GET request for a <latest> with:'
+        - 'AE is requested to send a GET request for a <oldest> with:'
         -   - Type = 0(CON)
             - Code = 1(GET)
-    -  c:
+    -   c:
         - 'The request sent by AE contains:'
         -   - Type=0 and Code=1
             - oneM2M-RQI option=token-string (CRQI)
@@ -48,7 +48,7 @@ TD_M2M_NH_60:
         
         self.match('client', CoAP(type='con', code='get', pl=(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionUriPath())), 'fail')
+        self.match('client', CoAP(opt=self.uri('')), 'fail')
         if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'):
 
             CMID = self.coap['mid']

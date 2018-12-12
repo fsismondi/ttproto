@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_32(CoAPTestCase):
     """
----
+
 TD_M2M_NH_32:
     cfg: M2M_CFG_01
     obj: AE retrieves group resource.
@@ -46,7 +46,7 @@ TD_M2M_NH_32:
         
         self.match('client', CoAP(type='con', code='get'), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionUriPath())), 'fail')
+        self.match('client', CoAP(opt=self.uri('')), 'fail')
         if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'):
             CMID = self.coap['mid']
             CMID = self.coap['mid']

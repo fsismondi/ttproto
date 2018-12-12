@@ -3,8 +3,8 @@ from ..common import *
 
 class TD_M2M_NH_38 (CoAPTestCase):
     """
----
-TD_M2M_NH_38
+
+TD_M2M_NH_38:
     cfg: M2M_CFG_01
     obj: AE deletes node resource.
     pre: AE has created a <node> resource on Registrar CSE.

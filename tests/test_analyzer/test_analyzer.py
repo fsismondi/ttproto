@@ -163,6 +163,15 @@ class LwM2MPRO_AnalyzerTestCase(CoAPAnalyzerTestCase):
     TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
 
 
+class Onem2m_AnalyzerTestCase(CoAPAnalyzerTestCase):
+    # #################### Tests parameters #########################
+    TEST_ENV = 'tat_onem2m'
+    TEST_DIR = './tests/test_dumps/analysis/onem2m_pro/'
+    UNKNOWN_TEST_ENV = 'unknown'
+    TEST_CASE_ID = 'TD_M2M_NH_01'
+    UNKNOWN_TEST_CASE_ID = 'asdasd'
+    TEST_CASE_ID_WHICH_BUGGED_IN_THE_PAST = None
+
 # #################### Main run the tests #########################
 if __name__ == '__main__':
     unittest.main()

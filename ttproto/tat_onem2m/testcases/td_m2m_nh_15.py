@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_15(CoAPTestCase):
     """
----
+
 TD_M2M_NH_15:
     cfg: M2M_CFG_01
     obj: AE retrieves information of a contentInstance resource via a contentInstance Retrieve Request
@@ -49,7 +49,7 @@ TD_M2M_NH_15:
         
         self.match('client', CoAP(type='con', code='get'), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        self.match('client', CoAP(opt=Opt(CoAPOptionUriPath())), 'fail')
+        self.match('client', CoAP(opt=self.uri('')), 'fail')
         if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'): 
         
 

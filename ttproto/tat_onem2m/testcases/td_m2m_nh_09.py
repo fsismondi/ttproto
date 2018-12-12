@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_09 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_09:
     cfg: M2M_CFG_01
     obj: AE de-registers by deleting <AE> resource via an AE DELETE Request.
@@ -50,15 +50,15 @@ TD_M2M_NH_09:
         
         self.match('client', CoAP(type='con', code='delete', pl=(b'')), 'fail')
         self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MFrom())), 'fail')
-        if self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail'):
-            CMID = self.coap['mid']
-            CTOK = self.coap['tok']
-            OPTS = self.coap['opt']
-            RI = OPTS[CoAPOptionOneM2MRequestIdentifier]
-            RIVAL = RI[2]
+        self.match('client', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier())), 'fail')
+        CMID = self.coap['mid']
+        CTOK = self.coap['tok']
+        OPTS = self.coap['opt']
+        RI = OPTS[CoAPOptionOneM2MRequestIdentifier]
+        RIVAL = RI[2]
 
-            self.next()
+        self.next()
 
-            self.match('server', CoAP(code=2.02, mid=CMID, tok=CTOK, pl=(b'')), 'fail')
-            self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('2002'))), 'fail')
-            self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')
+        self.match('server', CoAP(code=2.02, mid=CMID, tok=CTOK, pl=(b'')), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('2002'))), 'fail')
+        self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')

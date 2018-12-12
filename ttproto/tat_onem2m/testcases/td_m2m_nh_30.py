@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_30 (CoAPTestCase):
     """
----
+
 TD_M2M_NH_30:
     cfg: M2M_CFG_01
     obj: AE delete request is rejected due to accessControlPolicy.
@@ -62,6 +62,6 @@ CSE.'
 
             self.next()
 
-            self.match('server', CoAP(code=4.03, mid=CMID, tok=CTOK, pl=(b'')), 'fail')
+            self.match('server', CoAP(code=4.03, mid=CMID, tok=CTOK, pl=Not(b'')), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MResponseStatusCode('4103'))), 'fail')
             self.match('server', CoAP(opt=Opt(CoAPOptionOneM2MRequestIdentifier(RIVAL))), 'fail')

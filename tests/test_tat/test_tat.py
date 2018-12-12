@@ -16,7 +16,7 @@ class TestAnalysisInteropTestCase(unittest.TestCase):
     def setUp(self):
         self.pcap_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../test_dumps')
         self.pcap_path_list = os.listdir(self.pcap_dir_path)
-        logger.info(self.pcap_path_list)
+        logger.info("running unittest for %s" %self.pcap_path_list)
 
     def get_pcaps(self):
         for entry in self.pcap_path_list:

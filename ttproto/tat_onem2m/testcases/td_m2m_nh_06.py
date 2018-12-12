@@ -3,7 +3,7 @@ from ..common import *
 
 class TD_M2M_NH_06(CoAPTestCase):
     """
----
+
 TD_M2M_NH_06:
     cfg: M2M_CFG_01
     obj: AE registers to its regisrar CSE via an AE Create Request.
