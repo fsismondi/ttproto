@@ -13,7 +13,8 @@ Antony B.is the author of the initial version. Federico Sismondi developed exten
 Several contributions from ETSI, Sensinov, Inria and other SMEs. 
 
 # Contributors
-# ToDo: add file of contributors and reference in this doc
+See https://github.com/fsismondi/ttproto/graphs/contributors
+Thank you guys.
 
 # Using TTProto from CLI
 
