@@ -8,6 +8,13 @@ ttproto is now being used for the purpose of developing testing tools (for inter
 This tool is implemented in python3 and its design was influenced mainly by TTCN-3 (abstract model, templates, snapshots, behavior trees, communication ports, logging) and by Scapy (syntax, flexibility, customizability)
 Its purpose is to facilitate rapid prototyping and experimentation (rather than production use). We chose to maximize its modularity and readability rather than performances and real-time considerations.
 
+# Poeple behind this project
+Antony B.is the author of the initial version. Federico Sismondi developed extension of some API for implementing new features, and added protocol extensions. Most of the developlment happened under the supervison of César V. 
+Several contributions from ETSI, Sensinov, Inria and other SMEs. 
+
+# Contributors
+# ToDo: add file of contributors and reference in this doc
+
 # Using TTProto from CLI
 
 ```
