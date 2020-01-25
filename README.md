@@ -1,16 +1,22 @@
 TTProto ( Testing Tool Prototype)
 -----------------------------------
 
+# Goals and achivements
 ttproto is an experimental tool for implementing testing tools, for conformance and interoperability testing.
 It was first implemented to explore new features and concepts for the TTCN-3 standard, but we also used it to implement a passive interoperability test suite we provided for the CoAP interoperability event held in Paris in March 2012.
-
 ttproto is now being used for the purpose of developing testing tools (for interoperability and conformance testing) for the [f-interop european project](http://www.f-interop.eu/)
+
+# Concept
 This tool is implemented in python3 and its design was influenced mainly by TTCN-3 (abstract model, templates, snapshots, behavior trees, communication ports, logging) and by Scapy (syntax, flexibility, customizability)
 Its purpose is to facilitate rapid prototyping and experimentation (rather than production use). We chose to maximize its modularity and readability rather than performances and real-time considerations.
 
 # Poeple behind this project
-Antony B.is the author of the initial version. Federico Sismondi developed extension of some API for implementing new features, and added protocol extensions. Most of the developlment happened under the supervison of César V. 
-Several contributions from ETSI, Sensinov, Inria and other SMEs. 
+Antony B.is the author of the library. He designed and implemented most of the stuff here. 
+Federico Sismondi is the current mantainer. He extended the APIs, introduced new protocols and test suites.
+Most of the developlment happened under the supervison of César V. 
+The project received several contributions from ETSI, Sensinov and Inria. 
+Some Irisa students and engineers worked for this too. 
+Please refer to the log of commits for more.
 
 # Contributors
 See https://github.com/fsismondi/ttproto/graphs/contributors
